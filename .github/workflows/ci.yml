@@ -27,3 +27,14 @@ jobs:
       - run: pnpm lint
       - run: pnpm typecheck
       - run: pnpm build
+
+  db:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: supabase/setup-cli@v1
+        with:
+          version: 2.120.0
+      # Only Postgres is needed: applies the migrations, then runs the pgTAP tests.
+      - run: supabase db start
+      - run: supabase test db
