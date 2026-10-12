@@ -1,7 +1,8 @@
 import type { Metadata, Viewport } from "next";
+import { Suspense } from "react";
 
 import { AccountMenu } from "@/components/app/AccountMenu";
-import { AppTabBar } from "@/components/app/AppTabBar";
+import { AppTabBar, AppTabBarLinks } from "@/components/app/AppTabBar";
 import { Wordmark } from "@/components/ui/Wordmark";
 
 // Owner-only app shell (#13), mobile first. The proxy sends signed-out visits
@@ -27,7 +28,9 @@ export default function AppLayout({ children }: LayoutProps<"/app">) {
       <main className="mx-auto w-full max-w-[640px] flex-1 px-4 py-5">{children}</main>
       <div className="sticky bottom-0 z-20">
         <div className="mx-auto max-w-[640px]">
-          <AppTabBar />
+          <Suspense fallback={<AppTabBarLinks pathname="" />}>
+            <AppTabBar />
+          </Suspense>
         </div>
       </div>
     </div>
