@@ -1,13 +1,9 @@
 import { Chip } from "@/components/ui/Chip";
+import { Poster } from "@/components/ui/Poster";
 import { RatingStars } from "@/components/ui/RatingStars";
 
-function initials(title: string) {
-  const words = title.split(/\s+/).filter(Boolean);
-  return (words[0]?.[0] ?? "") + (words[1]?.[0] ?? "");
-}
-
-// Poster, title, venue, date and rating, for feeds, lists and the diary.
-// Fixed 176px wide; grid them with gap-4. Bordered, never shadowed.
+// A portrait card for shelves and carousels on web (iOS uses FLShowRow).
+// 160px wide; poster 2:3 at radius-sm.
 export function ShowCard({
   title,
   venue,
@@ -25,30 +21,17 @@ export function ShowCard({
 }) {
   const meta = [venue, date].filter(Boolean).join(" · ");
   return (
-    <article
-      className={`flex w-44 flex-col overflow-hidden rounded-lg border border-border bg-surface-raised ${className}`}
-    >
-      {poster ? (
-        // eslint-disable-next-line @next/next/no-img-element -- posters come from anywhere
-        <img
-          src={poster}
-          alt=""
-          className="aspect-2/3 w-full bg-surface-sunken object-cover"
-        />
-      ) : (
-        <div
-          aria-hidden="true"
-          className="flex aspect-2/3 w-full items-center justify-center bg-surface-sunken font-display text-5xl font-bold text-border-strong"
-        >
-          {initials(title)}
-        </div>
-      )}
-      <div className="flex flex-col items-start gap-1 px-4 pt-3 pb-4">
-        <h3 className="line-clamp-2 font-display text-lg leading-[22px] font-bold text-ink">
-          {title}
-        </h3>
+    <article className={`flex w-40 flex-col gap-3 ${className}`}>
+      <Poster
+        title={title}
+        poster={poster}
+        className="w-full"
+        initialsClassName="text-[40px]"
+      />
+      <div className="flex flex-col items-start gap-1">
+        <h3 className="text-headline text-label">{title}</h3>
         {meta && (
-          <p className="mb-1 w-full truncate text-label font-normal text-ink-muted">
+          <p className="w-full truncate text-subheadline text-label-secondary">
             {meta}
           </p>
         )}
