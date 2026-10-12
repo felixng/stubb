@@ -68,7 +68,7 @@ London (West End + off-West End), New York (Broadway + Off-Broadway), Edinburgh 
 - Watchlist ("want to see").
 
 ### Later (explicitly out of scope for now)
-- Native iOS/Android apps.
+- Android app (an iOS app is now planned about a month after the web validation build; see `docs/ARCHITECTURE.md`).
 - Any monetisation (the owner is sceptical of subscriptions for this audience; ideas like ticket affiliate links or printed wrap products may be revisited later).
 - Public API.
 
@@ -88,6 +88,8 @@ Notes:
 - A "production" concept (a specific run/cast of a show) is deliberately omitted for now. Revisit if users want cast tracking.
 
 ## 8. Suggested tech approach
+
+> Superseded by [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) (proposed 2026-10-12): web validation build this week, iOS (shared backend) in about a month, $0/month on free tiers.
 
 This is a suggested default; confirm with the owner before locking in **[Decision needed]**:
 
