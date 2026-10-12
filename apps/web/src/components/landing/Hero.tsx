@@ -81,7 +81,7 @@ export function Hero() {
         <div className="lg:grid lg:grid-cols-12 lg:gap-x-8 lg:gap-y-20">
           <div className="relative z-10 mx-auto max-w-2xl lg:col-span-7 lg:max-w-none lg:pt-6 xl:col-span-6">
             <p className="font-mono text-xs tracking-[0.3em] text-curtain uppercase">
-              For regular theatregoers
+              For theatre regulars
             </p>
             <h1 className="mt-4 font-display text-5xl font-semibold tracking-tight text-ink sm:text-6xl">
               Your theatre life, shared.
