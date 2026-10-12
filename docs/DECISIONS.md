@@ -41,3 +41,6 @@ The owner wants the iOS app, the web app and the landing page in this one repo. 
 
 ### 2026-10-12: Any theatre, no city limit; US/UK focus is internal only
 The owner dropped the London/NYC/Edinburgh launch scope: the product covers any theatre, anywhere. Early effort (seed catalogue, marketing) still focuses on the US and UK, but users aren't told this. Public copy doesn't mention launch cities or regions, and the waitlist doesn't ask for a city.
+
+### 2026-10-12: No share button on the waitlist success state
+The owner dropped the "share with a theatre friend" button from #10. The success state is just the confirmation message. The share card remains the acquisition loop.
