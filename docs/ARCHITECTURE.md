@@ -126,7 +126,7 @@ Free-tier limits change often. Check the vendor pricing pages before relying on 
 - Types are generated from the schema for each app: `supabase gen types --lang typescript` for web, `--lang swift` for iOS. The **schema is the contract** between the two codebases.
 
 ### 3. Vercel holds only what needs a server
-- `/api/card/[id]`: renders the Instagram Story card (1080×1920) with `next/og`, reading data through the **anon key**, which means RLS lets it see public entries only. Responses are cached at the edge, so crawlers and repeat shares don't re-render.
+- `/api/card/[id]`: renders the Instagram Story card (1080×1920) with `next/og`, reading data through the **publishable (anon) key**, which means RLS lets it see public entries only. Responses are cached at the edge, so crawlers and repeat shares don't re-render.
 - `/@[handle]` and `/e/[id]`: server-rendered public pages with `og:image` pointing at the card route.
 - The Supabase **service-role key is never deployed** in this phase, so a bug in a route can't bypass RLS.
 - Phase 2 adds `/api/import/email`, which calls an LLM with a server-side key. That's the first paid usage, and only a few pence.
@@ -147,25 +147,29 @@ Free-tier limits change often. Check the vendor pricing pages before relying on 
 - Sharing: the app fetches the same `/api/card/:id` PNG from Vercel and opens `ShareLink` / the share sheet. That gives one card design, not two.
 - Universal links: `/.well-known/apple-app-site-association` served by Next.js, so `/e/:id` links open in the app when it's installed.
 
-### 6. Repo layout
+### 6. Repo layout: one monorepo
 
 ```
 stubb/
-├── web/                # Next.js (this week); Vercel root directory
-├── ios/                # Xcode project, SwiftUI (next month)
+├── apps/
+│   ├── web/            # Next.js: landing page (/), owner app (/app), share cards. Vercel root directory.
+│   └── ios/            # SwiftUI Xcode project (next month)
 ├── supabase/
 │   ├── migrations/     # SQL: tables, constraints, RLS, functions (the shared "API")
 │   ├── seed.sql        # London / NYC / Edinburgh venues + starter shows
 │   └── tests/          # RLS/privacy tests (pgTAP)
+├── packages/           # shared JS packages, only if ever needed
 └── docs/
 ```
 
-One repo, so a schema change and both clients' updates can land in the same PR. No JS workspace tooling is needed, because only `web/` is JavaScript.
+- **One repo**, so a schema change and both clients' updates can land in the same PR.
+- **pnpm workspaces** (no Turborepo/Nx). Root scripts proxy to `apps/web`: `pnpm dev`, `pnpm lint`, `pnpm typecheck`, `pnpm build`.
+- **The landing page lives inside the web app**, not in a separate app. It gets the same domain, fonts and design tokens, and the landing mockups can use the real share-card route. The waitlist is a Server Action next to it. It can be split out later if it ever needs to be.
 
 ### 7. Environments
 | Environment | Database | Web |
 |---|---|---|
-| Local | `supabase start` (Docker, free, unlimited) | `npm run dev` in `web/`; iOS Simulator against local Supabase |
+| Local | `supabase start` (Docker, free, unlimited) | `pnpm dev` (root); iOS Simulator against local Supabase |
 | Preview | Supabase project #2 ("staging") | Vercel preview deploys per PR |
 | Production | Supabase project #1 | Vercel production (`main`) |
 
