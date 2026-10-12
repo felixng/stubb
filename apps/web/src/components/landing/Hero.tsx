@@ -20,7 +20,7 @@ function BackgroundIllustration(props: React.ComponentPropsWithoutRef<"div">) {
       >
         <path
           d="M1025 513c0 282.77-229.23 512-512 512S1 795.77 1 513 230.23 1 513 1s512 229.23 512 512Z"
-          className="stroke-line"
+          className="stroke-border"
         />
         <path
           d="M513 1025C230.23 1025 1 795.77 1 513"
@@ -36,8 +36,8 @@ function BackgroundIllustration(props: React.ComponentPropsWithoutRef<"div">) {
             y2="1025"
             gradientUnits="userSpaceOnUse"
           >
-            <stop stopColor="var(--curtain)" />
-            <stop offset="1" stopColor="var(--curtain)" stopOpacity="0" />
+            <stop stopColor="var(--border-strong)" />
+            <stop offset="1" stopColor="var(--border-strong)" stopOpacity="0" />
           </linearGradient>
         </defs>
       </svg>
@@ -49,7 +49,7 @@ function BackgroundIllustration(props: React.ComponentPropsWithoutRef<"div">) {
       >
         <path
           d="M913 513c0 220.914-179.086 400-400 400S113 733.914 113 513s179.086-400 400-400 400 179.086 400 400Z"
-          className="stroke-line"
+          className="stroke-border"
         />
         <path
           d="M913 513c0 220.914-179.086 400-400 400"
@@ -65,8 +65,8 @@ function BackgroundIllustration(props: React.ComponentPropsWithoutRef<"div">) {
             y2="913"
             gradientUnits="userSpaceOnUse"
           >
-            <stop stopColor="var(--brass)" />
-            <stop offset="1" stopColor="var(--brass)" stopOpacity="0" />
+            <stop stopColor="var(--border-strong)" />
+            <stop offset="1" stopColor="var(--border-strong)" stopOpacity="0" />
           </linearGradient>
         </defs>
       </svg>
@@ -80,19 +80,19 @@ export function Hero() {
       <Container>
         <div className="lg:grid lg:grid-cols-12 lg:gap-x-8 lg:gap-y-20">
           <div className="relative z-10 mx-auto max-w-2xl lg:col-span-7 lg:max-w-none lg:pt-6 xl:col-span-6">
-            <p className="font-mono text-xs tracking-[0.3em] text-curtain uppercase">
-              Admit one · Your theatre diary
+            <p className="text-label tracking-[0.08em] text-ink-muted uppercase">
+              For theatre regulars
             </p>
-            <h1 className="mt-4 font-display text-5xl font-semibold tracking-tight text-ink sm:text-6xl">
-              Every show you’ve seen. One beautiful diary.
+            <h1 className="mt-3 font-display text-display-lg text-ink sm:text-display-xl">
+              Your theatre life, shared.
             </h1>
-            <p className="mt-6 text-lg text-ink-muted">
-              Rate, remember and share every show you see, then post the card
-              to your story.
+            <p className="mt-4 text-body-lg text-ink-muted">
+              Log and rate the shows you see, and see what’s trending in the
+              theatre community. Your diary, and the people who get it.
             </p>
             <div className="mt-8">
               <WaitlistForm />
-              <p className="text-sm text-ink-muted">
+              <p className="text-caption text-ink-muted">
                 We’ll only email you about launch. Unsubscribe anytime.
               </p>
             </div>
