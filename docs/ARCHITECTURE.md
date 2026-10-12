@@ -27,7 +27,7 @@ flowchart TB
   subgraph clients["① Clients"]
     direction LR
     WEB["📱 Web app<br/>(phone browser)<br/><i>this week</i>"]
-    IOS["📱 iOS app<br/>(Expo)<br/><i>~1 month</i>"]
+    IOS["📱 iOS app<br/>(SwiftUI + supabase-swift)<br/><i>~1 month</i>"]
     SOC["Instagram · WhatsApp ·<br/>iMessage previews"]
   end
 
@@ -103,7 +103,7 @@ Free-tier limits change often. Check the vendor pricing pages before relying on 
 | Auth | **Supabase Auth** | Email one-time code, Google, Apple | 50,000 monthly active users |
 | File storage | **Supabase Storage** | Entry photos, avatars | 1 GB |
 | Login emails | **Resend** (via Supabase custom SMTP) | Sends sign-in codes | ~3,000/mo, 100/day |
-| iOS app | **Expo** (EAS Build free tier) | Builds and submits the iOS app | Limited free cloud builds/mo; local builds unlimited |
+| iOS app | **Xcode** + TestFlight | Build locally, beta-test via TestFlight | Free with the Apple Developer Program. Xcode Cloud includes some free build hours/mo if CI is wanted. Avoid macOS GitHub runners on a private repo: they burn free minutes at 10×. |
 | Code, CI, cron | **GitHub** + Actions | Repo, lint/test, migrations, backup, keep-alive | Free for public repos; 2,000 min/mo private |
 | Domain (optional) | Any registrar, **Cloudflare** DNS | Nicer share links than `*.vercel.app` | ~$10/yr |
 
@@ -120,10 +120,10 @@ Free-tier limits change often. Check the vendor pricing pages before relying on 
 - `CHECK` constraints: rating is `NULL` or in `{0.5, 1.0 … 5.0}`; the handle matches `^[a-z0-9_]{3,20}$` and is unique case-insensitively.
 - **RLS policies:**
   - The owner can do anything with their own rows.
-  - Anyone (including logged-out visitors) can `SELECT` entries where `visibility = 'public'` and the owner's profile is public.
+  - Anyone (including logged-out visitors) can `SELECT` entries where `visibility = 'public'`. **New entries default to public** (from `profiles.default_visibility`, which defaults to `'public'`); the log form shows the current setting and toggles per entry.
   - Shows and venues are readable by everyone; any logged-in user can insert them, and only the creator can edit their own unverified rows.
 - **Stats** are a SQL function (e.g. `user_stats(user_id)`) that respects visibility, so web, iOS and the public profile all show identical numbers.
-- Types are generated with `supabase gen types typescript` and shared by both apps.
+- Types are generated from the schema for each app: `supabase gen types --lang typescript` for web, `--lang swift` for iOS. The **schema is the contract** between the two codebases.
 
 ### 3. Vercel holds only what needs a server
 - `/api/card/[id]`: renders the Instagram Story card (1080×1920) with `next/og`, reading data through the **anon key**, which means RLS lets it see public entries only. Responses are cached at the edge, so crawlers and repeat shares don't re-render.
@@ -132,37 +132,40 @@ Free-tier limits change often. Check the vendor pricing pages before relying on 
 - Phase 2 adds `/api/import/email`, which calls an LLM with a server-side key. That's the first paid usage, and only a few pence.
 
 ### 4. Photos
-- Resize to roughly 1600px and **re-encode on the device before upload**: canvas on web, `expo-image-manipulator` on iOS. Re-encoding drops EXIF/GPS, and the free tier has no server-side image processing.
+- Resize to roughly 1600px and **re-encode on the device before upload**: canvas on web, `ImageIO`/`UIImage` JPEG re-encode on iOS. Re-encoding drops EXIF/GPS, and the free tier has no server-side image processing.
 - This keeps photos around 200–300 KB, so 1 GB of storage holds about 4,000 photos. **Storage is likely the first free-tier limit you'll hit.**
 - Phase 2 photo import reads EXIF **on the device** before stripping it. Only the extracted date and venue match are kept.
 
-### 5. iOS: Expo (React Native) over native Swift *(recommended, needs your call)*
-- **Pros:** it's TypeScript like the web app, so the generated DB types, validation (e.g. zod schemas), rating and date helpers and Supabase queries live in one shared package. Android comes almost free later. A solo builder can ship it in weeks.
-- **Cons:** it feels slightly less native than SwiftUI. Some iOS-only features (widgets, Live Activities) need native modules.
-- **If you'd rather write Swift:** the backend design doesn't change at all. Use `supabase-swift` against the same project. You'd just lose shared TypeScript code.
+### 5. iOS: native SwiftUI *(decided 2026-10-12)*
+- SwiftUI app using [`supabase-swift`](https://github.com/supabase/supabase-swift) against the **same** Supabase project as the web app: same users, same data, same RLS.
+- No code is shared with the web app, so **logic shared by both apps belongs in Postgres**, not in either client:
+  - validation lives in `CHECK` constraints;
+  - stats live in SQL functions (`user_stats`, etc.);
+  - search lives in a SQL function (e.g. `search_shows(q)` using `pg_trgm`).
+  Each client only renders and calls these. That stops the Swift and TypeScript versions drifting apart.
+- Sign in with Apple is native (`AuthenticationServices`) → `supabase.auth.signInWithIdToken`. Google uses the GoogleSignIn SDK the same way.
+- Sharing: the app fetches the same `/api/card/:id` PNG from Vercel and opens `ShareLink` / the share sheet. That gives one card design, not two.
+- Universal links: `/.well-known/apple-app-site-association` served by Next.js, so `/e/:id` links open in the app when it's installed.
 
-### 6. Repo layout (monorepo from day one, so iOS slots in without a reshuffle)
+### 6. Repo layout
 
 ```
 stubb/
-├── apps/
-│   ├── web/            # Next.js (this week)
-│   └── ios/            # Expo app (next month)
-├── packages/
-│   └── shared/         # DB types, zod schemas, rating/date/stats helpers
+├── web/                # Next.js (this week); Vercel root directory
+├── ios/                # Xcode project, SwiftUI (next month)
 ├── supabase/
-│   ├── migrations/     # SQL: tables, constraints, RLS, functions
+│   ├── migrations/     # SQL: tables, constraints, RLS, functions (the shared "API")
 │   ├── seed.sql        # London / NYC / Edinburgh venues + starter shows
 │   └── tests/          # RLS/privacy tests (pgTAP)
 └── docs/
 ```
 
-pnpm workspaces only. No Turborepo or Nx until the build gets slow enough to need one.
+One repo, so a schema change and both clients' updates can land in the same PR. No JS workspace tooling is needed, because only `web/` is JavaScript.
 
 ### 7. Environments
 | Environment | Database | Web |
 |---|---|---|
-| Local | `supabase start` (Docker, free, unlimited) | `pnpm dev` |
+| Local | `supabase start` (Docker, free, unlimited) | `npm run dev` in `web/`; iOS Simulator against local Supabase |
 | Preview | Supabase project #2 ("staging") | Vercel preview deploys per PR |
 | Production | Supabase project #1 | Vercel production (`main`) |
 

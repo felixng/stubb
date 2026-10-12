@@ -28,7 +28,7 @@ The owner is a solo indie builder doing this as a side project, so scope discipl
 3. **Low barrier to entry.** Logging a show should take under 20 seconds. Getting old history in (import) should be easy.
 4. **One simple data model.** An entry has an optional rating and an optional note. "Add a review later" is just editing the entry. Do not split reviews into a separate model.
 5. **Own the data.** Users can export their data (CSV). This is also a trust signal.
-6. **Privacy-respecting by default.** Strip EXIF/GPS metadata from any publicly served image. Entries are private or public per user setting; default to a sensible, clearly shown option. **[Decision needed: default visibility]**
+6. **Privacy-respecting by default.** Strip EXIF/GPS metadata from any publicly served image. Entries are private or public per user setting; default to a sensible, clearly shown option. **Decided: entries default to public** (see `docs/DECISIONS.md`).
 
 ## 5. Target geography for launch
 
@@ -68,7 +68,7 @@ London (West End + off-West End), New York (Broadway + Off-Broadway), Edinburgh 
 - Watchlist ("want to see").
 
 ### Later (explicitly out of scope for now)
-- Android app (an iOS app is now planned about a month after the web validation build; see `docs/ARCHITECTURE.md`).
+- Android app. (A native SwiftUI iOS app is now planned about a month after the web validation build; see `docs/ARCHITECTURE.md`.)
 - Any monetisation (the owner is sceptical of subscriptions for this audience; ideas like ticket affiliate links or printed wrap products may be revisited later).
 - Public API.
 
