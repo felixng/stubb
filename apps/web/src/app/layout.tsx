@@ -1,14 +1,18 @@
 import type { Metadata, Viewport } from "next";
-import { Fraunces, IBM_Plex_Mono, Inter } from "next/font/google";
+import { Bricolage_Grotesque, DM_Sans } from "next/font/google";
 import "./globals.css";
 
-// Display: theatrical serif for titles. Sans: UI. Mono: ticket-stub details.
-const fraunces = Fraunces({ variable: "--font-fraunces", subsets: ["latin"] });
-const inter = Inter({ variable: "--font-inter", subsets: ["latin"] });
-const plexMono = IBM_Plex_Mono({
-  variable: "--font-plex-mono",
+// Design system fonts (docs/DESIGN.md): display for headlines and show
+// titles, sans for interface text.
+const bricolage = Bricolage_Grotesque({
+  variable: "--font-bricolage",
   subsets: ["latin"],
-  weight: ["400", "600"],
+  weight: ["500", "700"],
+});
+const dmSans = DM_Sans({
+  variable: "--font-dm-sans",
+  subsets: ["latin"],
+  weight: ["400", "500", "600", "700"],
 });
 
 export const metadata: Metadata = {
@@ -18,19 +22,18 @@ export const metadata: Metadata = {
 };
 
 export const viewport: Viewport = {
-  themeColor: [
-    { media: "(prefers-color-scheme: light)", color: "#f7f1e6" },
-    { media: "(prefers-color-scheme: dark)", color: "#141012" },
-  ],
+  themeColor: "#0e0e10",
 };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
     <html
       lang="en"
-      className={`${fraunces.variable} ${inter.variable} ${plexMono.variable} h-full antialiased`}
+      className={`${bricolage.variable} ${dmSans.variable} h-full antialiased`}
     >
-      <body className="flex min-h-full flex-col font-sans">{children}</body>
+      <body className="flex min-h-full flex-col font-sans text-body">
+        {children}
+      </body>
     </html>
   );
 }

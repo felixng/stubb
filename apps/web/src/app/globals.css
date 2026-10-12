@@ -1,43 +1,104 @@
 @import "tailwindcss";
 
 /*
- * Stubbed design tokens. Theatre palette: house-lights paper, ink, curtain
- * red and brass. Share cards (#15, #16) reuse these values and fonts.
+ * Stubbed design system ("Interval"). Source of truth:
+ * https://claude.ai/artifact/UZXAQQuAaRmwtUDhYPE36U — see docs/DESIGN.md.
+ * Dark first: the house lights are down and the poster does the talking.
+ * Light theme only when asked for, via <html data-theme="light">.
  */
 :root {
-  --paper: #f7f1e6;
-  --ink: #1c1517;
-  --ink-muted: #6b5f5f;
-  --curtain: #9b1d30;
-  --curtain-deep: #6e1222;
-  --brass: #c9a227;
-  --line: #e4d9c6;
+  --surface: #0e0e10;
+  --surface-raised: #17171a;
+  --surface-sunken: #070708;
+  --ink: #f2f2ee;
+  --ink-muted: #a6a6a2;
+  --border: #2c2c30;
+  --border-strong: #7d7d84;
+  --accent: #d7ff3a;
+  --accent-strong: #eaff8a;
+  --accent-tint: #2b3400;
+  --on-accent: #0e0e10;
+  --highlight: #ffc043;
+  --focus: #f2f2ee;
+  --shadow-raised:
+    0 0 0 1px rgba(242, 242, 238, 0.08), 0 16px 32px -16px rgba(0, 0, 0, 0.8);
+  color-scheme: dark;
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --paper: #141012;
-    --ink: #f4ece0;
-    --ink-muted: #b3a79a;
-    --curtain: #d2475c;
-    --curtain-deep: #9b1d30;
-    --brass: #e0bc4c;
-    --line: #2e2528;
-  }
+:root[data-theme="light"] {
+  --surface: #f3f3f0;
+  --surface-raised: #ffffff;
+  --surface-sunken: #e7e7e3;
+  --ink: #121214;
+  --ink-muted: #55555b;
+  --border: #d6d6d2;
+  --border-strong: #7b7b82;
+  --accent: #3d5a00;
+  --accent-strong: #2c4200;
+  --accent-tint: #e6f5b0;
+  --on-accent: #f3f3f0;
+  --highlight: #a46a00;
+  --focus: #121214;
+  color-scheme: light;
 }
 
 @theme inline {
-  --color-paper: var(--paper);
+  --color-surface: var(--surface);
+  --color-surface-raised: var(--surface-raised);
+  --color-surface-sunken: var(--surface-sunken);
   --color-ink: var(--ink);
   --color-ink-muted: var(--ink-muted);
-  --color-curtain: var(--curtain);
-  --color-curtain-deep: var(--curtain-deep);
-  --color-brass: var(--brass);
-  --color-line: var(--line);
+  --color-border: var(--border);
+  --color-border-strong: var(--border-strong);
+  --color-accent: var(--accent);
+  --color-accent-strong: var(--accent-strong);
+  --color-accent-tint: var(--accent-tint);
+  --color-on-accent: var(--on-accent);
+  --color-highlight: var(--highlight);
+  --color-focus: var(--focus);
 
-  --font-display: var(--font-fraunces);
-  --font-sans: var(--font-inter);
-  --font-mono: var(--font-plex-mono);
+  --shadow-raised: var(--shadow-raised);
+
+  --font-display: var(--font-bricolage);
+  --font-sans: var(--font-dm-sans);
+}
+
+@theme {
+  /* Spacing: space-1…space-8 = 4, 8, 12, 16, 24, 32, 48, 64px, which are
+     Tailwind steps 1, 2, 3, 4, 6, 8, 12, 16 on its 4px base. Use only those. */
+
+  --radius-sm: 4px; /* chips, inputs */
+  --radius-md: 8px; /* buttons, posters */
+  --radius-lg: 12px; /* cards, sheets */
+  --radius-pill: 999px; /* avatars only */
+
+  /* Display styles (Bricolage Grotesque). */
+  --text-display-xl: 56px;
+  --text-display-xl--line-height: 60px;
+  --text-display-xl--letter-spacing: -0.025em;
+  --text-display-xl--font-weight: 700;
+  --text-display-lg: 40px;
+  --text-display-lg--line-height: 44px;
+  --text-display-lg--letter-spacing: -0.025em;
+  --text-display-lg--font-weight: 700;
+  --text-heading: 28px;
+  --text-heading--line-height: 34px;
+  --text-heading--letter-spacing: -0.025em;
+  --text-heading--font-weight: 700;
+
+  /* Text styles (DM Sans). */
+  --text-title: 20px;
+  --text-title--line-height: 28px;
+  --text-title--font-weight: 600;
+  --text-body-lg: 17px;
+  --text-body-lg--line-height: 26px;
+  --text-body: 15px;
+  --text-body--line-height: 22px;
+  --text-label: 13px;
+  --text-label--line-height: 18px;
+  --text-label--font-weight: 500;
+  --text-caption: 12px;
+  --text-caption--line-height: 16px;
 
   /* Landing hero rings (from the Tailwind Plus "Pocket" template). */
   --animate-spin-slow: spin 4s linear infinite;
@@ -51,6 +112,6 @@
 }
 
 body {
-  background: var(--paper);
+  background: var(--surface);
   color: var(--ink);
 }

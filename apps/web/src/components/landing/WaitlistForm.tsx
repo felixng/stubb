@@ -3,6 +3,7 @@
 import { useActionState, useId } from "react";
 
 import { joinWaitlist, type WaitlistState } from "@/app/waitlist-action";
+import { Button } from "@/components/ui/Button";
 
 // Where a visitor came from (e.g. ?utm_source=instagram), so we can see
 // whether shared cards drive sign-ups.
@@ -22,10 +23,10 @@ export function WaitlistForm() {
     return (
       <p
         role="status"
-        className="rounded-2xl border border-line bg-paper px-5 py-4 text-base font-semibold text-ink"
+        className="max-w-md rounded-lg border border-border bg-surface-raised p-4 text-title text-ink"
       >
-        You’re on the list 🎟️
-        <span className="mt-1 block text-sm font-normal text-ink-muted">
+        You’re on the list.
+        <span className="mt-1 block text-body font-normal text-ink-muted">
           We’ll email you when the curtain goes up.
         </span>
       </p>
@@ -52,24 +53,20 @@ export function WaitlistForm() {
           required
           placeholder="you@example.com"
           aria-describedby={state.status === "error" ? `${id}-error` : undefined}
-          className="block w-full min-w-0 flex-auto rounded-lg border border-line bg-white px-3.5 py-2.5 text-base text-[#1c1517] placeholder:text-[#6b5f5f]/70 focus:border-curtain focus:ring-2 focus:ring-curtain/30 focus:outline-none"
+          className="block min-h-11 w-full min-w-0 flex-auto rounded-sm border border-border-strong bg-surface-raised px-3 text-body text-ink placeholder:text-ink-muted focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus"
         />
         {/* Honeypot: hidden from people and screen readers. */}
         <div aria-hidden="true" className="absolute -left-[9999px]">
           <input name="company" type="text" tabIndex={-1} autoComplete="off" />
         </div>
-        <button
-          type="submit"
-          disabled={pending}
-          className="inline-flex flex-none items-center justify-center rounded-lg bg-curtain px-4 py-2.5 text-base font-semibold text-white transition-colors hover:bg-curtain-deep focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-curtain disabled:opacity-70"
-        >
+        <Button type="submit" disabled={pending} className="flex-none">
           {pending ? "Saving your seat…" : "Get your ticket!"}
-        </button>
+        </Button>
       </div>
       <p
         id={`${id}-error`}
         aria-live="polite"
-        className="mt-2 min-h-5 text-sm text-curtain"
+        className="mt-2 min-h-5 text-caption text-ink"
       >
         {state.status === "error" ? state.message : ""}
       </p>
