@@ -96,6 +96,13 @@ These are captured so design choices now don't block them later. None of them be
   3. **Link a group to a Discord server:** e.g. sync membership or roles with a group. Needs a hosted bot, so it costs real effort; only worth it once groups exist.
 - Pairs naturally with groups: many fan communities like the Minceuencers already live on Discord.
 
+**Theatregoing calendar (habit heatmap)**
+- A GitHub-contributions-style grid showing how often the user goes to the theatre, with each cell shaded by the number of entries in that period.
+- Granularity toggle: **day** (classic 52×7 year grid), **week** or **month**. Because theatregoing is low-frequency (5–30 times a year), a daily grid will be mostly empty for most users, so week or month may be the better default. **[Decision needed]** Default granularity, and whether to offer all three.
+- Tapping a cell lists that period's entries. Optional overlays: highlight trips (e.g. "NYC Oct 2026") or busy spells such as Fringe.
+- Works for a solo user, makes the app worth opening between visits (risk 1), and doubles as a share card (e.g. "My 2027 in theatre"). Natural home: the Stats page or the Phase 4 annual wrap.
+- No new data needed: computed by grouping `entries.date`. On public profiles, count only public entries.
+
 ## 7. Suggested data model (starting point, refine as needed)
 
 - `users`: id, handle (unique), display_name, avatar, created_at, default_visibility
