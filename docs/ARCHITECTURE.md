@@ -156,7 +156,7 @@ stubb/
 │   └── ios/            # SwiftUI Xcode project (next month)
 ├── supabase/
 │   ├── migrations/     # SQL: tables, constraints, RLS, functions (the shared "API")
-│   ├── seed.sql        # London / NYC / Edinburgh venues + starter shows
+│   ├── seed.sql        # US / UK venues + starter shows
 │   └── tests/          # RLS/privacy tests (pgTAP)
 ├── packages/           # shared JS packages, only if ever needed
 └── docs/
