@@ -50,3 +50,10 @@ The owner dropped the "share with a theatre friend" button from #10. The success
 
 ### 2026-10-12: Design system "Footlight" (native first)
 The owner moved the design system to iOS-native first: "Footlight" (https://claude.ai/artifact/Pw3EwEHyfYxzshKVTFQAzc) replaces "Interval". Tokens are named after the iOS semantic colours, type is the system font (SF Pro) instead of Google Fonts, buttons and chips are capsules, and the page follows the visitor's light/dark setting instead of being dark-only. The wordmark is now `STUBBED` in capitals. The SwiftUI files in the artifact's `ios.md` are the native counterpart to `apps/web/src/components/ui/`. Mapping: `docs/DESIGN.md`.
+
+### 2026-10-12: Schema v1 details (#12)
+- `entries.venue_id` is required, like `show_id` and `date`, so stats ("venues visited", cities) stay accurate.
+- New entries and collections take `visibility` from the profile default when the client doesn't send one (a trigger), so web and iOS can't drift.
+- Clients can't set `verified` on shows or venues (column grants); the owner verifies from the dashboard. Shows have no unique title constraint (*Macbeth* is a play and an opera); `search_shows` is the dedupe step. Venues dedupe on `osm_id`.
+- Logged-out visitors read only a profile's handle, display name and avatar. Signed-in users can also read `default_visibility`, since grants are per column; it reveals nothing their public entries don't.
+- A trip's entry links are public only when both the entry and the trip are public, so a public trip page never lists private entries.
