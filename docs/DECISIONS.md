@@ -62,3 +62,9 @@ The owner moved Footlight from the lime tint to coral: "Footlight Coral" (https:
 
 ### 2026-10-12: Sign-in is Google + email and password; sign-ups stay off
 Owner's call (#13): no magic link or emailed code. The login page offers "Continue with Google" and an email + password form. Sign-ups remain off during NYC week, so both only sign in accounts created in the Supabase dashboard; Google signs into the account whose email matches. Not depending on login emails also sidesteps Supabase's built-in sender limit of a few emails an hour. Apple sign-in is still needed before the iOS app ships (App Store rule 4.8). Password reset by email comes with public sign-up.
+
+### 2026-10-12: Logging is photo first (#14)
+Owner's call. The log form starts with a photo and fills in what it can: the date from the photo's EXIF, nearby theatres from its GPS (OpenStreetMap), and the show and venue from Claude (photo + nearby theatres + date, with web search). Anything it can't work out stays blank for the user. High or medium confidence fills empty fields; low confidence only shows a "Maybe X?" chip. Detection never overwrites a field the user has touched. With no date in the photo, the date defaults to today. "No photo? Fill in by hand" skips straight to the form. This pulls the single-photo part of #18 into #14; #18 keeps batch import of several photos, reusing the same routes.
+- The original photo never leaves the phone: it's re-encoded to JPEG on the device (no EXIF/GPS), then uploaded to the private `entry-photos` bucket. Others can read a photo only while its entry is public.
+- Claude calls go through `/api/photo/identify` (`claude-opus-5-5`, effort medium, web search up to 3 uses, server-side refusal fallback on). Until `ANTHROPIC_API_KEY` is set it returns 503 and the form simply skips the suggestion.
+
