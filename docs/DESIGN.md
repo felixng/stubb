@@ -24,7 +24,7 @@ Defined in `apps/web/src/app/globals.css`.
 | `focus` | `outline-focus` | 2px ring, 2px offset, on every interactive element |
 | `shadow-raised` | `shadow-raised` | Menus and sheets only; cards use a border |
 
-**Type:** Bricolage Grotesque (`font-display`) and DM Sans (`font-sans`), via `next/font`. The styles are Tailwind font sizes that carry their own line height, weight and tracking: `text-display-xl` 56, `text-display-lg` 40, `text-heading` 28 (with `font-display`), and `text-title` 20, `text-body-lg` 17, `text-body` 15 (default), `text-label` 13, `text-caption` 12 (with `font-sans`). Never set body text below `caption`.
+**Type:** Bricolage Grotesque (`font-display`, variable, with its optical-size axis so large sizes get the display cut) and DM Sans (`font-sans`), via `next/font`. The styles are Tailwind font sizes that carry their own line height, weight and tracking: `text-display-xl` 56, `text-display-lg` 40, `text-heading` 28 (with `font-display`), and `text-title` 20, `text-body-lg` 17, `text-body` 15 (default), `text-label` 13, `text-caption` 12 (with `font-sans`). Never set body text below `caption`.
 
 **Spacing:** `space-1…space-8` = 4, 8, 12, 16, 24, 32, 48, 64px = Tailwind `1, 2, 3, 4, 6, 8, 12, 16`. Use only these. Card padding and gaps are `4`; page gutters are `px-6` on phones and `lg:px-12` on desktop.
 
@@ -40,7 +40,7 @@ React ports of the artifact's components live in `apps/web/src/components/ui/`:
 | `Chip` | `selected`, `onClick`, children | Toggle button with `onClick`, static tag without |
 | `RatingStars` | `value` 0–5 (halves), `size` px | 14px in cards, 20px+ on show pages |
 | `ShowCard` | `title`, `venue`, `date`, `rating`, `poster` | 176px wide, 2:3 poster or initials, bordered |
-| `Wordmark` | `size` px (min 20) | Lowercase "stubbed", `ink` only, never accent |
+| `Wordmark` | `size` px (min 20) | "Stubbed" with a capital S, `ink` only, never accent |
 
 ## Icons
 
