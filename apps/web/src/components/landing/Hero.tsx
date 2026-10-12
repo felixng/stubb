@@ -80,12 +80,8 @@ export function Hero() {
       <Container>
         <div className="lg:grid lg:grid-cols-12 lg:gap-x-8 lg:gap-y-20">
           <div className="relative z-10 mx-auto max-w-2xl lg:col-span-7 lg:max-w-none lg:pt-6 xl:col-span-6">
-            <p className="inline-flex items-center gap-2 rounded-sm border border-border bg-surface-raised px-3 py-1 text-label text-ink">
-              <span
-                aria-hidden="true"
-                className="size-2 rounded-full bg-highlight motion-safe:animate-pulse"
-              />
-              Currently in private beta
+            <p className="text-label tracking-[0.08em] text-ink-muted uppercase">
+              For theatre regulars
             </p>
             <h1 className="mt-3 font-display text-display-lg text-ink sm:text-display-xl">
               Your theatre life, shared.

@@ -8,8 +8,16 @@ export default function Home() {
   return (
     <>
       <header>
-        <Container className="py-6 sm:py-8">
+        <Container className="flex items-center justify-between gap-4 py-6 sm:py-8">
           <Wordmark size={28} />
+          <p className="inline-flex items-center gap-2 rounded-sm border border-border bg-surface-raised px-3 py-1 text-label text-ink">
+            <span
+              aria-hidden="true"
+              className="size-2 rounded-full bg-highlight motion-safe:animate-pulse"
+            />
+            <span className="sm:hidden">Private beta</span>
+            <span className="hidden sm:inline">Currently in private beta</span>
+          </p>
         </Container>
       </header>
       <main className="flex-auto">
