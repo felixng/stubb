@@ -1,0 +1,46 @@
+@import "tailwindcss";
+
+/*
+ * Stubbed design tokens. Theatre palette: house-lights paper, ink, curtain
+ * red and brass. Share cards (#15, #16) reuse these values and fonts.
+ */
+:root {
+  --paper: #f7f1e6;
+  --ink: #1c1517;
+  --ink-muted: #6b5f5f;
+  --curtain: #9b1d30;
+  --curtain-deep: #6e1222;
+  --brass: #c9a227;
+  --line: #e4d9c6;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --paper: #141012;
+    --ink: #f4ece0;
+    --ink-muted: #b3a79a;
+    --curtain: #d2475c;
+    --curtain-deep: #9b1d30;
+    --brass: #e0bc4c;
+    --line: #2e2528;
+  }
+}
+
+@theme inline {
+  --color-paper: var(--paper);
+  --color-ink: var(--ink);
+  --color-ink-muted: var(--ink-muted);
+  --color-curtain: var(--curtain);
+  --color-curtain-deep: var(--curtain-deep);
+  --color-brass: var(--brass);
+  --color-line: var(--line);
+
+  --font-display: var(--font-fraunces);
+  --font-sans: var(--font-inter);
+  --font-mono: var(--font-plex-mono);
+}
+
+body {
+  background: var(--paper);
+  color: var(--ink);
+}
