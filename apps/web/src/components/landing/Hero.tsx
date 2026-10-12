@@ -2,7 +2,7 @@ import { useId } from "react";
 
 import { Container } from "@/components/landing/Container";
 import { PhoneFrame } from "@/components/landing/PhoneFrame";
-import { ShareCardMock } from "@/components/landing/ShareCardMock";
+import { DiaryScreenMock } from "@/components/landing/DiaryScreenMock";
 import { WaitlistForm } from "@/components/landing/WaitlistForm";
 import { Chip } from "@/components/ui/Chip";
 
@@ -28,7 +28,7 @@ function BackgroundIllustration(props: React.ComponentPropsWithoutRef<"div">) {
       >
         <path
           d="M1025 513c0 282.77-229.23 512-512 512S1 795.77 1 513 230.23 1 513 1s512 229.23 512 512Z"
-          className="stroke-border"
+          className="stroke-separator"
         />
         <path
           d="M513 1025C230.23 1025 1 795.77 1 513"
@@ -44,8 +44,8 @@ function BackgroundIllustration(props: React.ComponentPropsWithoutRef<"div">) {
             y2="1025"
             gradientUnits="userSpaceOnUse"
           >
-            <stop stopColor="var(--border-strong)" />
-            <stop offset="1" stopColor="var(--border-strong)" stopOpacity="0" />
+            <stop stopColor="var(--outline)" />
+            <stop offset="1" stopColor="var(--outline)" stopOpacity="0" />
           </linearGradient>
         </defs>
       </svg>
@@ -57,7 +57,7 @@ function BackgroundIllustration(props: React.ComponentPropsWithoutRef<"div">) {
       >
         <path
           d="M913 513c0 220.914-179.086 400-400 400S113 733.914 113 513s179.086-400 400-400 400 179.086 400 400Z"
-          className="stroke-border"
+          className="stroke-separator"
         />
         <path
           d="M913 513c0 220.914-179.086 400-400 400"
@@ -73,8 +73,8 @@ function BackgroundIllustration(props: React.ComponentPropsWithoutRef<"div">) {
             y2="913"
             gradientUnits="userSpaceOnUse"
           >
-            <stop stopColor="var(--border-strong)" />
-            <stop offset="1" stopColor="var(--border-strong)" stopOpacity="0" />
+            <stop stopColor="var(--outline)" />
+            <stop offset="1" stopColor="var(--outline)" stopOpacity="0" />
           </linearGradient>
         </defs>
       </svg>
@@ -88,13 +88,13 @@ export function Hero() {
       <Container>
         <div className="lg:grid lg:grid-cols-12 lg:gap-x-8 lg:gap-y-20">
           <div className="relative z-10 mx-auto max-w-2xl lg:col-span-7 lg:max-w-none lg:pt-6 xl:col-span-6">
-            <p className="text-label tracking-[0.08em] text-ink-muted uppercase">
+            <p className="text-footnote font-semibold tracking-[0.06em] text-label-secondary uppercase">
               For theatre regulars
             </p>
-            <h1 className="mt-3 font-display text-display-lg text-ink sm:text-display-xl">
+            <h1 className="mt-3 font-display text-[40px] leading-[44px] font-bold tracking-[-0.02em] text-label sm:text-[56px] sm:leading-[60px]">
               Your theatre life, shared.
             </h1>
-            <p className="mt-4 text-body-lg text-ink-muted">
+            <p className="mt-4 text-body text-label-secondary sm:text-[19px] sm:leading-[26px]">
               Log and rate the shows you see, and see what’s trending in the
               theatre community. Your diary, and the people who get it.
             </p>
@@ -107,16 +107,16 @@ export function Hero() {
             </ul>
             <div className="mt-8">
               <WaitlistForm />
-              <p className="text-caption text-ink-muted">
+              <p className="text-footnote text-label-secondary">
                 We’ll only email you about launch. Unsubscribe anytime.
               </p>
             </div>
           </div>
           <div className="relative mt-10 sm:mt-20 lg:col-span-5 lg:row-span-2 lg:mt-0 xl:col-span-6">
             <BackgroundIllustration className="absolute top-4 left-1/2 h-[1026px] w-[1026px] -translate-x-1/3 mask-[linear-gradient(to_bottom,white_20%,transparent_75%)] sm:top-16 sm:-translate-x-1/2 lg:-top-16 lg:ml-12 xl:-top-14 xl:ml-0" />
-            <div className="-mx-4 h-[520px] mask-[linear-gradient(to_bottom,white_70%,transparent)] px-9 sm:mx-0 lg:absolute lg:-inset-x-10 lg:-top-10 lg:-bottom-20 lg:h-auto lg:px-0 lg:pt-10 xl:-bottom-32">
+            <div className="-mx-4 h-[560px] mask-[linear-gradient(to_bottom,white_70%,transparent)] px-9 sm:mx-0 lg:absolute lg:-inset-x-10 lg:-top-10 lg:-bottom-20 lg:h-auto lg:px-0 lg:pt-10 xl:-bottom-32">
               <PhoneFrame className="mx-auto max-w-[366px]" priority>
-                <ShareCardMock />
+                <DiaryScreenMock />
               </PhoneFrame>
             </div>
           </div>

@@ -1,18 +1,17 @@
-// Triggers one action. One `primary` per screen; `secondary` for
-// alternatives; `ghost` for low-emphasis actions. Labels are short verbs.
+// Triggers one action; matches FLButtonStyle in SwiftUI. One `primary` per
+// screen, `secondary` for alternatives, `ghost` for low emphasis. Capsule.
 const base =
-  "inline-flex items-center justify-center gap-2 rounded-md border border-transparent font-sans font-semibold transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus disabled:cursor-not-allowed disabled:opacity-45";
+  "inline-flex items-center justify-center gap-2 rounded-pill font-sans font-semibold transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus disabled:cursor-not-allowed disabled:opacity-40";
 
 const sizes = {
-  md: "min-h-11 px-6 text-[15px] leading-5",
-  sm: "min-h-9 px-4 text-label",
+  md: "min-h-[50px] px-6 text-headline",
+  sm: "min-h-11 px-4 text-[15px] leading-5",
 };
 
 const variants = {
-  primary: "bg-accent text-on-accent hover:bg-accent-strong",
-  secondary:
-    "border-border-strong bg-surface-raised text-ink hover:bg-surface-sunken",
-  ghost: "bg-transparent text-accent hover:bg-accent-tint hover:text-ink",
+  primary: "bg-tint text-on-tint hover:bg-tint-pressed",
+  secondary: "bg-tint-fill text-tint hover:bg-fill",
+  ghost: "bg-transparent text-tint hover:bg-tint-fill",
 };
 
 export function Button({

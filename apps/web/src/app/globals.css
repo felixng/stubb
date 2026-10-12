@@ -1,102 +1,137 @@
 @import "tailwindcss";
 
 /*
- * Stubbed design system ("Interval"). Source of truth:
- * https://claude.ai/artifact/UZXAQQuAaRmwtUDhYPE36U — see docs/DESIGN.md.
- * Dark first: the house lights are down and the poster does the talking.
- * Light theme only when asked for, via <html data-theme="light">.
+ * Stubbed design system ("Footlight"). Source of truth:
+ * https://claude.ai/artifact/Pw3EwEHyfYxzshKVTFQAzc — see docs/DESIGN.md.
+ * Native first: tokens are named after the iOS semantic colours and match
+ * the SwiftUI app. The page follows the visitor's appearance.
  */
 :root {
-  --surface: #0e0e10;
-  --surface-raised: #17171a;
-  --surface-sunken: #070708;
-  --ink: #f2f2ee;
-  --ink-muted: #a6a6a2;
-  --border: #2c2c30;
-  --border-strong: #7d7d84;
-  --accent: #d7ff3a;
-  --accent-strong: #eaff8a;
-  --accent-tint: #2b3400;
-  --on-accent: #0e0e10;
-  --highlight: #ffc043;
-  --focus: #f2f2ee;
-  --shadow-raised:
-    0 0 0 1px rgba(242, 242, 238, 0.08), 0 16px 32px -16px rgba(0, 0, 0, 0.8);
+  --background: #000000;
+  --surface: #1c1c1e;
+  --fill: #2c2c2e;
+  --label: #ffffff;
+  --label-secondary: #aeaeb2;
+  --separator: #38383a;
+  --outline: #7c7c82;
+  --tint: #d7ff3a;
+  --tint-pressed: #eaff8a;
+  --tint-fill: #2b3400;
+  --on-tint: #000000;
+  --star: #ffd60a;
+  --destructive: #ff453a;
+  --focus: #ffffff;
   color-scheme: dark;
 }
 
-:root[data-theme="light"] {
-  --surface: #f3f3f0;
-  --surface-raised: #ffffff;
-  --surface-sunken: #e7e7e3;
-  --ink: #121214;
-  --ink-muted: #55555b;
-  --border: #d6d6d2;
-  --border-strong: #7b7b82;
-  --accent: #3d5a00;
-  --accent-strong: #2c4200;
-  --accent-tint: #e6f5b0;
-  --on-accent: #f3f3f0;
-  --highlight: #a46a00;
-  --focus: #121214;
+@media (prefers-color-scheme: light) {
+  :root {
+    --background: #f2f2f7;
+    --surface: #ffffff;
+    --fill: #e5e5ea;
+    --label: #000000;
+    --label-secondary: #636366;
+    --separator: #c6c6c8;
+    --outline: #7a7a7f;
+    --tint: #3d5a00;
+    --tint-pressed: #2c4200;
+    --tint-fill: #e6f5b0;
+    --on-tint: #ffffff;
+    --star: #a46a00;
+    --destructive: #d70015;
+    --focus: #000000;
+    color-scheme: light;
+  }
+}
+
+/* Pages that are always light (the landing page) mark their root with
+   data-theme="light"; :has() switches the whole document, body included.
+   :is() is forgiving, so browsers without :has() still theme the wrapper. */
+:is(:root:has([data-theme="light"]), [data-theme="light"]) {
+  --background: #f2f2f7;
+  --surface: #ffffff;
+  --fill: #e5e5ea;
+  --label: #000000;
+  --label-secondary: #636366;
+  --separator: #c6c6c8;
+  --outline: #7a7a7f;
+  --tint: #3d5a00;
+  --tint-pressed: #2c4200;
+  --tint-fill: #e6f5b0;
+  --on-tint: #ffffff;
+  --star: #a46a00;
+  --destructive: #d70015;
+  --focus: #000000;
   color-scheme: light;
 }
 
 @theme inline {
+  --color-background: var(--background);
   --color-surface: var(--surface);
-  --color-surface-raised: var(--surface-raised);
-  --color-surface-sunken: var(--surface-sunken);
-  --color-ink: var(--ink);
-  --color-ink-muted: var(--ink-muted);
-  --color-border: var(--border);
-  --color-border-strong: var(--border-strong);
-  --color-accent: var(--accent);
-  --color-accent-strong: var(--accent-strong);
-  --color-accent-tint: var(--accent-tint);
-  --color-on-accent: var(--on-accent);
-  --color-highlight: var(--highlight);
+  --color-fill: var(--fill);
+  --color-label: var(--label);
+  --color-label-secondary: var(--label-secondary);
+  --color-separator: var(--separator);
+  --color-outline: var(--outline);
+  --color-tint: var(--tint);
+  --color-tint-pressed: var(--tint-pressed);
+  --color-tint-fill: var(--tint-fill);
+  --color-on-tint: var(--on-tint);
+  --color-star: var(--star);
+  --color-destructive: var(--destructive);
   --color-focus: var(--focus);
-
-  --shadow-raised: var(--shadow-raised);
-
-  --font-display: var(--font-bricolage);
-  --font-sans: var(--font-dm-sans);
 }
 
 @theme {
-  /* Spacing: space-1…space-8 = 4, 8, 12, 16, 24, 32, 48, 64px, which are
-     Tailwind steps 1, 2, 3, 4, 6, 8, 12, 16 on its 4px base. Use only those. */
+  /* SF Pro on Apple devices, the system sans elsewhere. No web fonts. */
+  --font-display:
+    -apple-system, "SF Pro Display", BlinkMacSystemFont, system-ui, "Segoe UI",
+    Roboto, sans-serif;
+  --font-sans:
+    -apple-system, "SF Pro Text", BlinkMacSystemFont, system-ui, "Segoe UI",
+    Roboto, sans-serif;
 
-  --radius-sm: 4px; /* chips, inputs */
-  --radius-md: 8px; /* buttons, posters */
-  --radius-lg: 12px; /* cards, sheets */
-  --radius-pill: 999px; /* avatars only */
+  /* Spacing: space-1…space-7 = 4, 8, 12, 16, 20, 24, 32px, which are
+     Tailwind steps 1, 2, 3, 4, 5, 6, 8 on its 4px base. touch = 44px (11). */
 
-  /* Display styles (Bricolage Grotesque). */
-  --text-display-xl: 56px;
-  --text-display-xl--line-height: 60px;
-  --text-display-xl--letter-spacing: -0.025em;
-  --text-display-xl--font-weight: 700;
-  --text-display-lg: 40px;
-  --text-display-lg--line-height: 44px;
-  --text-display-lg--letter-spacing: -0.025em;
-  --text-display-lg--font-weight: 700;
-  --text-heading: 28px;
-  --text-heading--line-height: 34px;
-  --text-heading--letter-spacing: -0.025em;
-  --text-heading--font-weight: 700;
+  --radius-sm: 8px; /* posters, thumbnails */
+  --radius-md: 12px; /* cards, grouped lists, inputs */
+  --radius-lg: 20px; /* sheets, large cards */
+  --radius-pill: 999px; /* buttons, chips, avatars */
 
-  /* Text styles (DM Sans). */
-  --text-title: 20px;
-  --text-title--line-height: 28px;
-  --text-title--font-weight: 600;
-  --text-body-lg: 17px;
-  --text-body-lg--line-height: 26px;
-  --text-body: 15px;
+  --shadow-sheet: 0 8px 32px -8px rgba(0, 0, 0, 0.35);
+
+  /* Titles (SF Pro Display, bold), the iOS text styles at default size. */
+  --text-large-title: 34px;
+  --text-large-title--line-height: 41px;
+  --text-large-title--letter-spacing: 0.011em;
+  --text-large-title--font-weight: 700;
+  --text-title: 28px;
+  --text-title--line-height: 34px;
+  --text-title--letter-spacing: 0.013em;
+  --text-title--font-weight: 700;
+  --text-title-2: 22px;
+  --text-title-2--line-height: 28px;
+  --text-title-2--letter-spacing: 0.016em;
+  --text-title-2--font-weight: 700;
+
+  /* Text (SF Pro Text). */
+  --text-headline: 17px;
+  --text-headline--line-height: 22px;
+  --text-headline--letter-spacing: -0.024em;
+  --text-headline--font-weight: 600;
+  --text-body: 17px;
   --text-body--line-height: 22px;
-  --text-label: 13px;
-  --text-label--line-height: 18px;
-  --text-label--font-weight: 500;
+  --text-body--letter-spacing: -0.024em;
+  --text-callout: 16px;
+  --text-callout--line-height: 21px;
+  --text-callout--letter-spacing: -0.02em;
+  --text-subheadline: 15px;
+  --text-subheadline--line-height: 20px;
+  --text-subheadline--letter-spacing: -0.016em;
+  --text-footnote: 13px;
+  --text-footnote--line-height: 18px;
+  --text-footnote--letter-spacing: -0.006em;
   --text-caption: 12px;
   --text-caption--line-height: 16px;
 
@@ -112,6 +147,6 @@
 }
 
 body {
-  background: var(--surface);
-  color: var(--ink);
+  background: var(--background);
+  color: var(--label);
 }

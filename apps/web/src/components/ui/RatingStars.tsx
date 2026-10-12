@@ -1,5 +1,5 @@
-// Read-only rating out of five, halves included. Filled stars use
-// `highlight`, empty ones `border-strong`. 14px in cards, 20px+ on show pages.
+// Five stars in half steps, read-only; matches FLRatingStars. Filled stars
+// use `star`, empty ones `outline`. Never a bare number.
 const STAR =
   "M12 2.8l2.8 5.9 6.5.8-4.8 4.5 1.2 6.4L12 17.2l-5.7 3.2 1.2-6.4-4.8-4.5 6.5-.8z";
 
@@ -19,8 +19,8 @@ function Star({ size, filled }: { size: number; filled: boolean }) {
         strokeLinejoin="round"
         className={
           filled
-            ? "fill-highlight stroke-highlight"
-            : "fill-none stroke-border-strong"
+            ? "fill-star stroke-star"
+            : "fill-none stroke-outline"
         }
       />
     </svg>
