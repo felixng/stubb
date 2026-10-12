@@ -1,5 +1,5 @@
-// A compact label or filter. With `onClick` it is a toggle button
-// (aria-pressed); without, a static tag. No ratings or numbers in chips.
+// A capsule for a category, tag or filter; matches FLChip. With `onClick` it
+// is a toggle button (aria-pressed). Selected chips invert; never `tint`.
 export function Chip({
   selected = false,
   onClick,
@@ -11,8 +11,8 @@ export function Chip({
   className?: string;
   children: React.ReactNode;
 }) {
-  const classes = `inline-flex items-center rounded-sm border border-transparent px-3 py-1 font-sans text-label ${
-    selected ? "bg-ink text-surface" : "bg-accent-tint text-ink"
+  const classes = `inline-flex min-h-7 items-center rounded-pill px-3 font-sans text-footnote font-medium ${
+    selected ? "bg-label text-background" : "bg-fill text-label"
   } ${className}`;
 
   if (onClick) {

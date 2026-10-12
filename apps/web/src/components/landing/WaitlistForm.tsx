@@ -23,10 +23,10 @@ export function WaitlistForm() {
     return (
       <p
         role="status"
-        className="max-w-md rounded-lg border border-border bg-surface-raised p-4 text-title text-ink"
+        className="max-w-md rounded-md bg-surface p-4 text-headline text-label"
       >
         You’re on the list.
-        <span className="mt-1 block text-body font-normal text-ink-muted">
+        <span className="mt-1 block text-subheadline font-normal text-label-secondary">
           We’ll let you know when spaces open up.
         </span>
       </p>
@@ -53,7 +53,7 @@ export function WaitlistForm() {
           required
           placeholder="you@example.com"
           aria-describedby={state.status === "error" ? `${id}-error` : undefined}
-          className="block min-h-11 w-full min-w-0 flex-auto rounded-sm border border-border-strong bg-surface-raised px-3 text-body text-ink placeholder:text-ink-muted focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus"
+          className="block min-h-[50px] w-full min-w-0 flex-auto rounded-md border border-outline bg-surface px-4 text-body text-label placeholder:text-label-secondary focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus"
         />
         {/* Honeypot: hidden from people and screen readers. */}
         <div aria-hidden="true" className="absolute -left-[9999px]">
@@ -66,7 +66,7 @@ export function WaitlistForm() {
       <p
         id={`${id}-error`}
         aria-live="polite"
-        className="mt-2 min-h-5 text-caption text-ink"
+        className="mt-2 min-h-5 text-footnote text-destructive"
       >
         {state.status === "error" ? state.message : ""}
       </p>

@@ -1,47 +1,55 @@
-# Design system ("Interval")
+# Design system ("Footlight")
 
-The source of truth is the design system artifact: https://claude.ai/artifact/UZXAQQuAaRmwtUDhYPE36U. This file covers how it maps onto the web app. If you change a token or rule, change it in the artifact first, then mirror it here and in `apps/web/src/app/globals.css`.
+The source of truth is the design system artifact: https://claude.ai/artifact/Pw3EwEHyfYxzshKVTFQAzc. It is native first: built for the SwiftUI iOS app, with the web app and site mirroring it. Its `ios.md` has the Swift files (`FLColor`, `FLMetrics`, components); `web.md` has the web rules. If you change a token or rule, change it in the artifact first, then mirror it here, in `apps/web/src/app/globals.css` and in the Swift files.
 
 ## Principles
 
-- **Dark first.** The house lights are down and the poster does the talking. Light theme only when asked for (`<html data-theme="light">`); there's no toggle yet.
-- **One signal colour.** `accent` (lime) marks the single most important thing on a screen: the one primary action, links, the active nav item. Nothing else.
-- **Copy:** terse and confident, sentence case, no emoji, no exclamation marks. Button labels are verbs. Show titles use the display face. Numbers are tabular.
+- **Follows the system appearance.** Light and dark are equals; the web follows `prefers-color-scheme` and never picks for the visitor.
+- **One tint.** `tint` (lime in dark, olive in light) marks the one primary action, links and the selected tab. Nothing else.
+- **Copy:** terse and confident, sentence case, no emoji, no exclamation marks. Button labels are verbs. Numbers are digits and tabular. Sample handle: `@sillyelphaba`; never a real person's name.
 - **Ratings** always show as the five `RatingStars`, never a bare number.
+- **Wordmark:** `STUBBED` in capitals (heavy, open tracking, `label`). "Stubbed" with a capital S in running text.
 
 ## Tokens → Tailwind
 
-Defined in `apps/web/src/app/globals.css`.
+Defined in `apps/web/src/app/globals.css`. Names match the iOS semantic colours and `FLColor`.
 
 | Token | Tailwind | Use |
 |---|---|---|
-| `surface`, `surface-raised`, `surface-sunken` | `bg-surface`, `bg-surface-raised`, `bg-surface-sunken` | Page, cards/inputs, wells/poster placeholders |
-| `ink`, `ink-muted` | `text-ink`, `text-ink-muted` | All text |
-| `border`, `border-strong` | `border-border`, `border-border-strong` | Hairlines; control borders and empty stars |
-| `accent`, `accent-strong`, `on-accent` | `bg-accent`, `hover:bg-accent-strong`, `text-on-accent` | Primary action only |
-| `accent-tint` | `bg-accent-tint` | Chips, highlighted rows (text: `ink`) |
-| `highlight` | `fill-highlight` | Rating stars and award marks, never words |
-| `focus` | `outline-focus` | 2px ring, 2px offset, on every interactive element |
-| `shadow-raised` | `shadow-raised` | Menus and sheets only; cards use a border |
+| `background` | `bg-background` | Every screen; marketing pages stay on it |
+| `surface` | `bg-surface` | Grouped lists, cards, inputs, sheets |
+| `fill` | `bg-fill` | Poster placeholders, chips, wells |
+| `label`, `label-secondary` | `text-label`, `text-label-secondary` | All text |
+| `separator` | `border-separator` | Hairlines between rows, inset to the text |
+| `outline` | `border-outline`, `stroke-outline` | Control borders, empty stars, placeholder initials |
+| `tint`, `tint-pressed`, `on-tint` | `bg-tint`, `hover:bg-tint-pressed`, `text-on-tint` | Primary action, links, selected tab |
+| `tint-fill` | `bg-tint-fill` | Secondary buttons, highlighted rows |
+| `star` | `fill-star` | Rating stars and award marks only |
+| `destructive` | `text-destructive` | Delete, sign out, error text |
+| `focus` | `outline-focus` | 2px focus ring, 2px offset (web only) |
+| `shadow-sheet` | `shadow-sheet` | Sheets and menus only |
 
-**Type:** Bricolage Grotesque (`font-display`, variable, with its optical-size axis so large sizes get the display cut) and DM Sans (`font-sans`), via `next/font`. The styles are Tailwind font sizes that carry their own line height, weight and tracking: `text-display-xl` 56, `text-display-lg` 40, `text-heading` 28 (with `font-display`), and `text-title` 20, `text-body-lg` 17, `text-body` 15 (default), `text-label` 13, `text-caption` 12 (with `font-sans`). Never set body text below `caption`.
+**Type:** the system font: SF Pro on Apple devices, the system sans elsewhere (`font-display`, `font-sans`). No web fonts. The iOS text styles at their default sizes are Tailwind font sizes that carry line height, weight and tracking: `text-large-title` 34, `text-title` 28, `text-title-2` 22 (bold, with `font-display`), and `text-headline` 17/600, `text-body` 17 (default), `text-callout` 16, `text-subheadline` 15, `text-footnote` 13, `text-caption` 12. Never set body text below `footnote`. The landing hero headline (40px, 56px from `sm`) is a marketing size outside the iOS styles.
 
-**Spacing:** `space-1…space-8` = 4, 8, 12, 16, 24, 32, 48, 64px = Tailwind `1, 2, 3, 4, 6, 8, 12, 16`. Use only these. Card padding and gaps are `4`; page gutters are `px-6` on phones and `lg:px-12` on desktop.
+**Spacing:** `space-1…space-7` = 4, 8, 12, 16, 20, 24, 32px = Tailwind `1, 2, 3, 4, 5, 6, 8`. Screen gutter and row padding `4`; sections `5` apart; web page gutters `8` from `sm`. Anything tappable is at least 44px (`min-h-11`).
 
-**Radius:** `rounded-sm` 4px (chips, inputs), `rounded-md` 8px (buttons, posters), `rounded-lg` 12px (cards, sheets), `rounded-pill` (avatars only).
+**Radius:** `rounded-sm` 8px (posters), `rounded-md` 12px (cards, grouped lists, inputs), `rounded-lg` 20px (sheets), `rounded-pill` (buttons, chips, avatars).
 
 ## Components
 
-React ports of the artifact's components live in `apps/web/src/components/ui/`:
+React mirrors of the SwiftUI components live in `apps/web/src/components/ui/`:
 
-| Component | Props | Notes |
-|---|---|---|
-| `Button` | `variant` primary \| secondary \| ghost, `size` md \| sm, native button props | One `primary` per screen |
-| `Chip` | `selected`, `onClick`, children | Toggle button with `onClick`, static tag without |
-| `RatingStars` | `value` 0–5 (halves), `size` px | 14px in cards, 20px+ on show pages |
-| `ShowCard` | `title`, `venue`, `date`, `rating`, `poster` | 176px wide, 2:3 poster or initials, bordered |
-| `Wordmark` | `size` px (min 20) | "Stubbed" with a capital S, `ink` only, never accent |
+| Component | SwiftUI | Props | Notes |
+|---|---|---|---|
+| `Button` | `FLButtonStyle` | `variant` primary \| secondary \| ghost, `size` md \| sm | Capsule, 50px tall; one `primary` per screen |
+| `Chip` | `FLChip` | `selected`, `onClick`, children | Capsule; selected inverts, never `tint` |
+| `RatingStars` | `FLRatingStars` | `value` 0–5 (halves), `size` px | |
+| `ShowRow` | `FLShowRow` | `title`, `venue`, `date`, `rating`, `poster` | Inside a `surface` list with `separator` hairlines |
+| `ShowCard` | none (use `FLShowRow`) | same as `ShowRow` | 160px portrait card for web shelves |
+| `TabBar` | native `TabView` | `items`, `active`, `onSelect` | Phone-width web app only; sidebar on desktop |
+| `Wordmark` | `FLWordmark` | `size` px | Capitals via CSS |
+| `Poster` | (inside `FLShowRow`) | `title`, `poster` | 2:3, initials in `outline` on `fill` when no image |
 
 ## Icons
 
-No icon set is chosen yet. The system calls for a 24px line set at 1.5px stroke (e.g. Lucide), in `ink`/`ink-muted`, with `accent` only for an active state. Adding one is a new dependency, so check with the owner first.
+SF Symbols on iOS (`book`, `plus.circle`, `chart.bar`, `person` for the tabs). On the web, inline line icons drawn to match at 24px with a 1.5px stroke, as in `TabBar`. No icon package.
