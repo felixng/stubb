@@ -5,7 +5,7 @@ export function Container({
 }: React.ComponentPropsWithoutRef<"div">) {
   return (
     <div
-      className={`mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 ${className}`}
+      className={`mx-auto max-w-7xl px-6 lg:px-12 ${className}`}
       {...props}
     />
   );
