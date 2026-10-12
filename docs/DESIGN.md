@@ -1,11 +1,11 @@
-# Design system ("Footlight")
+# Design system ("Footlight Coral")
 
-The source of truth is the design system artifact: https://claude.ai/artifact/Pw3EwEHyfYxzshKVTFQAzc. It is native first: built for the SwiftUI iOS app, with the web app and site mirroring it. Its `ios.md` has the Swift files (`FLColor`, `FLMetrics`, components); `web.md` has the web rules. If you change a token or rule, change it in the artifact first, then mirror it here, in `apps/web/src/app/globals.css` and in the Swift files.
+The source of truth is the design system artifact: https://claude.ai/artifact/2r1EvQn2286Y29ZJNgPfP6. It is native first: built for the SwiftUI iOS app, with the web app and site mirroring it. Its `ios.md` has the Swift files (`FLColor`, `FLMetrics`, components); `web.md` has the web rules. If you change a token or rule, change it in the artifact first, then mirror it here, in `apps/web/src/app/globals.css` and in the Swift files.
 
 ## Principles
 
 - **Follows the system appearance.** Light and dark are equals; the web follows `prefers-color-scheme` and never picks for the visitor. **Exception:** the landing page is always light (owner's call). It sets `data-theme="light"` on its root, which switches the whole document to the light tokens (`globals.css`).
-- **One tint.** `tint` (lime in dark, olive in light) marks the one primary action, links and the selected tab. Nothing else.
+- **One tint.** `tint` is coral in both appearances and fills the one primary action. Where the brand colour is read as text (links, ghost and secondary button labels, the selected tab) use `tint-text`: the same coral on dark, a deeper shade on light. Nothing else.
 - **Copy:** terse and confident, sentence case, no emoji, no exclamation marks. Button labels are verbs. Numbers are digits and tabular. Sample handle: `@sillyelphaba`; never a real person's name.
 - **Ratings** always show as the five `RatingStars`, never a bare number.
 - **Wordmark:** `STUBBED` in capitals (heavy, open tracking, `label`). "Stubbed" with a capital S in running text.
@@ -22,14 +22,18 @@ Defined in `apps/web/src/app/globals.css`. Names match the iOS semantic colours 
 | `label`, `label-secondary` | `text-label`, `text-label-secondary` | All text |
 | `separator` | `border-separator` | Hairlines between rows, inset to the text |
 | `outline` | `border-outline`, `stroke-outline` | Control borders, empty stars, placeholder initials |
-| `tint`, `tint-pressed`, `on-tint` | `bg-tint`, `hover:bg-tint-pressed`, `text-on-tint` | Primary action, links, selected tab |
+| `tint`, `tint-pressed`, `on-tint` | `bg-tint`, `hover:bg-tint-pressed`, `text-on-tint` | Primary button fill and text on it; never text on its own |
+| `tint-text` | `text-tint-text` | Links, ghost and secondary button labels, selected tab |
 | `tint-fill` | `bg-tint-fill` | Secondary buttons, highlighted rows |
 | `star` | `fill-star` | Rating stars and award marks only |
 | `destructive` | `text-destructive` | Delete, sign out, error text |
 | `focus` | `outline-focus` | 2px focus ring, 2px offset (web only) |
-| `shadow-sheet` | `shadow-sheet` | Sheets and menus only |
+| `glow` | `bg-glow` | Decorative halo behind a hero image or device; never behind text |
+| `shadow-sm` | `shadow-sm` | Cards, grouped lists, the email field; with a `separator` border |
+| `shadow-lg` | `shadow-lg` | Device mockups and sheets |
+| `shadow-btn` | `shadow-btn` | The primary button |
 
-**Type:** the system font: SF Pro on Apple devices, the system sans elsewhere (`font-display`, `font-sans`). No web fonts. The iOS text styles at their default sizes are Tailwind font sizes that carry line height, weight and tracking: `text-large-title` 34, `text-title` 28, `text-title-2` 22 (bold, with `font-display`), and `text-headline` 17/600, `text-body` 17 (default), `text-callout` 16, `text-subheadline` 15, `text-footnote` 13, `text-caption` 12. Never set body text below `footnote`. The landing hero headline (40px, 56px from `sm`) is a marketing size outside the iOS styles.
+**Type:** the system font: SF Pro on Apple devices, the system sans elsewhere (`font-display`, `font-sans`). No web fonts. The iOS text styles at their default sizes are Tailwind font sizes that carry line height, weight and tracking: `text-large-title` 34, `text-title` 28, `text-title-2` 22 (bold, with `font-display`), and `text-headline` 17/600, `text-body` 17 (default), `text-callout` 16, `text-subheadline` 15, `text-footnote` 13, `text-caption` 12. Never set body text below `footnote`. The landing hero headline (`clamp(44px, 7vw, 76px)`, extra bold) and feature card titles (20px) are marketing sizes outside the iOS styles.
 
 **Spacing:** `space-1…space-7` = 4, 8, 12, 16, 20, 24, 32px = Tailwind `1, 2, 3, 4, 5, 6, 8`. Screen gutter and row padding `4`; sections `5` apart; web page gutters `8` from `sm`. Anything tappable is at least 44px (`min-h-11`).
 
@@ -41,7 +45,7 @@ React mirrors of the SwiftUI components live in `apps/web/src/components/ui/`:
 
 | Component | SwiftUI | Props | Notes |
 |---|---|---|---|
-| `Button` | `FLButtonStyle` | `variant` primary \| secondary \| ghost, `size` md \| sm | Capsule, 50px tall; one `primary` per screen |
+| `Button` | `FLButtonStyle` | `variant` primary \| secondary \| ghost, `size` md \| sm | Capsule, 50px tall; one `primary` per screen, with `shadow-btn` |
 | `Chip` | `FLChip` | `selected`, `onClick`, children | Capsule; selected inverts, never `tint` |
 | `RatingStars` | `FLRatingStars` | `value` 0–5 (halves), `size` px | |
 | `ShowRow` | `FLShowRow` | `title`, `venue`, `date`, `rating`, `poster` | Inside a `surface` list with `separator` hairlines |

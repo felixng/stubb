@@ -1,5 +1,5 @@
 // The Stubbed wordmark; matches FLWordmark: capitals, heavy, open tracking,
-// in `label`, never `tint`. Capitals come from CSS.
+// in `label`, never `tint` or `tint-text`. Capitals come from CSS.
 export function Wordmark({
   size = 28,
   className = "",

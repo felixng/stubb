@@ -1,8 +1,8 @@
 @import "tailwindcss";
 
 /*
- * Stubbed design system ("Footlight"). Source of truth:
- * https://claude.ai/artifact/Pw3EwEHyfYxzshKVTFQAzc — see docs/DESIGN.md.
+ * Stubbed design system ("Footlight Coral"). Source of truth:
+ * https://claude.ai/artifact/2r1EvQn2286Y29ZJNgPfP6 — see docs/DESIGN.md.
  * Native first: tokens are named after the iOS semantic colours and match
  * the SwiftUI app. The page follows the visitor's appearance.
  */
@@ -14,32 +14,36 @@
   --label-secondary: #aeaeb2;
   --separator: #38383a;
   --outline: #7c7c82;
-  --tint: #d7ff3a;
-  --tint-pressed: #eaff8a;
-  --tint-fill: #2b3400;
+  --tint: #ff6b4a;
+  --tint-pressed: #ff8a70;
+  --tint-text: #ff6b4a;
+  --tint-fill: #3d1a11;
   --on-tint: #000000;
   --star: #ffd60a;
-  --destructive: #ff453a;
+  --destructive: #ff9f0a;
   --focus: #ffffff;
+  --glow: #2a140e;
   color-scheme: dark;
 }
 
 @media (prefers-color-scheme: light) {
   :root {
-    --background: #f2f2f7;
+    --background: #fff9f6;
     --surface: #ffffff;
-    --fill: #e5e5ea;
-    --label: #000000;
-    --label-secondary: #636366;
-    --separator: #c6c6c8;
-    --outline: #7a7a7f;
-    --tint: #3d5a00;
-    --tint-pressed: #2c4200;
-    --tint-fill: #e6f5b0;
-    --on-tint: #ffffff;
-    --star: #a46a00;
-    --destructive: #d70015;
-    --focus: #000000;
+    --fill: #ffebe3;
+    --label: #1f1210;
+    --label-secondary: #5e4039;
+    --separator: #f9e0d6;
+    --outline: #98695b;
+    --tint: #ff7a5c;
+    --tint-pressed: #f2603f;
+    --tint-text: #b33a19;
+    --tint-fill: #ffe0d5;
+    --on-tint: #1f1210;
+    --star: #b96f00;
+    --destructive: #9e1b2c;
+    --focus: #1f1210;
+    --glow: #ffd9cc;
     color-scheme: light;
   }
 }
@@ -48,20 +52,22 @@
    data-theme="light"; :has() switches the whole document, body included.
    :is() is forgiving, so browsers without :has() still theme the wrapper. */
 :is(:root:has([data-theme="light"]), [data-theme="light"]) {
-  --background: #f2f2f7;
+  --background: #fff9f6;
   --surface: #ffffff;
-  --fill: #e5e5ea;
-  --label: #000000;
-  --label-secondary: #636366;
-  --separator: #c6c6c8;
-  --outline: #7a7a7f;
-  --tint: #3d5a00;
-  --tint-pressed: #2c4200;
-  --tint-fill: #e6f5b0;
-  --on-tint: #ffffff;
-  --star: #a46a00;
-  --destructive: #d70015;
-  --focus: #000000;
+  --fill: #ffebe3;
+  --label: #1f1210;
+  --label-secondary: #5e4039;
+  --separator: #f9e0d6;
+  --outline: #98695b;
+  --tint: #ff7a5c;
+  --tint-pressed: #f2603f;
+  --tint-text: #b33a19;
+  --tint-fill: #ffe0d5;
+  --on-tint: #1f1210;
+  --star: #b96f00;
+  --destructive: #9e1b2c;
+  --focus: #1f1210;
+  --glow: #ffd9cc;
   color-scheme: light;
 }
 
@@ -75,11 +81,13 @@
   --color-outline: var(--outline);
   --color-tint: var(--tint);
   --color-tint-pressed: var(--tint-pressed);
+  --color-tint-text: var(--tint-text);
   --color-tint-fill: var(--tint-fill);
   --color-on-tint: var(--on-tint);
   --color-star: var(--star);
   --color-destructive: var(--destructive);
   --color-focus: var(--focus);
+  --color-glow: var(--glow);
 }
 
 @theme {
@@ -99,7 +107,15 @@
   --radius-lg: 20px; /* sheets, large cards */
   --radius-pill: 999px; /* buttons, chips, avatars */
 
-  --shadow-sheet: 0 8px 32px -8px rgba(0, 0, 0, 0.35);
+  /* Cards and grouped lists (with a `separator` border), device mockups
+     and sheets, the primary button. Dark mode lets the border do the work. */
+  --shadow-sm:
+    0 1px 2px rgba(120, 50, 30, 0.08), 0 10px 22px -12px rgba(120, 50, 30, 0.28);
+  --shadow-lg:
+    0 2px 4px rgba(120, 50, 30, 0.12), 0 36px 60px -22px rgba(120, 50, 30, 0.5);
+  --shadow-btn:
+    0 1px 0 rgba(255, 255, 255, 0.5) inset,
+    0 6px 12px -6px rgba(120, 50, 30, 0.55);
 
   /* Titles (SF Pro Display, bold), the iOS text styles at default size. */
   --text-large-title: 34px;
@@ -134,16 +150,6 @@
   --text-footnote--letter-spacing: -0.006em;
   --text-caption: 12px;
   --text-caption--line-height: 16px;
-
-  /* Landing hero rings (from the Tailwind Plus "Pocket" template). */
-  --animate-spin-slow: spin 4s linear infinite;
-  --animate-spin-reverse-slower: spin-reverse 6s linear infinite;
-
-  @keyframes spin-reverse {
-    to {
-      transform: rotate(-360deg);
-    }
-  }
 }
 
 body {
