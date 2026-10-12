@@ -16,7 +16,7 @@ export function Hero() {
     <section className="overflow-hidden pt-8 pb-16 sm:pb-20">
       <Container className="flex flex-col gap-12 lg:flex-row lg:items-center lg:gap-16">
         <div className="flex min-w-0 flex-col gap-6 lg:flex-[1_1_520px]">
-          <p className="text-footnote font-medium tracking-[0.08em] text-label-secondary uppercase">
+          <p className="inline-flex min-h-8 items-center self-start rounded-pill border border-separator bg-surface px-3.5 text-footnote font-medium tracking-[0.08em] text-label-secondary uppercase shadow-sm">
             For the theatre regulars
           </p>
           <h1 className="font-display text-[clamp(44px,7vw,76px)] leading-[1.02] font-extrabold tracking-[-0.03em] text-balance text-label">
