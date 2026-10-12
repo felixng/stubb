@@ -1,5 +1,5 @@
 // Bottom tab bar for the web app at phone width; iOS uses the native TabView.
-// Four destinations at most; the selected one is `tint`.
+// Four destinations at most; the selected one is `tint-text`.
 const ICONS: Record<string, string[]> = {
   diary: ["M5 4h11a3 3 0 0 1 3 3v13H8a3 3 0 0 1-3-3z", "M5 17a3 3 0 0 1 3-3h11"],
   log: ["M12 3.5a8.5 8.5 0 1 0 0 17 8.5 8.5 0 0 0 0-17z", "M12 8v8M8 12h8"],
@@ -42,7 +42,7 @@ export function TabBar({
             aria-current={on ? "page" : undefined}
             onClick={onSelect ? () => onSelect(item.id) : undefined}
             className={`flex min-h-[49px] flex-1 flex-col items-center gap-0.5 pt-1.5 pb-1 text-[10px] leading-[13px] font-medium focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus ${
-              on ? "text-tint" : "text-label-secondary"
+              on ? "text-tint-text" : "text-label-secondary"
             }`}
           >
             <svg

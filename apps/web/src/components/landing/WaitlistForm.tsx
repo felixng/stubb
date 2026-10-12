@@ -23,7 +23,7 @@ export function WaitlistForm() {
     return (
       <p
         role="status"
-        className="max-w-md rounded-md bg-surface p-4 text-headline text-label"
+        className="max-w-[500px] rounded-md border border-separator bg-surface p-4 text-headline text-label shadow-sm"
       >
         You’re on the list.
         <span className="mt-1 block text-subheadline font-normal text-label-secondary">
@@ -39,9 +39,9 @@ export function WaitlistForm() {
         formData.set("source", sourceFromUrl());
         dispatch(formData);
       }}
-      className="w-full max-w-md"
+      className="w-full max-w-[500px]"
     >
-      <div className="flex flex-col gap-3 sm:flex-row">
+      <div className="flex flex-wrap gap-2 rounded-[28px] border border-separator bg-surface p-1.5 shadow-sm focus-within:outline-2 focus-within:outline-offset-2 focus-within:outline-focus sm:rounded-pill">
         <label htmlFor={`${id}-email`} className="sr-only">
           Email address
         </label>
@@ -53,20 +53,24 @@ export function WaitlistForm() {
           required
           placeholder="you@example.com"
           aria-describedby={state.status === "error" ? `${id}-error` : undefined}
-          className="block min-h-[50px] w-full min-w-0 flex-auto rounded-md border border-outline bg-surface px-4 text-body text-label placeholder:text-label-secondary focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus"
+          className="block min-h-[50px] min-w-0 flex-[1_1_200px] bg-transparent px-5 text-body text-label placeholder:text-label-secondary focus-visible:outline-none"
         />
         {/* Honeypot: hidden from people and screen readers. */}
         <div aria-hidden="true" className="absolute -left-[9999px]">
           <input name="company" type="text" tabIndex={-1} autoComplete="off" />
         </div>
-        <Button type="submit" disabled={pending} className="flex-none">
+        <Button
+          type="submit"
+          disabled={pending}
+          className="flex-[1_0_auto] sm:flex-none"
+        >
           {pending ? "Sending…" : "Request an invite"}
         </Button>
       </div>
       <p
         id={`${id}-error`}
         aria-live="polite"
-        className="mt-2 min-h-5 text-footnote text-destructive"
+        className="mt-2 min-h-5 px-5 text-footnote text-destructive"
       >
         {state.status === "error" ? state.message : ""}
       </p>
