@@ -7,7 +7,6 @@ A short log of choices made and why. Newest at the bottom. See `CLAUDE.md` for t
 | # | Question | Needed by | Notes |
 |---|----------|-----------|-------|
 | 1 | Confirm architecture in `docs/ARCHITECTURE.md` (Next.js on Vercel Hobby + Supabase Free) | Now | Proposed 2026-10-12 |
-| 3 | Social logins | Now | Proposed: email code + Google now; add Apple before iOS ships (App Store rule 4.8) |
 | 4 | Email import method: paste-in vs. forwarding address vs. Gmail connect | Phase 2 | Brief suggests starting with paste-in |
 | 5 | Reactions / comments: include or defer | Phase 3 | |
 | 6 | Badges: app-defined only, or user/group-defined too? | When badges are scheduled | Idea; see `CLAUDE.md` "Ideas to explore" |
@@ -60,3 +59,6 @@ The owner moved Footlight from the lime tint to coral: "Footlight Coral" (https:
 - Clients can't set `verified` on shows or venues (column grants); the owner verifies from the dashboard. Shows have no unique title constraint (*Macbeth* is a play and an opera); `search_shows` is the dedupe step. Venues dedupe on `osm_id`.
 - Logged-out visitors read only a profile's handle, display name and avatar. Signed-in users can also read `default_visibility`, since grants are per column; it reveals nothing their public entries don't.
 - A trip's entry links are public only when both the entry and the trip are public, so a public trip page never lists private entries.
+
+### 2026-10-12: Sign-in is Google + email and password; sign-ups stay off
+Owner's call (#13): no magic link or emailed code. The login page offers "Continue with Google" and an email + password form. Sign-ups remain off during NYC week, so both only sign in accounts created in the Supabase dashboard; Google signs into the account whose email matches. Not depending on login emails also sidesteps Supabase's built-in sender limit of a few emails an hour. Apple sign-in is still needed before the iOS app ships (App Store rule 4.8). Password reset by email comes with public sign-up.

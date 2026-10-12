@@ -33,12 +33,16 @@ New entries and collections take `visibility` from `profiles.default_visibility`
 
 ## Auth (#13)
 
-Owner-only sign-in: email → 6-digit code. Sign-ups are off (`enable_signup = false` here and in the hosted project), so codes only go to existing users. The sign-in email template is `templates/magic_link.html`; it has the code and a fallback link to `/auth/confirm`.
+Owner-only sign-in with **Google** or **email + password**. Sign-ups are off (`enable_signup = false` here and in the hosted project), so both only sign in existing users. Google gets in when the Google account's email matches an existing user (Supabase links the identity automatically).
 
 Hosted project, once:
 
-1. Authentication → Emails → **Magic Link**: subject `Your Stubbed sign-in code`, body from `templates/magic_link.html`. The default template has no code, only a link.
-2. Authentication → URL Configuration: **Site URL** = the production URL (e.g. `https://stubbed.vercel.app`), so the fallback link points at the app.
-3. Authentication → Sign In / Providers: **Allow new users to sign up** off; create the owner from Authentication → Users.
+1. **Owner user:** Authentication → Users → Add user → Create new user, with your email, a password and "Auto confirm user" ticked. If you already invited yourself, set a password from the same screen instead.
+2. **Sign-ups off:** Authentication → Sign In / Providers → "Allow new users to sign up" off.
+3. **Google:**
+   - In Google Cloud Console (free): APIs & Services → OAuth consent screen (External; add your email as a test user, or publish it, since basic scopes need no review), then Credentials → Create OAuth client ID → Web application.
+   - Authorised redirect URI: `https://<project-ref>.supabase.co/auth/v1/callback`.
+   - In Supabase: Authentication → Sign In / Providers → Google: enable it, paste the client ID and secret.
+4. **Redirect URLs:** Authentication → URL Configuration: Site URL = the production URL; add `https://<production-domain>/auth/callback` (and `http://localhost:3000/auth/callback` for local dev against the hosted project) to Redirect URLs.
 
-Locally, sign-ups are off too: add a user in Studio, then read the code in Mailpit (http://127.0.0.1:54324).
+Locally, use email + password: add a user in Studio (http://127.0.0.1:54323). Google isn't configured in the local stack.

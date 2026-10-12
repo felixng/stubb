@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { Suspense } from "react";
 
 import { Wordmark } from "@/components/ui/Wordmark";
 import { LoginForm } from "./LoginForm";
@@ -18,11 +19,11 @@ export default function LoginPage() {
         <div className="flex flex-col items-center gap-3 text-center">
           <Wordmark size={24} />
           <h1 className="text-title-2 font-display text-label">Sign in</h1>
-          <p className="text-subheadline text-label-secondary">
-            We’ll email you a 6-digit code.
-          </p>
         </div>
-        <LoginForm />
+        {/* Reads ?next and ?error, so it renders at request time. */}
+        <Suspense>
+          <LoginForm />
+        </Suspense>
       </div>
     </main>
   );
