@@ -29,3 +29,9 @@ Owner prefers native SwiftUI over Expo/React Native. Consequence: no shared clie
 
 ### 2026-10-12: This week is "NYC week"
 The owner has ~3–4 sessions of 2 hours this week. Focus: (1) a great public landing page with mockups and a waitlist, (2) an owner-only hidden login to log their NYC shows (manual, from ticket emails, or from photos), group them into a trip, and share an excellent Instagram card at the end of the week. Public sign-up is off. This pulls email/photo import and the trip recap card forward from Phase 2, in a minimal owner-only form. Tracked in the NYC week epic.
+
+### 2026-10-12: Name, Claude API and NYC-week dependencies approved
+- Product name: **Stubbed**.
+- The Claude API is approved for email/photo import (paid, small; spend limit set in the Anthropic console).
+- Approved dependencies for NYC week: Tailwind CSS, `@supabase/supabase-js`, `@supabase/ssr`, `exifr`, Anthropic SDK (plus Next.js/React/TypeScript tooling). Anything beyond this list still needs a check.
+- The NYC show list will come from the owner once the web app is ready. Seed data covers venues plus a few long-running shows; other shows get added through the app.
