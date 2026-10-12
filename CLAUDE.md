@@ -32,9 +32,9 @@ The owner is a solo indie builder doing this as a side project, so scope discipl
 
 ## 5. Coverage
 
-Any theatre, anywhere: no city or country limits in the product. Shows and venues not in the catalogue are added by users.
+Any theatre, anywhere: no city or country limits in the product. There is no hand-curated catalogue: shows and venues are added by users as they log or import, and existing rows are reused when they match.
 
-Internally, early effort (seed catalogue, marketing, outreach) focuses on the US and UK. This is not stated to users: public copy (landing page, waitlist, app UI) must not mention launch cities or regions or ask users where they go to the theatre.
+Internally, early effort (marketing, outreach) focuses on the US and UK. This is not stated to users: public copy (landing page, waitlist, app UI) must not mention launch cities or regions or ask users where they go to the theatre.
 
 ## 6. Features and phasing
 
@@ -42,7 +42,7 @@ Internally, early effort (seed catalogue, marketing, outreach) focuses on the US
 - Repo, CI, deploy pipeline, environments.
 - Auth (email + at least one social login), user profile with unique handle.
 - Database schema (see section 7) and migrations.
-- Seed catalogue: a small, hand-curated set of US and UK venues and a starter list of shows. Design for the catalogue to grow.
+- No seed catalogue (decided 2026-10-12, see `docs/DECISIONS.md`). The `venues` and `shows` tables fill up from manual adds and imports, so design them to grow and to dedupe.
 
 ### Phase 1: Web MVP, the solo experience
 - **Log an entry:** search/select a show (or add a new one), pick venue and date, half-star rating (0.5–5), optional note, optional photo upload.
@@ -55,7 +55,7 @@ Internally, early effort (seed catalogue, marketing, outreach) focuses on the US
 
 ### Phase 2: Import and trip recap
 - **Import via ticket confirmation emails:** user forwards or pastes confirmation emails; an LLM extracts show, venue, date and ticket details into draft entries for the user to confirm. Never auto-save without confirmation. **[Decision needed: forwarding address vs. paste-in vs. Gmail connect; start with paste-in]**
-- **Import via photos:** read EXIF GPS and timestamp, match to a known venue and date, and suggest candidate shows. Present as suggestions only. Also consider programme/ticket photo OCR.
+- **Import via photos:** read EXIF GPS and timestamp on the device, look up theatres near the GPS point on OpenStreetMap, then send Claude the photo (downscaled, metadata stripped), the nearby theatres and the date, with web search on, to suggest the venue and show with a confidence level and a short reason. Works without GPS from the photo and date alone. Present as suggestions only; the user confirms.
 - **Trip recap card:** a shareable multi-entry summary (e.g. "7 shows in 5 days in NYC") with stats and handle.
 
 ### Phase 3: Social
@@ -109,7 +109,7 @@ These are captured so design choices now don't block them later. None of them be
 
 - `users`: id, handle (unique), display_name, avatar, created_at, default_visibility
 - `venues`: id, name, city, country, lat, lng
-- `shows`: id, title, type (musical/play/opera/dance/comedy/other), created_by (null if seeded), verified boolean
+- `shows`: id, title, type (musical/play/opera/dance/comedy/other), created_by (nullable), verified boolean
 - `entries`: id, user_id, show_id, venue_id, date, rating (nullable, half-star steps), note (nullable), photo_url (nullable), visibility, created_at, updated_at
 - `trips` (or `collections`): id, user_id, name, start_date, end_date (nullable)
 - `entry_trips`: entry_id, trip_id (many-to-many); tags can reuse this model or a sibling `tags` table

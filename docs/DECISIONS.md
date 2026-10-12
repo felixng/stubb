@@ -50,3 +50,12 @@ The owner dropped the "share with a theatre friend" button from #10. The success
 
 ### 2026-10-12: Design system "Footlight" (native first)
 The owner moved the design system to iOS-native first: "Footlight" (https://claude.ai/artifact/Pw3EwEHyfYxzshKVTFQAzc) replaces "Interval". Tokens are named after the iOS semantic colours, type is the system font (SF Pro) instead of Google Fonts, buttons and chips are capsules, and the page follows the visitor's light/dark setting instead of being dark-only. The wordmark is now `STUBBED` in capitals. The SwiftUI files in the artifact's `ios.md` are the native counterpart to `apps/web/src/components/ui/`. Mapping: `docs/DESIGN.md`.
+
+### 2026-10-12: No seed catalogue; photo import uses OpenStreetMap + Claude with web search
+The owner questioned the hand-curated venue/show seed planned for #12. Decision: drop it. `venues` and `shows` fill up from manual adds and imports, reusing existing rows when they match (fuzzy match on name). This supersedes the seed part of the earlier "Name, Claude API and NYC-week dependencies" entry and the Phase 0 seed item in `CLAUDE.md`.
+
+Why it's safe: ticket-email import names the show and venue, so it needs no catalogue. For photo import, an LLM shouldn't map raw GPS to a venue on its own: Broadway houses are often under 100 m apart and phone GPS in Midtown can be 20–50 m off, and the model has no map. It also can't know what was playing in October 2026 from training data alone.
+
+Photo import flow (#18): read date and GPS on the device → look up theatres within ~150 m on OpenStreetMap (free, no key, covers any theatre anywhere) → send Claude the downscaled, metadata-stripped photo, the nearby theatres and the date, with web search on → it returns venue and show with a confidence level and a one-line reason → the owner confirms. The photo itself often settles it (show curtain, Playbill, a distinctive set) and breaks ties between neighbouring theatres; venue + date + web search cover generic stage shots and shows newer than the model. No GPS → fall back to photo + date. Claude won't identify performers by face, so cast can't be used.
+
+Cost: web search adds about a cent per search on top of the import call; negligible at owner-only volume. OpenStreetMap lookups are free (respect the usage policy: low rate, identifying User-Agent).

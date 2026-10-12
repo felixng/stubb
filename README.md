@@ -8,7 +8,7 @@ Your theatre diary: log every show, rate it, group it into trips, and share it. 
 apps/
   web/        Next.js: landing page, owner app, share cards (deployed to Vercel)
   ios/        SwiftUI app (planned)
-supabase/     Shared backend: migrations, RLS, seed, DB tests
+supabase/     Shared backend: migrations, RLS, DB tests
 packages/     Shared JS packages, if any are ever needed
 docs/         Brief, architecture, decisions
 ```

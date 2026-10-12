@@ -134,7 +134,7 @@ Free-tier limits change often. Check the vendor pricing pages before relying on 
 ### 4. Photos
 - Resize to roughly 1600px and **re-encode on the device before upload**: canvas on web, `ImageIO`/`UIImage` JPEG re-encode on iOS. Re-encoding drops EXIF/GPS, and the free tier has no server-side image processing.
 - This keeps photos around 200–300 KB, so 1 GB of storage holds about 4,000 photos. **Storage is likely the first free-tier limit you'll hit.**
-- Phase 2 photo import reads EXIF **on the device** before stripping it. Only the extracted date and venue match are kept.
+- Phase 2 photo import reads EXIF **on the device** before stripping it. The GPS point is used once to look up nearby theatres on OpenStreetMap and is not stored; only the confirmed venue and date are kept.
 
 ### 5. iOS: native SwiftUI *(decided 2026-10-12)*
 - SwiftUI app using [`supabase-swift`](https://github.com/supabase/supabase-swift) against the **same** Supabase project as the web app: same users, same data, same RLS.
@@ -156,7 +156,6 @@ stubb/
 │   └── ios/            # SwiftUI Xcode project (next month)
 ├── supabase/
 │   ├── migrations/     # SQL: tables, constraints, RLS, functions (the shared "API")
-│   ├── seed.sql        # US / UK venues + starter shows
 │   └── tests/          # RLS/privacy tests (pgTAP)
 ├── packages/           # shared JS packages, only if ever needed
 └── docs/
@@ -202,6 +201,6 @@ Tracked in the **NYC week** epic on GitHub (label `nyc-week`). Goal: the owner l
 Additions to the architecture for this week:
 - **`waitlist` table.** Anonymous visitors can insert but never read (RLS); spam is blocked with a honeypot field and a unique email.
 - **Smart import route** `/api/import` (Vercel, server-side key). It takes pasted email text or a downscaled photo plus EXIF hints, and a small Claude model returns structured drafts. Drafts are only saved after the owner confirms them. **This is the first paid usage** (fractions of a penny per import) and needs the owner's OK and an API key.
-- **Photos** read EXIF (date, GPS) on the device for matching, then are re-encoded without metadata before upload.
+- **Photos** read EXIF (date, GPS) on the device, then are re-encoded without metadata. Venue candidates come from OpenStreetMap (theatres within ~150 m of the GPS point; free, no key). Claude gets the stripped photo, the candidates and the date, with **web search** on so it can check what was playing that night (its training data won't know current runs). There's no seed catalogue: venues and shows are created on confirm, reusing existing rows when they match.
 
 Deferred until after NYC week: public sign-up, Google/Apple login, handles chosen by other users, the stats page, public profile, CSV export.
