@@ -19,7 +19,7 @@ export function PhoneFrame({
       <Image
         src={frame}
         alt=""
-        className="pointer-events-none absolute inset-0 h-full w-full dark:brightness-[0.22]"
+        className="pointer-events-none absolute inset-0 h-full w-full"
         unoptimized
         priority={priority}
       />

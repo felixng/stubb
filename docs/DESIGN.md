@@ -4,7 +4,7 @@ The source of truth is the design system artifact: https://claude.ai/artifact/Pw
 
 ## Principles
 
-- **Follows the system appearance.** Light and dark are equals; the web follows `prefers-color-scheme` and never picks for the visitor.
+- **Follows the system appearance.** Light and dark are equals; the web follows `prefers-color-scheme` and never picks for the visitor. **Exception:** the landing page is always light (owner's call). It sets `data-theme="light"` on its root, which switches the whole document to the light tokens (`globals.css`).
 - **One tint.** `tint` (lime in dark, olive in light) marks the one primary action, links and the selected tab. Nothing else.
 - **Copy:** terse and confident, sentence case, no emoji, no exclamation marks. Button labels are verbs. Numbers are digits and tabular. Sample handle: `@sillyelphaba`; never a real person's name.
 - **Ratings** always show as the five `RatingStars`, never a bare number.

@@ -44,6 +44,27 @@
   }
 }
 
+/* Pages that are always light (the landing page) mark their root with
+   data-theme="light"; :has() switches the whole document, body included.
+   :is() is forgiving, so browsers without :has() still theme the wrapper. */
+:is(:root:has([data-theme="light"]), [data-theme="light"]) {
+  --background: #f2f2f7;
+  --surface: #ffffff;
+  --fill: #e5e5ea;
+  --label: #000000;
+  --label-secondary: #636366;
+  --separator: #c6c6c8;
+  --outline: #7a7a7f;
+  --tint: #3d5a00;
+  --tint-pressed: #2c4200;
+  --tint-fill: #e6f5b0;
+  --on-tint: #ffffff;
+  --star: #a46a00;
+  --destructive: #d70015;
+  --focus: #000000;
+  color-scheme: light;
+}
+
 @theme inline {
   --color-background: var(--background);
   --color-surface: var(--surface);
