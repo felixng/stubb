@@ -143,7 +143,7 @@ If logging and sharing are both very low after a genuine push to theatre-heavy u
 
 ## 11. Working agreements for Claude Code
 
-- Build Phase 0 then Phase 1 only unless told otherwise. Do not start later phases.
+- **Current focus: the "NYC week" epic** (label `nyc-week`): public landing page + waitlist, and an owner-only app for logging, importing (email/photo), trips/labels and share cards. It deliberately pulls a few Phase 1–2 items forward in a minimal, owner-only form. Outside that epic, build Phase 0 then Phase 1 only unless told otherwise.
 - Prefer small, reviewable commits and short summaries of what changed.
 - When a requirement is ambiguous or a [Decision needed] appears, ask rather than guess.
 - Don't add dependencies, paid services or monetisation features without checking with the owner.

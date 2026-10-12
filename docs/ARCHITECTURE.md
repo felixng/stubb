@@ -184,14 +184,20 @@ This uses both free Supabase project slots. Supabase's own branching feature is 
 
 **Upgrade trigger:** when the free tiers bind, you've validated the idea. Supabase Pro ($25/mo) is the first upgrade. It removes pausing and adds daily backups.
 
-## This week's web slice (validation build)
+## This week: "NYC week" (owner-only build + public landing page)
 
-The smallest version that tests the two signals that matter (do people log, do people share):
+Tracked in the **NYC week** epic on GitHub (label `nyc-week`). Goal: the owner logs their NYC trip and posts an excellent share at the end of the week, while a public landing page collects waitlist emails.
 
-1. Sign in (email code + Google) and claim a handle
-2. Log an entry: search the seeded shows or add one, pick a venue, date, half-star rating, optional note
-3. Diary: reverse-chronological list, edit and delete
-4. Share card PNG + public entry page with Open Graph preview
-5. Basic stats header (shows this year, venues, average rating)
+| Surface | Who | What |
+|---|---|---|
+| `/` landing page | Public | Hero, phone mockups of real share cards, features, waitlist form |
+| `/login` (unlinked, `noindex`) | Owner only | Email one-time code; **public sign-ups disabled** in Supabase Auth |
+| `/app/*` | Owner only | Log entry, trips/labels, import from email or photo, diary |
+| `/api/card/*`, `/e/:id`, `/t/:id` | Public | Entry and trip share cards + public pages with Open Graph |
 
-Deferred to the following weeks: photos, trips/tags, the full stats page, public profile, CSV export.
+Additions to the architecture for this week:
+- **`waitlist` table.** Anonymous visitors can insert but never read (RLS); spam is blocked with a honeypot field and a unique email.
+- **Smart import route** `/api/import` (Vercel, server-side key). It takes pasted email text or a downscaled photo plus EXIF hints, and a small Claude model returns structured drafts. Drafts are only saved after the owner confirms them. **This is the first paid usage** (fractions of a penny per import) and needs the owner's OK and an API key.
+- **Photos** read EXIF (date, GPS) on the device for matching, then are re-encoded without metadata before upload.
+
+Deferred until after NYC week: public sign-up, Google/Apple login, handles chosen by other users, the stats page, public profile, CSV export.
