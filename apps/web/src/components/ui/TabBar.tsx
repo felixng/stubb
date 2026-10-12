@@ -1,9 +1,13 @@
 // Bottom tab bar for the web app at phone width; iOS uses the native TabView.
 // Four destinations at most; the selected one is `tint-text`.
-const ICONS: Record<string, string[]> = {
+export const TAB_ICONS: Record<string, string[]> = {
   diary: ["M5 4h11a3 3 0 0 1 3 3v13H8a3 3 0 0 1-3-3z", "M5 17a3 3 0 0 1 3-3h11"],
   log: ["M12 3.5a8.5 8.5 0 1 0 0 17 8.5 8.5 0 0 0 0-17z", "M12 8v8M8 12h8"],
   stats: ["M5 20V10M12 20V4M19 20v-7"],
+  trips: [
+    "M5 8h14a1 1 0 0 1 1 1v10a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V9a1 1 0 0 1 1-1z",
+    "M9 8V5.5A1.5 1.5 0 0 1 10.5 4h3A1.5 1.5 0 0 1 15 5.5V8M4 13h16",
+  ],
   profile: [
     "M12 5a3.5 3.5 0 1 0 0 7 3.5 3.5 0 0 0 0-7z",
     "M5 20c.8-3.6 3.6-5.5 7-5.5s6.2 1.9 7 5.5",
@@ -57,7 +61,7 @@ export function TabBar({
               strokeLinecap="round"
               strokeLinejoin="round"
             >
-              {(ICONS[item.id] ?? ICONS.diary).map((d) => (
+              {(TAB_ICONS[item.id] ?? TAB_ICONS.diary).map((d) => (
                 <path key={d} d={d} />
               ))}
             </svg>
