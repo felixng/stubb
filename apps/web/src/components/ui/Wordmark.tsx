@@ -1,5 +1,6 @@
 // The Stubbed wordmark; matches FLWordmark: "stubbed" in lowercase, heavy,
-// tight tracking, in `label`, never `tint`. Screen readers hear "Stubbed".
+// tight tracking, in `label`, never `tint` or `tint-text`. Screen readers
+// hear "Stubbed".
 export function Wordmark({
   size = 28,
   className = "",

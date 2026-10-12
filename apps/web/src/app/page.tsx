@@ -1,14 +1,15 @@
 import type { Viewport } from "next";
 
 import { Container } from "@/components/landing/Container";
+import { Features } from "@/components/landing/Features";
 import { Footer } from "@/components/landing/Footer";
 import { Hero } from "@/components/landing/Hero";
 import { Wordmark } from "@/components/ui/Wordmark";
 
 // The landing page is always light, whatever the visitor's appearance.
-export const viewport: Viewport = { themeColor: "#f2f2f7" };
+export const viewport: Viewport = { themeColor: "#fff9f6" };
 
-// Public landing page: hero + waitlist only (#9). No link to /login here.
+// Public landing page: hero + waitlist and features (#9). No link to /login here.
 export default function Home() {
   return (
     <div data-theme="light" className="flex flex-1 flex-col">
@@ -27,6 +28,7 @@ export default function Home() {
       </header>
       <main className="flex-auto">
         <Hero />
+        <Features />
       </main>
       <Footer />
     </div>

@@ -9,9 +9,9 @@ const sizes = {
 };
 
 const variants = {
-  primary: "bg-tint text-on-tint hover:bg-tint-pressed",
-  secondary: "bg-tint-fill text-tint hover:bg-fill",
-  ghost: "bg-transparent text-tint hover:bg-tint-fill",
+  primary: "bg-tint text-on-tint shadow-btn hover:bg-tint-pressed",
+  secondary: "bg-tint-fill text-tint-text hover:bg-fill",
+  ghost: "bg-transparent text-tint-text hover:bg-tint-fill",
 };
 
 export function Button({
