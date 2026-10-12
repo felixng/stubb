@@ -10,6 +10,8 @@ A short log of choices made and why. Newest at the bottom. See `CLAUDE.md` for t
 | 3 | Social logins | Now | Proposed: email code + Google now; add Apple before iOS ships (App Store rule 4.8) |
 | 4 | Email import method: paste-in vs. forwarding address vs. Gmail connect | Phase 2 | Brief suggests starting with paste-in |
 | 5 | Reactions / comments: include or defer | Phase 3 | |
+| 6 | Badges: app-defined only, or user/group-defined too? | When badges are scheduled | Idea; see `CLAUDE.md` "Ideas to explore" |
+| 7 | Discord: channel webhook vs. Discord login vs. server/bot integration | When Discord is scheduled | Idea; tied to groups |
 
 ## Log
 

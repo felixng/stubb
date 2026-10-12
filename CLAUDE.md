@@ -72,6 +72,30 @@ London (West End + off-West End), New York (Broadway + Off-Broadway), Edinburgh 
 - Any monetisation (the owner is sceptical of subscriptions for this audience; ideas like ticket affiliate links or printed wrap products may be revisited later).
 - Public API.
 
+### Ideas to explore (not scheduled, do not build without the owner's go-ahead)
+
+These are captured so design choices now don't block them later. None of them belongs in Phases 0–1.
+
+**Badges**
+- **App-defined badges** are computed from a user's entries, never awarded by hand. Examples: "10 shows in a year", "Fringe 2027: 20 shows", "Seen *Operation Mincemeat* 5×", "Visited every West End theatre". They work for a solo user with zero followers, so they could arrive early (e.g. alongside the Phase 4 wrap). Each badge is also a share card.
+- **User- or group-defined badges:** a group creates its own badge, either awarded by group admins or earned by a rule (e.g. "Minceuencer: seen *Operation Mincemeat* 3+ times"). Depends on groups.
+- **[Decision needed]** App-defined only at first, or user-defined too? Who can create badges, and can people opt out of displaying them?
+- Tentative model: `badges` (id, scope app|group, group_id nullable, name, icon, rule nullable) and `user_badges` (user_id, badge_id, awarded_at, awarded_by nullable). Rule-based badges are evaluated in SQL so web and iOS agree.
+
+**Groups and communities**
+- Motivating example: superfans of *Operation Mincemeat* who call themselves the **Minceuencers**. Users create a group (optionally tied to a show), manage membership, and get a group page with members' public entries, group stats ("Minceuencers have seen it 1,240 times") and group badges.
+- Membership: owner, admin and member roles; join by invite link or request to join; leave and remove.
+- Why it's interesting: fan communities around a single show are dense and already organised, which addresses the cold-start risk and suits the share loop.
+- Costs: moderation (needs Phase 3 reporting hooks), plus abuse and impersonation handling. Comes after Phase 3 Social. **Very much later.**
+- Tentative model: `groups` (id, slug, name, show_id nullable, created_by, visibility) and `group_members` (group_id, user_id, role, joined_at).
+
+**Discord integration**
+- **[Decision needed]** What it means. Options, cheapest first:
+  1. **Post to a channel:** a user or group admin pastes a Discord channel webhook URL, and new public entries or share cards post there. No bot to host, so it stays free.
+  2. **Log in with Discord:** Supabase Auth supports Discord OAuth out of the box.
+  3. **Link a group to a Discord server:** e.g. sync membership or roles with a group. Needs a hosted bot, so it costs real effort; only worth it once groups exist.
+- Pairs naturally with groups: many fan communities like the Minceuencers already live on Discord.
+
 ## 7. Suggested data model (starting point, refine as needed)
 
 - `users`: id, handle (unique), display_name, avatar, created_at, default_visibility
