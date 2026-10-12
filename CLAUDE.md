@@ -12,14 +12,14 @@ The owner is a solo indie builder doing this as a side project, so scope discipl
 
 - Theatregoers already "show off" their attendance on Instagram (ticket stubs, curtain shots, Playbills). This product moves that behaviour into a purpose-built place with structure (stats, diary, trips).
 - Existing theatre diary apps appear to be small, indie and mostly iOS (e.g. Mezzanine Theater Diary, Stagely). No Letterboxd-scale winner was found. User numbers for these were not verified.
-- Theatre is geographically concentrated (London West End, Broadway, Edinburgh Fringe, regional touring), so a dense early community is achievable.
+- Theatregoing clusters in a few big hubs (e.g. the West End, Broadway), so word of mouth can spread quickly even though the product covers any theatre.
 
 ## 3. Honest risks (design around these)
 
 1. **Low frequency.** Theatregoers log maybe 5–30 times a year, unlike gym users who log several times a week. The app must be valuable between visits (stats, recaps, shareable cards), not just at logging time.
 2. **Cold-start social graph.** An empty feed is useless. So the product must be good for a single user with zero followers.
 3. **Show catalogue is the hard problem, not the app code.** There is no clean free dataset of what was playing where and when. Users must be able to add shows themselves.
-4. **Niche audience.** Likely a few hundred thousand heavy theatregoers across major hubs. Build lean.
+4. **Niche audience.** Heavy theatregoers are a relatively small group worldwide. Build lean.
 
 ## 4. Core product principles
 
@@ -30,9 +30,11 @@ The owner is a solo indie builder doing this as a side project, so scope discipl
 5. **Own the data.** Users can export their data (CSV). This is also a trust signal.
 6. **Privacy-respecting by default.** Strip EXIF/GPS metadata from any publicly served image. Entries are private or public per user setting; default to a sensible, clearly shown option. **Decided: entries default to public** (see `docs/DECISIONS.md`).
 
-## 5. Target geography for launch
+## 5. Coverage
 
-London (West End + off-West End), New York (Broadway + Off-Broadway), Edinburgh (Fringe). Everything else is supported through user-added shows. A "Fringe wrap" around Edinburgh Fringe (August 2027) is a target growth moment.
+Any theatre, anywhere: no city or country limits in the product. Shows and venues not in the catalogue are added by users.
+
+Internally, early effort (seed catalogue, marketing, outreach) focuses on the US and UK. This is not stated to users: public copy (landing page, waitlist, app UI) must not mention launch cities or regions or ask users where they go to the theatre.
 
 ## 6. Features and phasing
 
@@ -40,7 +42,7 @@ London (West End + off-West End), New York (Broadway + Off-Broadway), Edinburgh 
 - Repo, CI, deploy pipeline, environments.
 - Auth (email + at least one social login), user profile with unique handle.
 - Database schema (see section 7) and migrations.
-- Seed catalogue: a small, hand-curated set of London/NYC/Edinburgh venues and a starter list of shows. Design for the catalogue to grow.
+- Seed catalogue: a small, hand-curated set of US and UK venues and a starter list of shows. Design for the catalogue to grow.
 
 ### Phase 1: Web MVP, the solo experience
 - **Log an entry:** search/select a show (or add a new one), pick venue and date, half-star rating (0.5–5), optional note, optional photo upload.
