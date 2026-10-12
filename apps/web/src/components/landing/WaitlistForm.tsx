@@ -27,7 +27,7 @@ export function WaitlistForm() {
       >
         You’re on the list.
         <span className="mt-1 block text-body font-normal text-ink-muted">
-          We’ll email you when the curtain goes up.
+          We’ll let you know when spaces open up.
         </span>
       </p>
     );
@@ -60,7 +60,7 @@ export function WaitlistForm() {
           <input name="company" type="text" tabIndex={-1} autoComplete="off" />
         </div>
         <Button type="submit" disabled={pending} className="flex-none">
-          {pending ? "Saving your seat…" : "Get your ticket!"}
+          {pending ? "Sending…" : "Request an invite"}
         </Button>
       </div>
       <p
