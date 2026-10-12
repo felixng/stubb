@@ -3,11 +3,10 @@ import { TabBar } from "@/components/ui/TabBar";
 
 // Static mock of the app's Diary screen for the hero phone, built from the
 // design system's ShowRow and TabBar so it matches the iOS app.
-const OCTOBER = [
+const RECENT = [
   { title: "Les Misérables", venue: "Sondheim Theatre", date: "3 Oct", rating: 4.5 },
   { title: "Hadestown", venue: "Lyric Theatre", date: "27 Sep", rating: 4 },
   { title: "The Seagull", venue: "Barbican", date: "21 Sep", rating: 3.5 },
-  { title: "Operation Mincemeat", venue: "Fortune Theatre", date: "Next week" },
 ];
 
 export function DiaryScreenMock() {
@@ -20,11 +19,8 @@ export function DiaryScreenMock() {
           4 shows this month
         </p>
 
-        <p className="mt-5 px-4 text-footnote text-label-secondary uppercase">
-          October
-        </p>
-        <ul className="mt-2 rounded-md bg-surface">
-          {OCTOBER.map((show) => (
+        <ul className="mt-5 rounded-md border border-separator bg-surface shadow-sm">
+          {RECENT.map((show) => (
             <li
               key={show.title}
               className="ml-4 border-b border-separator pr-4 last:border-b-0"
