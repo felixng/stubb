@@ -6,13 +6,32 @@ A short log of choices made and why. Newest at the bottom. See `CLAUDE.md` for t
 
 | # | Question | Needed by | Notes |
 |---|----------|-----------|-------|
-| 1 | Tech stack: confirm Next.js + Supabase + Vercel | Phase 0 | Suggested default in brief §8 |
-| 2 | Default entry visibility (public vs. private) | Phase 0 (schema) | Must be clearly shown to the user |
-| 3 | Which social login(s) alongside email | Phase 0 | Google and/or Apple are the obvious candidates |
+| 1 | Confirm architecture in `docs/ARCHITECTURE.md` (Next.js on Vercel Hobby + Supabase Free) | Now | Proposed 2026-10-12 |
+| 3 | Social logins | Now | Proposed: email code + Google now; add Apple before iOS ships (App Store rule 4.8) |
 | 4 | Email import method: paste-in vs. forwarding address vs. Gmail connect | Phase 2 | Brief suggests starting with paste-in |
 | 5 | Reactions / comments: include or defer | Phase 3 | |
+| 6 | Badges: app-defined only, or user/group-defined too? | When badges are scheduled | Idea; see `CLAUDE.md` "Ideas to explore" |
+| 7 | Discord: channel webhook vs. Discord login vs. server/bot integration | When Discord is scheduled | Idea; tied to groups |
 
 ## Log
 
 ### 2026-10-12: Project brief lives in `CLAUDE.md`
 Saved the brief as `CLAUDE.md` so every Claude Code session loads it automatically. Phases are tracked as GitHub epic issues.
+
+### 2026-10-12: Web validation build this week, iOS app in about a month, $0/month
+The owner wants a quick web version to validate this week, then an iOS app sharing the same users and data, on free tiers only. This brings iOS forward from "Later". Proposed design: `docs/ARCHITECTURE.md`. Both clients talk directly to Supabase, with rules enforced by Postgres RLS. Vercel hosts only server-needing routes (share cards, public OG pages). No custom API server.
+
+### 2026-10-12: Entries default to public
+Owner's call, "for now". It maximises shareable content and supports the share-card acquisition loop. Safeguards: the visibility state is shown on the log form with a one-tap per-entry toggle; users can change their default to private in settings; RLS tests cover both states. Revisit if early users find it surprising.
+
+### 2026-10-12: iOS app is native SwiftUI
+Owner prefers native SwiftUI over Expo/React Native. Consequence: no shared client code, so logic both apps need (validation, stats, search) lives in Postgres (constraints, RLS, SQL functions). The schema is the contract; Swift types are generated with `supabase gen types --lang swift`. Repo layout is `web/`, `ios/`, `supabase/`.
+
+### 2026-10-12: This week is "NYC week"
+The owner has ~3–4 sessions of 2 hours this week. Focus: (1) a great public landing page with mockups and a waitlist, (2) an owner-only hidden login to log their NYC shows (manual, from ticket emails, or from photos), group them into a trip, and share an excellent Instagram card at the end of the week. Public sign-up is off. This pulls email/photo import and the trip recap card forward from Phase 2, in a minimal owner-only form. Tracked in the NYC week epic.
+
+### 2026-10-12: Name, Claude API and NYC-week dependencies approved
+- Product name: **Stubbed**.
+- The Claude API is approved for email/photo import (paid, small; spend limit set in the Anthropic console).
+- Approved dependencies for NYC week: Tailwind CSS, `@supabase/supabase-js`, `@supabase/ssr`, `exifr`, Anthropic SDK (plus Next.js/React/TypeScript tooling). Anything beyond this list still needs a check.
+- The NYC show list will come from the owner once the web app is ready. Seed data covers venues plus a few long-running shows; other shows get added through the app.
