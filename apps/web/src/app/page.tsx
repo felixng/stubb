@@ -1,20 +1,22 @@
-// Placeholder until the landing page lands (#9).
+import { Container } from "@/components/landing/Container";
+import { Footer } from "@/components/landing/Footer";
+import { Hero } from "@/components/landing/Hero";
+
+// Public landing page: hero + waitlist only (#9). No link to /login here.
 export default function Home() {
   return (
-    <main className="mx-auto flex w-full max-w-xl flex-1 flex-col justify-center gap-6 px-6 py-24">
-      <p className="font-mono text-xs uppercase tracking-[0.3em] text-curtain">
-        Admit one · Row A · Seat 1
-      </p>
-      <h1 className="font-display text-6xl font-semibold tracking-tight">
-        Stubbed
-      </h1>
-      <p className="text-lg text-ink-muted">
-        Your theatre diary. Log every show, rate it, group it into trips and
-        share it. Coming soon.
-      </p>
-      <div className="border-t border-dashed border-line pt-4 font-mono text-xs text-ink-muted">
-        London · New York · Edinburgh
-      </div>
-    </main>
+    <>
+      <header>
+        <Container className="py-6 sm:py-8">
+          <p className="font-display text-2xl font-semibold tracking-tight text-ink">
+            Stubbed
+          </p>
+        </Container>
+      </header>
+      <main className="flex-auto">
+        <Hero />
+      </main>
+      <Footer />
+    </>
   );
 }
