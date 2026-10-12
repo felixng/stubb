@@ -44,3 +44,6 @@ The owner dropped the London/NYC/Edinburgh launch scope: the product covers any 
 
 ### 2026-10-12: Design system "Interval"
 The owner's design system artifact (https://claude.ai/artifact/UZXAQQuAaRmwtUDhYPE36U) replaces the earlier cream/curtain-red/Fraunces palette. It is dark first, with a single lime accent for the one primary action, Bricolage Grotesque + DM Sans, and a 4px spacing scale. Tokens live in `apps/web/src/app/globals.css`, React components in `apps/web/src/components/ui/`, and the mapping in `docs/DESIGN.md`.
+
+### 2026-10-12: No share button on the waitlist success state
+The owner dropped the "share with a theatre friend" button from #10. The success state is just the confirmation message. The share card remains the acquisition loop.
