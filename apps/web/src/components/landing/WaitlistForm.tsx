@@ -63,7 +63,7 @@ export function WaitlistForm() {
           disabled={pending}
           className="inline-flex flex-none items-center justify-center rounded-lg bg-curtain px-4 py-2.5 text-base font-semibold text-white transition-colors hover:bg-curtain-deep focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-curtain disabled:opacity-70"
         >
-          {pending ? "Saving your seat…" : "Join the waitlist"}
+          {pending ? "Saving your seat…" : "Get your ticket!"}
         </button>
       </div>
       <p

@@ -81,14 +81,14 @@ export function Hero() {
         <div className="lg:grid lg:grid-cols-12 lg:gap-x-8 lg:gap-y-20">
           <div className="relative z-10 mx-auto max-w-2xl lg:col-span-7 lg:max-w-none lg:pt-6 xl:col-span-6">
             <p className="font-mono text-xs tracking-[0.3em] text-curtain uppercase">
-              Admit one · Your theatre diary
+              For theatre regulars
             </p>
             <h1 className="mt-4 font-display text-5xl font-semibold tracking-tight text-ink sm:text-6xl">
-              Every show you’ve seen. One beautiful diary.
+              Your theatre life, shared.
             </h1>
             <p className="mt-6 text-lg text-ink-muted">
-              Rate, remember and share every show you see, then post the card
-              to your story.
+              Log and rate the shows you see, and see what’s trending in the
+              theatre community. Your diary, and the people who get it.
             </p>
             <div className="mt-8">
               <WaitlistForm />
