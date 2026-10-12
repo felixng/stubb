@@ -4,8 +4,16 @@ import { Container } from "@/components/landing/Container";
 import { PhoneFrame } from "@/components/landing/PhoneFrame";
 import { DiaryScreenMock } from "@/components/landing/DiaryScreenMock";
 import { WaitlistForm } from "@/components/landing/WaitlistForm";
+import { Chip } from "@/components/ui/Chip";
 
 // Layout adapted from the Tailwind Plus "Pocket" hero.
+
+// Static chips under the subhead: short, sentence case, no numbers.
+const HIGHLIGHTS = [
+  "Log in seconds",
+  "Instagram share cards",
+  "Trips and stats",
+];
 
 function BackgroundIllustration(props: React.ComponentPropsWithoutRef<"div">) {
   const id = useId();
@@ -90,6 +98,13 @@ export function Hero() {
               Log and rate the shows you see, and see what’s trending in the
               theatre community. Your diary, and the people who get it.
             </p>
+            <ul aria-label="Features" className="mt-6 flex flex-wrap gap-2">
+              {HIGHLIGHTS.map((highlight) => (
+                <li key={highlight}>
+                  <Chip>{highlight}</Chip>
+                </li>
+              ))}
+            </ul>
             <div className="mt-8">
               <WaitlistForm />
               <p className="text-footnote text-label-secondary">
