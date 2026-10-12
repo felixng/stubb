@@ -3,11 +3,12 @@ import { Bricolage_Grotesque, DM_Sans } from "next/font/google";
 import "./globals.css";
 
 // Design system fonts (docs/DESIGN.md): display for headlines and show
-// titles, sans for interface text.
+// titles, sans for interface text. Bricolage loads as a variable font with
+// its optical-size axis, so large headlines get the tighter display cut.
 const bricolage = Bricolage_Grotesque({
   variable: "--font-bricolage",
   subsets: ["latin"],
-  weight: ["500", "700"],
+  axes: ["opsz"],
 });
 const dmSans = DM_Sans({
   variable: "--font-dm-sans",
