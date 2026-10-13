@@ -34,6 +34,9 @@ export interface AiProvider {
   resolveDefault?(): Promise<string>;
   // Model ids the provider serves to this key, for the import tool's picker.
   listModels?(): Promise<string[]>;
+  // Several of its models to run side by side in the import tool's compare
+  // mode, one column each. Otherwise one column with the default model.
+  compareModels?: string[];
   // The parsed JSON answer, or null when the model declined or said nothing.
   // Throws on transport or API errors; the chain moves on either way.
   generateJson(model: string, request: JsonRequest, signal: AbortSignal): Promise<unknown | null>;

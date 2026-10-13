@@ -3,19 +3,28 @@
 import Anthropic from "@anthropic-ai/sdk";
 import type { AiProvider } from "./types";
 
+// The Claude models the import tool compares side by side: fastest and
+// cheapest (Haiku) to most capable and priciest (Fable).
+const COMPARE_MODELS = ["claude-opus-5-5", "claude-sonnet-5-5", "claude-haiku-5-5", "claude-fable-5-1"];
+
 export const anthropic: AiProvider = {
   id: "anthropic",
   defaultModel: "claude-opus-5-5",
   images: true,
+  compareModels: COMPARE_MODELS,
   configured: () => Boolean(process.env.ANTHROPIC_API_KEY),
+  listModels: async () => COMPARE_MODELS,
 
   async generateJson(model, request, signal) {
     const client = new Anthropic({ maxRetries: 1 });
+    // Haiku has no server-side refusal fallback (sending one is an error or
+    // a no-op) and takes the basic web search tool, without dynamic filtering.
+    const haiku = model.startsWith("claude-haiku");
     const tools: Anthropic.Beta.BetaToolUnion[] = [];
     if (request.webSearch) {
       const { maxUses, location } = request.webSearch;
       tools.push({
-        type: "web_search_20260209",
+        type: haiku ? "web_search_20250305" : "web_search_20260209",
         name: "web_search",
         max_uses: maxUses,
         // Localises results ("what's on near me") when we know the area.
@@ -40,8 +49,7 @@ export const anthropic: AiProvider = {
         {
           model,
           max_tokens: 16000,
-          betas: ["server-side-fallback-2026-07-01"],
-          fallbacks: "default",
+          ...(haiku ? {} : { betas: ["server-side-fallback-2026-07-01"], fallbacks: "default" as const }),
           system: request.system,
           output_config: {
             ...(request.effort ? { effort: request.effort } : {}),

@@ -27,5 +27,11 @@ test("parseModelChoice rejects unknown providers, chains and odd input", () => {
 test("listProviders reports every provider without exposing keys", async () => {
   const providers = await listProviders();
   assert.deepEqual(providers.map((p) => p.id).sort(), ["anthropic", "cerebras", "gemini", "groq"]);
-  for (const p of providers) assert.deepEqual(Object.keys(p).sort(), ["configured", "defaultModel", "id", "images", "models", "name"]);
+  for (const p of providers) assert.deepEqual(Object.keys(p).sort(), ["compareModels", "configured", "defaultModel", "id", "images", "models", "name"]);
+});
+
+test("Claude runs several models side by side in compare mode", async () => {
+  const claude = (await listProviders()).find((p) => p.id === "anthropic");
+  assert.deepEqual(claude?.compareModels, ["claude-opus-5-5", "claude-sonnet-5-5", "claude-haiku-5-5", "claude-fable-5-1"]);
+  for (const m of claude?.compareModels ?? []) assert.deepEqual(parseModelChoice(`anthropic:${m}`), [{ provider: "anthropic", model: m }]);
 });
