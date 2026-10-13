@@ -12,12 +12,15 @@ export type PhotoMeta = {
   time: string | null;
   lat: number | null;
   lng: number | null;
+  // How far off the phone says the position may be, in metres
+  // (GPSHPositioningError; iPhones and many Android phones write it).
+  accuracy_m: number | null;
 };
 
 const pad = (n: number) => String(n).padStart(2, "0");
 
 export async function readPhotoMeta(file: Blob): Promise<PhotoMeta> {
-  const meta: PhotoMeta = { date: null, time: null, lat: null, lng: null };
+  const meta: PhotoMeta = { date: null, time: null, lat: null, lng: null, accuracy_m: null };
   try {
     // With the GPS block on, exifr adds decimal `latitude` / `longitude`.
     const out = await exifr.parse(file, { tiff: true, exif: true, gps: true, ifd1: false, interop: false });
@@ -31,6 +34,8 @@ export async function readPhotoMeta(file: Blob): Promise<PhotoMeta> {
     if (Number.isFinite(out?.latitude) && Number.isFinite(out?.longitude)) {
       meta.lat = out.latitude;
       meta.lng = out.longitude;
+      const error = Number(out?.GPSHPositioningError);
+      if (Number.isFinite(error) && error > 0) meta.accuracy_m = error;
     }
   } catch {
     // No EXIF (screenshots, some shared photos) or an unreadable format: the

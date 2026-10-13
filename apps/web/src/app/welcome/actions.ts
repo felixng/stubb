@@ -10,7 +10,7 @@ import {
   handleProblem,
   normalizeHandle,
   normalizeLink,
-} from "@/lib/profile";
+} from "@/lib/profile-handle";
 import { safeNext } from "@/lib/safe-next";
 import { createClient } from "@/lib/supabase/server";
 

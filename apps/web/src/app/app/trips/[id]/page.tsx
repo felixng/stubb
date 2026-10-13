@@ -52,7 +52,7 @@ async function Trip({ params }: { params: PageProps<"/app/trips/[id]">["params"]
   return (
     <section className="flex flex-col gap-5">
       <header className="flex flex-col gap-1">
-        <h1 className="text-large-title font-display text-label">{trip.name}</h1>
+        <h1 className="text-title font-display text-label">{trip.name}</h1>
         <p className="text-subheadline text-label-secondary">
           {[trip.kind === "trip" ? "Trip" : "Label", range, trip.visibility === "private" ? "Private" : null]
             .filter(Boolean)

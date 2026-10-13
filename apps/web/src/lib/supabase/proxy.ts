@@ -1,14 +1,17 @@
 import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
+import { isAdmin, isAdminPath } from "@/lib/admin";
 import { supabaseEnv } from "@/lib/env";
-import { ONBOARDED_COOKIE } from "@/lib/profile";
+import { ONBOARDED_COOKIE } from "@/lib/profile-handle";
 import { safeNext } from "@/lib/safe-next";
 
 // Refreshes the Supabase session cookie once per navigation, before any
 // Server Component reads it, and guards the owner app (#13): /app/* without a
-// session goes to /login, and /login with a session goes to /app. Signed-in
-// users without a handle go to /welcome to set up their profile first. This
-// is a convenience, not the security boundary: RLS in Postgres is.
+// session goes to /login, and /login with a session goes to /app. Admin pages
+// (/app/admin/*) are a 404 for everyone else, before anything renders.
+// Signed-in users without a handle go to /welcome to set up their profile
+// first. This is a convenience, not the security boundary: RLS in Postgres
+// and the checks in each admin page and route are.
 export async function updateSession(request: NextRequest) {
   const { url, key } = supabaseEnv();
   let response = NextResponse.next({ request });
@@ -46,6 +49,10 @@ export async function updateSession(request: NextRequest) {
     if (inApp) login.searchParams.set("next", pathname + search);
     return redirectWithCookies(login, response);
   }
+  if (userId && isAdminPath(pathname) && !isAdmin(data?.claims)) {
+    // A path no page answers, so Next renders its 404 with a 404 status.
+    return withCookies(NextResponse.rewrite(new URL("/app-admin-not-found", request.url)), response);
+  }
   if (userId && pathname === "/login") {
     return redirectWithCookies(new URL("/app", request.url), response);
   }
@@ -81,12 +88,15 @@ async function hasHandle(supabase: ReturnType<typeof createServerClient>, userId
   return Boolean(data?.handle);
 }
 
-// A redirect must carry any cookies the refresh just set or cleared, or the
-// browser and server drift out of sync.
+// A redirect or rewrite must carry any cookies the refresh just set or
+// cleared, or the browser and server drift out of sync.
 function redirectWithCookies(to: URL, from: NextResponse) {
-  const redirect = NextResponse.redirect(to);
+  return withCookies(NextResponse.redirect(to), from);
+}
+
+function withCookies(to: NextResponse, from: NextResponse) {
   for (const cookie of from.cookies.getAll()) {
-    redirect.cookies.set(cookie);
+    to.cookies.set(cookie);
   }
-  return redirect;
+  return to;
 }

@@ -1,41 +1,57 @@
-// Profile fields set during onboarding (/welcome). The same rules are check
-// constraints in Postgres; these give the form friendly messages first.
+import { connection } from "next/server";
+import { cache } from "react";
 
-export const HANDLE_PATTERN = /^[a-z0-9_]{3,20}$/;
-export const NAME_MAX = 50;
-export const BIO_MAX = 160;
-export const LINK_MAX = 200;
+import { ENTRY_SELECT, signPhotos, toEntryRow, type EntryRow } from "@/lib/entries";
+import { HANDLE_PATTERN } from "@/lib/profile-handle";
+import { createPublicClient } from "@/lib/supabase/public";
 
-// Set by the proxy once a user has a handle, holding their user id, so later
-// navigations skip the profile lookup. Not a security boundary: it only
-// decides whether to show onboarding.
-export const ONBOARDED_COOKIE = "stubbed-onboarded";
 
-// "@Felix.Ng " → "felixng". People paste handles from Instagram.
-export function normalizeHandle(value: string) {
-  return value.trim().replace(/^@/, "").toLowerCase().replace(/[^a-z0-9_]/g, "");
-}
+export type PublicProfile = {
+  id: string;
+  handle: string;
+  display_name: string | null;
+  avatar_url: string | null;
+};
 
-export function handleProblem(handle: string): string | null {
-  if (!handle) return "Pick a handle.";
-  if (handle.length < 3) return "At least 3 characters.";
-  if (handle.length > 20) return "At most 20 characters.";
-  if (!HANDLE_PATTERN.test(handle)) return "Letters, numbers and underscores only.";
-  return null;
-}
+export type ProfileStats = { shows: number; venues: number; cities: number };
 
-// "instagram.com/you" → "https://instagram.com/you". Returns null when it
-// isn't a usable http(s) link.
-export function normalizeLink(value: string): string | null {
-  const raw = value.trim();
-  if (!raw) return null;
-  const withScheme = /^[a-z][a-z0-9+.-]*:/i.test(raw) ? raw : `https://${raw}`;
-  try {
-    const url = new URL(withScheme);
-    if (url.protocol !== "https:" && url.protocol !== "http:") return null;
-    if (!url.hostname.includes(".") || /\s/.test(withScheme)) return null;
-    return withScheme.length <= LINK_MAX ? withScheme : null;
-  } catch {
-    return null;
-  }
-}
+// Everything /@handle shows, read as a logged-out visitor would: the profile,
+// its stats, and its public entries newest first. Null when no profile has
+// that handle (a profile with no handle has no public page). Cached per
+// request, so the page and its metadata share one read.
+export const getPublicProfile = cache(async (rawHandle: string) => {
+  // Live data, read per request, so a newly private entry disappears at once.
+  await connection();
+  const handle = rawHandle.toLowerCase();
+  if (!HANDLE_PATTERN.test(handle)) return null;
+
+  const supabase = createPublicClient();
+  const { data: profile } = await supabase
+    .from("profiles")
+    .select("id, handle, display_name, avatar_url")
+    .eq("handle", handle)
+    .maybeSingle<PublicProfile>();
+  if (!profile) return null;
+
+  // Owner-scale (tens to hundreds of entries), so no paging yet. The explicit
+  // visibility filter matches what RLS already enforces for this client.
+  const [{ data: rows }, { data: stats }] = await Promise.all([
+    supabase
+      .from("entries")
+      .select(ENTRY_SELECT)
+      .eq("user_id", profile.id)
+      .eq("visibility", "public")
+      .order("date", { ascending: false })
+      .order("created_at", { ascending: false }),
+    supabase.rpc("public_profile_stats", { profile_id: profile.id }).single<ProfileStats>(),
+  ]);
+  const entries: EntryRow[] = ((rows ?? []) as never[]).map(toEntryRow);
+  const photos = await signPhotos(supabase, entries.map((e) => e.photo_path));
+
+  return {
+    profile,
+    stats: stats ?? { shows: 0, venues: 0, cities: 0 },
+    entries,
+    photos,
+  };
+});

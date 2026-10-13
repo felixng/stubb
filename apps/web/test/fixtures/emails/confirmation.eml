@@ -1,0 +1,28 @@
+Return-Path: <tickets@boxoffice.example>
+Date: Fri, 02 Oct 2026 14:12:03 -0400
+From: "Example Box Office" <tickets@boxoffice.example>
+To: theatregoer@example.com
+Subject: =?UTF-8?Q?Your_tickets_for_Hadestown_=E2=80=93_order_confirmed?=
+MIME-Version: 1.0
+Content-Type: multipart/alternative; boundary="b1"
+
+This is a multi-part message in MIME format.
+--b1
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: quoted-printable
+
+View this email in your browser: https://boxoffice.example/view?id=3D123=
+&ref=3Dabc
+--b1
+Content-Type: text/html; charset=UTF-8
+Content-Transfer-Encoding: base64
+
+PGh0bWw+PGhlYWQ+PHN0eWxlPnB7Y29sb3I6cmVkfTwvc3R5bGU+PC9oZWFkPjxib2R5PjxkaXYg
+c3R5bGU9ImRpc3BsYXk6bm9uZSI+Jnp3bmo7Jm5ic3A7Jnp3bmo7PC9kaXY+PHRhYmxlPjx0cj48
+dGQ+PGltZyBzcmM9IngucG5nIiBhbHQ9IkhhZGVzdG93biI+PC90ZD48L3RyPjx0cj48dGQ+V2Fs
+dGVyIEtlcnIgVGhlYXRyZTwvdGQ+PHRkPjIxOSBXIDQ4dGggU3QsIE5ldyBZb3JrLCBOWTwvdGQ+
+PC90cj48dHI+PHRkPlNhdHVyZGF5LCBPY3RvYmVyIDEwLCAyMDI2IGF0IDc6MDAmbmJzcDtQTTwv
+dGQ+PC90cj48dHI+PHRkPk9yY2hlc3RyYSBNIDEwNCAmYW1wOyAxMDU8L3RkPjwvdHI+PHRyPjx0
+ZD5Ub3RhbDogJDI4OS4wMDwvdGQ+PC90cj48L3RhYmxlPjxwPlF1ZXN0aW9ucz8gUmVwbHkgdG8g
+dGhpcyBlbWFpbCAmbWRhc2g7IHdlJnJzcXVvO3JlIGhlcmUuPC9wPjwvYm9keT48L2h0bWw+
+--b1--

@@ -59,3 +59,7 @@ Hosted project, once:
 4. **Redirect URLs:** Authentication → URL Configuration: Site URL = the production URL; add `https://<production-domain>/auth/callback` (and `http://localhost:3000/auth/callback` for local dev against the hosted project) to Redirect URLs.
 
 Locally, use email + password: add a user in Studio (http://127.0.0.1:54323). Google isn't configured in the local stack.
+
+## Public profile stats
+
+`public_profile_stats(profile_id)` returns `shows`, `venues` and `cities` for a profile's **public** entries, whoever calls it (the owner too), so `/@handle` and iOS show the same numbers. Tests: `tests/profile_stats_test.sql`.

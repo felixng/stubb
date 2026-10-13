@@ -33,7 +33,7 @@ async function Edit({ params }: { params: PageProps<"/app/entries/[id]/edit">["p
 export default function EditEntryPage({ params }: PageProps<"/app/entries/[id]/edit">) {
   return (
     <section className="flex flex-col gap-5">
-      <h1 className="text-large-title font-display text-label">Edit entry</h1>
+      <h1 className="text-title font-display text-label">Edit entry</h1>
       <Suspense fallback={<p className="text-subheadline text-label-secondary">Loading…</p>}>
         <Edit params={params} />
       </Suspense>

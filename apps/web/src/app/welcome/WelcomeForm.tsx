@@ -4,7 +4,7 @@ import { useActionState, useEffect, useId, useState } from "react";
 
 import { fieldClass } from "@/components/app/log/Typeahead";
 import { Button } from "@/components/ui/Button";
-import { BIO_MAX, NAME_MAX, handleProblem, normalizeHandle } from "@/lib/profile";
+import { BIO_MAX, NAME_MAX, handleProblem, normalizeHandle } from "@/lib/profile-handle";
 import { createClient } from "@/lib/supabase/client";
 import { completeProfile, type ProfileFields, type WelcomeState } from "./actions";
 
