@@ -65,7 +65,7 @@ const SYSTEM = `You help a theatregoer log a show they just saw. You get one pho
 Work through it in this order:
 1. Read every bit of text in the photo: titles or logos projected or painted on the set, show curtains, marquees, Playbill covers, tickets, signs that are part of the set. Text in any language counts. If the photo names the show, that settles the show.
 2. Describe the set to yourself: distinctive scenery and props (e.g. a pile of suitcases under a "Baggage Claim" sign, a band on a platform, a turntable), the style of the theatre (a Broadway or West End house, a studio space).
-3. Search. When nearby theatres are listed, search what was playing at the closest ones around that date and pick the one whose show matches the photo. When none are listed but a location is given, search for theatres near that point and what they were playing then. When the photo shows no title, search for the distinctive set (e.g. "Broadway musical set suitcases baggage claim sign") and check the result is running at a theatre near the photo on that date.
+3. Search only for what the photo doesn't settle, and stop as soon as you're sure: speed matters, the user is waiting. If the photo names the show and one nearby theatre is listed, don't search at all. If it names the show but several theatres are listed, one search for where it's playing is enough. When nearby theatres are listed, search what was playing at the closest ones around that date and pick the one whose show matches the photo. When none are listed but a location is given, search for theatres near that point and what they were playing then. When the photo shows no title, search for the distinctive set (e.g. "Broadway musical set suitcases baggage claim sign") and check the result is running at a theatre near the photo on that date.
 4. Venue: GPS can be 20–50 m off and theatres can be under 100 m apart, so pick the theatre whose show matches, not simply the nearest. Give venue_name whenever you know the theatre, and venue_osm_id only when it's one of the listed theatres.
 
 Timing: an empty house with the lights up is before the show; times after about 17:00 are usually evening performances, earlier ones matinees. Shows open and close, so check the run covers the date.
@@ -95,7 +95,8 @@ export async function identifyShow(input: IdentifyInput): Promise<Identification
   const web_search: Anthropic.Beta.BetaWebSearchTool20260209 = {
     type: "web_search_20260209",
     name: "web_search",
-    max_uses: 5,
+    // Each search adds seconds; three covers venue + show + one check.
+    max_uses: 3,
     // Localises results ("what's on near me") when we know the area.
     ...(input.country && /^[A-Z]{2}$/.test(input.country)
       ? { user_location: { type: "approximate", country: input.country, ...(input.city ? { city: input.city } : {}) } }
@@ -120,7 +121,8 @@ export async function identifyShow(input: IdentifyInput): Promise<Identification
       betas: ["server-side-fallback-2026-07-01"],
       fallbacks: "default",
       system: SYSTEM,
-      output_config: { effort: "medium", format: { type: "json_schema", schema: SCHEMA } },
+      // Low effort: this runs while the user waits on the log form.
+      output_config: { effort: "low", format: { type: "json_schema", schema: SCHEMA } },
       tools: [web_search],
       messages,
     });
