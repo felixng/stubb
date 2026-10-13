@@ -9,8 +9,8 @@ export const SITE_URL = new URL(
 );
 
 export const SITE_NAME = "Stubbed";
-export const SITE_TITLE = "Stubbed — your theatre diary";
-// Under ~160 characters so search results don't cut it off. No launch cities
-// or regions in public copy (see CLAUDE.md, section 5).
+export const SITE_TITLE = "Stubbed — the theatre diary to log, rate and share shows";
+// 140–160 characters, so search results show it whole. No launch cities or
+// regions in public copy (see CLAUDE.md, section 5).
 export const SITE_DESCRIPTION =
-  "Log every play, musical and opera you see. Rate it in half stars, group shows into trips and share good-looking cards. Now in private beta.";
+  "Stubbed is a theatre diary app. Log every play, musical and opera you see, rate it in half stars, group shows into trips and share cards. Now in private beta.";
