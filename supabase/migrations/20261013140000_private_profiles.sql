@@ -38,19 +38,15 @@ create trigger profiles_keep_handle
 -- owner policies are unchanged). The entry_collections and entry-photos read
 -- policies look up entries and collections under the caller's RLS, so they
 -- follow these automatically.
-drop policy "Public entries are visible to everyone" on public.entries;
-create policy "Public entries are visible to everyone"
-  on public.entries for select
-  to anon, authenticated
+alter policy "Public entries are visible to everyone"
+  on public.entries
   using (
     visibility = 'public'
     and not exists (select 1 from public.profiles p where p.id = user_id and p.is_private)
   );
 
-drop policy "Public collections are visible to everyone" on public.collections;
-create policy "Public collections are visible to everyone"
-  on public.collections for select
-  to anon, authenticated
+alter policy "Public collections are visible to everyone"
+  on public.collections
   using (
     visibility = 'public'
     and not exists (select 1 from public.profiles p where p.id = user_id and p.is_private)
