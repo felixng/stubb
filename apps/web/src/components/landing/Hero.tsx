@@ -35,7 +35,7 @@ export function Hero() {
               </li>
             ))}
           </ul>
-          <div className="mt-2 flex flex-col gap-1">
+          <div id="waitlist" className="mt-2 flex scroll-mt-24 flex-col gap-1">
             <WaitlistForm />
             <p className="text-footnote text-label-secondary">
               One email, at launch. Unsubscribe any time.{" "}

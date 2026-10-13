@@ -10,7 +10,7 @@ import { getPublicProfile } from "@/lib/profile";
 // Public profile, served at /@handle (rewritten here in next.config.ts).
 // Every user has one (the handle is set at /welcome). It shows public entries
 // only, and a private profile shows just its header. Reads go through the publishable key, never the visitor's session.
-// Follows the visitor's light/dark setting (docs/DESIGN.md).
+// Always light, set by the layout (docs/DESIGN.md).
 
 export async function generateMetadata({ params }: PageProps<"/u/[handle]">): Promise<Metadata> {
   const { handle } = await params;
