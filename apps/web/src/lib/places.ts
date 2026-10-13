@@ -22,7 +22,13 @@ export type NearbyPlaces = {
 };
 
 const USER_AGENT = "Stubbed/0.1 (theatre diary; https://github.com/felixng/stubbed)";
-const OVERPASS_URL = "https://overpass-api.de/api/interpreter";
+// The main public Overpass server is often overloaded (504s); mirrors run
+// the same API. Tried in order until one answers.
+const OVERPASS_URLS = [
+  "https://overpass-api.de/api/interpreter",
+  "https://overpass.private.coffee/api/interpreter",
+  "https://maps.mail.ru/osm/tools/overpass/api/interpreter",
+];
 const NOMINATIM_URL = "https://nominatim.openstreetmap.org/reverse";
 
 // Broadway houses can be under 100 m apart and phone GPS in Midtown can be
@@ -93,15 +99,27 @@ export function parseNominatim(json: unknown): { city: string | null; country: s
   return { city, country: a.country_code ? a.country_code.toUpperCase() : null };
 }
 
-async function getJson(url: string, init?: RequestInit) {
+async function getJson(url: string, init?: RequestInit, timeoutMs = 8000) {
   const res = await fetch(url, {
     ...init,
     headers: { "User-Agent": USER_AGENT, Accept: "application/json", ...init?.headers },
-    signal: AbortSignal.timeout(8000),
+    signal: AbortSignal.timeout(timeoutMs),
     cache: "no-store",
   });
   if (!res.ok) throw new Error(`${new URL(url).host} ${res.status}`);
   return res.json();
+}
+
+async function queryOverpass(query: string) {
+  let lastError: unknown;
+  for (const url of OVERPASS_URLS) {
+    try {
+      return await getJson(url, { method: "POST", body: new URLSearchParams({ data: query }) }, 6000);
+    } catch (error) {
+      lastError = error;
+    }
+  }
+  throw lastError;
 }
 
 export async function findNearbyTheatres(lat: number, lng: number): Promise<NearbyPlaces> {
@@ -112,10 +130,7 @@ export async function findNearbyTheatres(lat: number, lng: number): Promise<Near
 
   // Both lookups are best effort: a failed one leaves its part blank.
   const [overpass, reverse] = await Promise.allSettled([
-    getJson(OVERPASS_URL, {
-      method: "POST",
-      body: new URLSearchParams({ data: query }),
-    }),
+    queryOverpass(query),
     getJson(
       `${NOMINATIM_URL}?${new URLSearchParams({
         format: "jsonv2",

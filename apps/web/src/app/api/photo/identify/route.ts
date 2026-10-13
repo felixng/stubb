@@ -1,13 +1,13 @@
 import { identifyConfigured, identifyShow, type IdentifyInput } from "@/lib/identify";
 import { requireUserId } from "@/lib/supabase/require-user";
 
-// The photo-identify call can include a few web searches.
-export const maxDuration = 60;
+// The photo-identify call can include several web searches.
+export const maxDuration = 90;
 
 const MAX_PHOTO_BYTES = 1_500_000;
 
 // POST multipart: photo (JPEG re-encoded on the device), date, time, city,
-// country, candidates (JSON) → a suggested show and venue (#14).
+// country, lat/lng (rounded), candidates (JSON) → a suggested show and venue (#14).
 // 503 "not_configured" until ANTHROPIC_API_KEY is set; the form then just
 // skips the suggestion.
 export async function POST(request: Request) {
@@ -33,6 +33,13 @@ export async function POST(request: Request) {
     return typeof v === "string" && v.trim() ? v.trim().slice(0, 100) : null;
   };
 
+  const lat = Number(form?.get("lat"));
+  const lng = Number(form?.get("lng"));
+  const point =
+    form?.get("lat") != null && Number.isFinite(lat) && Number.isFinite(lng) && Math.abs(lat) <= 90 && Math.abs(lng) <= 180
+      ? { lat: Math.round(lat * 1000) / 1000, lng: Math.round(lng * 1000) / 1000 }
+      : null;
+
   let candidates: IdentifyInput["candidates"] = [];
   try {
     const raw = JSON.parse(String(form?.get("candidates") ?? "[]"));
@@ -57,6 +64,7 @@ export async function POST(request: Request) {
       time: text("time", /^\d{2}:\d{2}$/),
       city: name("city"),
       country: name("country"),
+      point,
       candidates,
     });
     return Response.json({ result });

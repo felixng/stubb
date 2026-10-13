@@ -13,7 +13,10 @@ export type IdentifyInput = {
   date: string | null; // "2026-10-10"
   time: string | null; // "19:42", local to where the photo was taken
   city: string | null;
-  country: string | null;
+  country: string | null; // ISO 3166-1 alpha-2 when known
+  // Rounded to ~100 m. Lets Claude search the area when OpenStreetMap
+  // finds no theatre (or is down). Sent for this call only, never stored.
+  point: { lat: number; lng: number } | null;
   candidates: { osm_id: string; name: string; distance_m: number }[];
 };
 
@@ -28,53 +31,59 @@ export type Identification = {
   reason: string;
 };
 
+// Structured output. No nullable fields: the API rejects a "string or null"
+// type combined with an enum, so "unknown" is an empty string instead.
 const SCHEMA = {
   type: "object",
   additionalProperties: false,
   required: ["show_title", "show_type", "venue_osm_id", "venue_name", "confidence", "reason"],
   properties: {
     show_title: {
-      type: ["string", "null"],
-      description: "The show's usual title, e.g. \"Hadestown\". Null if you can't tell.",
+      type: "string",
+      description: 'The show\'s usual title, e.g. "Hadestown". Empty string if you can\'t tell.',
     },
-    show_type: { type: ["string", "null"], enum: [...SHOW_TYPES, null] },
+    show_type: { type: "string", enum: [...SHOW_TYPES] },
     venue_osm_id: {
-      type: ["string", "null"],
-      description: "osm_id of the nearby theatre where this was taken, copied exactly. Null if none fits.",
+      type: "string",
+      description: "osm_id of the listed nearby theatre where this was taken, copied exactly. Empty string if none fits or none were listed.",
     },
     venue_name: {
-      type: ["string", "null"],
-      description: "The theatre's name. When no nearby theatre fits but the photo or search names one, give it here.",
+      type: "string",
+      description: "The theatre's name, e.g. \"Belasco Theatre\". Fill it whenever you know the venue, even with no osm_id. Empty string if unknown.",
     },
     confidence: { type: "string", enum: ["high", "medium", "low"] },
     reason: {
       type: "string",
       description:
-        "One short line on what settled it, e.g. \"Show curtain reads Hadestown; Walter Kerr is 40 m away; playing that date\".",
+        'One short line on what settled it, e.g. "Set backdrop reads Maybe Happy Ending; playing at the Belasco, 60 m away".',
     },
   },
 } as const;
 
-const SYSTEM = `You help a theatregoer log a show they saw. Given one photo they took at the theatre and where and when it was taken, work out which show it was and at which theatre.
+const SYSTEM = `You help a theatregoer log a show they just saw. You get one photo they took at the theatre (often the set before curtain-up, a curtain call, a marquee, a Playbill or a ticket), plus when and roughly where it was taken. Work out which show it was and at which theatre.
 
-How to decide:
-- Read the photo first: show curtains, logos, marquees, Playbills, programmes, tickets and distinctive sets often name the show outright, and can tell neighbouring theatres apart.
-- The nearby theatres come from OpenStreetMap, nearest first. GPS can be 20–50 m off, so the nearest is not always right.
-- Use web search to check what was playing at a candidate theatre on that date, especially for generic stage shots or recent productions. Times after about 17:00 are usually evening performances; earlier ones may be matinees.
-- With no location, rely on the photo and the date.
+Work through it in this order:
+1. Read every bit of text in the photo: titles or logos projected or painted on the set, show curtains, marquees, Playbill covers, tickets, signs that are part of the set. Text in any language counts. If the photo names the show, that settles the show.
+2. Describe the set to yourself: distinctive scenery and props (e.g. a pile of suitcases under a "Baggage Claim" sign, a band on a platform, a turntable), the style of the theatre (a Broadway or West End house, a studio space).
+3. Search. When nearby theatres are listed, search what was playing at the closest ones around that date and pick the one whose show matches the photo. When none are listed but a location is given, search for theatres near that point and what they were playing then. When the photo shows no title, search for the distinctive set (e.g. "Broadway musical set suitcases baggage claim sign") and check the result is running at a theatre near the photo on that date.
+4. Venue: GPS can be 20–50 m off and theatres can be under 100 m apart, so pick the theatre whose show matches, not simply the nearest. Give venue_name whenever you know the theatre, and venue_osm_id only when it's one of the listed theatres.
+
+Timing: an empty house with the lights up is before the show; times after about 17:00 are usually evening performances, earlier ones matinees. Shows open and close, so check the run covers the date.
 
 Rules:
-- Never identify performers by their face. Cast lists don't matter here.
-- Prefer "low" confidence, or nulls, over guessing. "high" means the photo or a search result plainly confirms it; "medium" means it's the most likely answer with a gap.
-- Only use an osm_id from the list you were given.`;
+- Never identify performers by their face. Who is on stage doesn't matter here.
+- "high": the photo names the show, or a search ties the set and the theatre to that date beyond reasonable doubt. "medium": the most likely answer with a gap. "low": a guess; prefer this, or empty strings, over overclaiming.`;
 
 function describe(input: IdentifyInput) {
   const when = input.date ? `${input.date}${input.time ? ` at ${input.time} local time` : ""}` : "unknown";
-  const where = [input.city, input.country].filter(Boolean).join(", ") || "unknown";
+  const area = [input.city, input.country].filter(Boolean).join(", ") || "unknown";
+  const point = input.point ? `${input.point.lat.toFixed(3)}, ${input.point.lng.toFixed(3)}` : "unknown";
   const nearby = input.candidates.length
     ? input.candidates.map((c) => `- ${c.name} (osm_id ${c.osm_id}, ${c.distance_m} m away)`).join("\n")
-    : "none (no location in the photo, or no theatre found nearby)";
-  return `Photo taken: ${when}\nArea: ${where}\nNearby theatres:\n${nearby}`;
+    : input.point
+      ? "none found (the map lookup may have failed; search near the location instead)"
+      : "none (the photo has no location)";
+  return `Photo taken: ${when}\nArea: ${area}\nLocation (approx.): ${point}\nNearby theatres:\n${nearby}`;
 }
 
 export function identifyConfigured() {
@@ -82,7 +91,16 @@ export function identifyConfigured() {
 }
 
 export async function identifyShow(input: IdentifyInput): Promise<Identification | null> {
-  const client = new Anthropic({ timeout: 60_000, maxRetries: 1 });
+  const client = new Anthropic({ timeout: 80_000, maxRetries: 1 });
+  const web_search: Anthropic.Beta.BetaWebSearchTool20260209 = {
+    type: "web_search_20260209",
+    name: "web_search",
+    max_uses: 5,
+    // Localises results ("what's on near me") when we know the area.
+    ...(input.country && /^[A-Z]{2}$/.test(input.country)
+      ? { user_location: { type: "approximate", country: input.country, ...(input.city ? { city: input.city } : {}) } }
+      : {}),
+  };
 
   const messages: Anthropic.Beta.BetaMessageParam[] = [
     {
@@ -103,7 +121,7 @@ export async function identifyShow(input: IdentifyInput): Promise<Identification
       fallbacks: "default",
       system: SYSTEM,
       output_config: { effort: "medium", format: { type: "json_schema", schema: SCHEMA } },
-      tools: [{ type: "web_search_20260209", name: "web_search", max_uses: 3 }],
+      tools: [web_search],
       messages,
     });
 
@@ -116,15 +134,24 @@ export async function identifyShow(input: IdentifyInput): Promise<Identification
       return null;
     }
 
-    const text = response.content.findLast((b) => b.type === "text");
-    if (!text || text.type !== "text") return null;
-    return clean(JSON.parse(text.text) as Identification, input);
+    // With web search the answer can arrive split across several text
+    // blocks (citations); the JSON is everything after the last search.
+    const lastTool = response.content.findLastIndex((b) => b.type !== "text");
+    const json = response.content
+      .slice(lastTool + 1)
+      .map((b) => (b.type === "text" ? b.text : ""))
+      .join("")
+      .trim();
+    if (!json) return null;
+    const result = clean(JSON.parse(json) as Identification, input);
+    console.info("Identify", result.confidence, result.show_title, "|", result.reason);
+    return result;
   }
   return null;
 }
 
-// Keep only what the form can trust: an osm_id from the candidate list, and
-// no low-confidence answers dressed up as facts.
+// Keep only what the form can trust: empty strings become null, and an
+// osm_id must come from the candidate list.
 function clean(result: Identification, input: IdentifyInput): Identification {
   const known = input.candidates.some((c) => c.osm_id === result.venue_osm_id);
   return {
