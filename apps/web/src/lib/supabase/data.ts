@@ -41,3 +41,14 @@ export async function listOwnEntries() {
   const photos = await signPhotos(supabase, entries.map((e) => e.photo_path));
   return { entries, photos };
 }
+
+export async function getOwnProfile() {
+  const { supabase, userId } = await ownerContext();
+  if (!userId) return null;
+  const { data } = await supabase
+    .from("profiles")
+    .select("handle, display_name")
+    .eq("id", userId)
+    .maybeSingle<{ handle: string | null; display_name: string | null }>();
+  return data;
+}
