@@ -73,3 +73,6 @@ Owner's call. The log form starts with a photo and fills in what it can: the dat
 
 ### 2026-10-13: App and sign-in are always light; landing menu links to sign-in
 Owner's call: `/app` and `/login` now stay light whatever the device setting, like the landing page (`data-theme="light"`). Dark mode can come back later; the tokens are unchanged. The landing page gets a hamburger menu next to the beta pill whose only item is "Sign in", so the login page is no longer unlinked. Sign-ups stay off, so the link reveals nothing.
+
+### 2026-10-13: Profile onboarding at /welcome
+Owner's call: a signed-in user with no handle is sent to `/welcome` before any `/app` page, to set their name (required), handle (required), a bio (optional, ≤ 160 characters) and one link (optional, e.g. Instagram; `https://` is added to a bare `instagram.com/you`). `profiles` gains public `bio` and `link` columns; the link must be an http(s) URL in Postgres too, so it is safe to render as a link later. The proxy does the check; once a handle exists it remembers that in an `httpOnly` cookie holding the user id, so later navigations skip the profile lookup. The handle field checks availability as it's typed, and the save still catches a clash. No reserved-handle list yet; add one before public profile URLs ship.
