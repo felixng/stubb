@@ -7,7 +7,7 @@ import {
   Section,
   TextLink,
 } from "@/components/legal/LegalPage";
-import { LEGAL } from "@/lib/legal";
+import { LEGAL, operatorName } from "@/lib/legal";
 
 // Consumer terms written to hold up in the UK (Consumer Rights Act 2015,
 // Online Safety Act), the EU (consumer law, Digital Services Act notice and
@@ -28,8 +28,8 @@ export default function TermsPage() {
       intro={
         <>
           <p>
-            These terms are the agreement between you and {LEGAL.operator}{" "}
-            (“Stubbed”, “we”, “us”) for using the Stubbed website, app and
+            These terms are the agreement between you and {operatorName()}{" "}
+            (“we”, “us”) for using the Stubbed website, app and
             related services (the “Service”). By joining the waitlist, creating
             an account or using the Service, you agree to them. If you don’t
             agree, please don’t use the Service.
@@ -319,7 +319,7 @@ export default function TermsPage() {
 
       <Section id="contact" title="Contact">
         <p>
-          {LEGAL.operator}, {LEGAL.address}. Email: <ContactEmail />.
+          {operatorName()}. Email: <ContactEmail />.
         </p>
       </Section>
     </LegalPage>

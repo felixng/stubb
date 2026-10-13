@@ -8,7 +8,7 @@ import {
   SubHeading,
   TextLink,
 } from "@/components/legal/LegalPage";
-import { LEGAL } from "@/lib/legal";
+import { LEGAL, operatorName } from "@/lib/legal";
 
 // Written for UK GDPR + the Data Protection Act 2018, the EU GDPR, PECR /
 // ePrivacy, and US state privacy laws (CCPA/CPRA and similar, CalOPPA,
@@ -45,8 +45,7 @@ export default function PrivacyPage() {
     >
       <Section id="who" title="Who we are">
         <p>
-          Stubbed is run by {LEGAL.operator}, {LEGAL.address} (“Stubbed”, “we”,
-          “us”). We are the controller of your personal data under the UK GDPR
+          {operatorName()} (“we”, “us”) is the controller of your personal data under the UK GDPR
           and the EU GDPR, and the “business” for the purposes of US state
           privacy laws.
         </p>
@@ -354,7 +353,7 @@ export default function PrivacyPage() {
 
       <Section id="contact" title="Contact">
         <p>
-          {LEGAL.operator}, {LEGAL.address}. Email: <ContactEmail />.
+          {operatorName()}. Email: <ContactEmail />.
         </p>
       </Section>
     </LegalPage>
