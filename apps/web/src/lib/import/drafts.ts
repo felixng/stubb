@@ -138,6 +138,15 @@ export function groupPhotos<T extends PhotoPoint>(photos: T[]): T[][] {
   return groups;
 }
 
+// The GPS accuracy to trust for a group of photos: the worst among its
+// located photos, or unknown if any of them didn't record one, so a group
+// never gets a tighter search circle than its least reliable photo.
+export function visitAccuracy(points: (PhotoPoint & { accuracy_m?: number | null })[]): number | null {
+  const located = points.filter((p) => p.lat != null && p.lng != null);
+  if (!located.length || located.some((p) => p.accuracy_m == null)) return null;
+  return Math.max(...located.map((p) => p.accuracy_m!));
+}
+
 // Average location of a group's located photos.
 export function centroid(points: PhotoPoint[]): { lat: number; lng: number } | null {
   const located = points.filter((p): p is PhotoPoint & { lat: number; lng: number } => p.lat != null && p.lng != null);

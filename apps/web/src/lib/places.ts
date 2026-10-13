@@ -36,8 +36,20 @@ const NOMINATIM_URL = "https://nominatim.openstreetmap.org";
 const LOOKUP_TIMEOUT_MS = 4_000;
 
 // Broadway houses can be under 100 m apart and phone GPS in Midtown can be
-// 20–50 m off, so look a little wider and let distance order the list.
+// 20–50 m off, so without better information look a little wider and let
+// distance order the list.
 export const NEARBY_RADIUS_M = 150;
+// With a precise fix, a tighter circle: fewer theatres to choose from, and
+// often just one (the log form then fills the venue straight away).
+export const MIN_NEARBY_RADIUS_M = 60;
+
+// The search radius for a photo, from the GPS accuracy its phone recorded:
+// about 2.5× the stated error, between 60 m and 150 m. Unknown accuracy
+// keeps the full 150 m, so the right theatre isn't missed.
+export function nearbyRadius(accuracy_m: number | null | undefined): number {
+  if (accuracy_m == null || !Number.isFinite(accuracy_m) || accuracy_m <= 0) return NEARBY_RADIUS_M;
+  return Math.round(Math.min(NEARBY_RADIUS_M, Math.max(MIN_NEARBY_RADIUS_M, accuracy_m * 2.5)));
+}
 const MAX_CANDIDATES = 8;
 
 export function distanceMeters(lat1: number, lng1: number, lat2: number, lng2: number) {
@@ -153,7 +165,7 @@ type NominatimPlace = {
 
 // Nominatim's search for theatres in a small box around the point: the
 // fallback when every Overpass server is down.
-export function parseNominatimSearch(json: unknown, lat: number, lng: number): PlaceCandidate[] {
+export function parseNominatimSearch(json: unknown, lat: number, lng: number, radius = NEARBY_RADIUS_M): PlaceCandidate[] {
   const items = Array.isArray(json) ? (json as NominatimPlace[]) : [];
   const out: PlaceCandidate[] = [];
   for (const item of items) {
@@ -162,7 +174,7 @@ export function parseNominatimSearch(json: unknown, lat: number, lng: number): P
     const name = item.name?.trim();
     if (!name || !item.osm_type || !item.osm_id || !Number.isFinite(pLat) || !Number.isFinite(pLng)) continue;
     const distance_m = Math.round(distanceMeters(lat, lng, pLat, pLng));
-    if (distance_m > NEARBY_RADIUS_M) continue;
+    if (distance_m > radius) continue;
     const place = parseNominatim({ address: item.address });
     const street = [item.address?.house_number, item.address?.road].filter(Boolean).join(" ");
     out.push({ osm_id: `${item.osm_type}/${item.osm_id}`, name, address: street || null, ...place, lat: pLat, lng: pLng, distance_m });
@@ -170,9 +182,9 @@ export function parseNominatimSearch(json: unknown, lat: number, lng: number): P
   return out.sort((a, b) => a.distance_m - b.distance_m).slice(0, MAX_CANDIDATES);
 }
 
-function searchNominatim(lat: number, lng: number) {
+function searchNominatim(lat: number, lng: number, radius: number) {
   // A box a little larger than the radius; results outside it are dropped.
-  const dLat = (NEARBY_RADIUS_M * 1.2) / 111_320;
+  const dLat = (radius * 1.2) / 111_320;
   const dLng = dLat / Math.max(0.2, Math.cos((lat * Math.PI) / 180));
   return nominatim("search", {
     amenity: "theatre",
@@ -180,7 +192,7 @@ function searchNominatim(lat: number, lng: number) {
     bounded: "1",
     limit: "20",
     addressdetails: "1",
-  }).then((json) => parseNominatimSearch(json, lat, lng));
+  }).then((json) => parseNominatimSearch(json, lat, lng, radius));
 }
 
 // Results per ~100 m square for this server instance: theatres don't move,
@@ -188,20 +200,21 @@ function searchNominatim(lat: number, lng: number) {
 const nearbyCache = new Map<string, NearbyPlaces>();
 const MAX_CACHED = 500;
 
-export async function findNearbyTheatres(lat: number, lng: number): Promise<NearbyPlaces> {
-  const key = `${lat.toFixed(3)},${lng.toFixed(3)}`;
+// `radius` comes from nearbyRadius(): tighter when the photo's GPS is precise.
+export async function findNearbyTheatres(lat: number, lng: number, radius = NEARBY_RADIUS_M): Promise<NearbyPlaces> {
+  const key = `${lat.toFixed(3)},${lng.toFixed(3)},${radius}`;
   const cached = nearbyCache.get(key);
   if (cached) return cached;
 
   const query =
     `[out:json][timeout:4];` +
-    `nwr(around:${NEARBY_RADIUS_M},${lat},${lng})["amenity"="theatre"];` +
+    `nwr(around:${radius},${lat},${lng})["amenity"="theatre"];` +
     `out center tags;`;
 
   // Overpass and Nominatim's theatre search run side by side; Overpass wins
   // when it answers, Nominatim covers it when every Overpass server is down.
   // Both are best effort: if neither answers, the list is empty.
-  const nominatimSearch = searchNominatim(lat, lng);
+  const nominatimSearch = searchNominatim(lat, lng, radius);
   nominatimSearch.catch(() => {}); // not awaited when Overpass answers
   let candidates: PlaceCandidate[] | null = await queryOverpass(query)
     .then((json) => parseOverpass(json, lat, lng))

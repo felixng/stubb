@@ -119,7 +119,7 @@ export async function identifyShow(input: IdentifyInput, models?: ModelRef[]): P
       models,
       parse: (raw) => clean(raw as Identification, input),
       // A model that can't name the show, or only guesses, hands over to the
-      // next one (by default Claude with web search).
+      // next one (by default Opus, then Haiku, both with web search).
       accept: (result) => result.show_title !== null && result.confidence !== "low",
       budgetMs: 80_000,
     },

@@ -12,6 +12,7 @@ import {
   MAX_IDENTIFY_PHOTOS,
   mergeReadings,
   pickSpread,
+  visitAccuracy,
   type Extracted,
   type PhotoSource,
   type Reading,
@@ -391,7 +392,7 @@ export function ImportTool() {
       let place: Draft["place"] = { city: null, country: null };
       if (point) {
         updateJob(ref, { state: "nearby" });
-        ({ candidates: nearby, place } = await lookupNearby(point.lat, point.lng));
+        ({ candidates: nearby, place } = await lookupNearby(point.lat, point.lng, visitAccuracy(group.map((p) => p.meta))));
       }
       const where = [place.city, nearby.length ? `${nearby.length} theatre${nearby.length === 1 ? "" : "s"} nearby` : point ? "no theatre found nearby" : "no location in photo"]
         .filter(Boolean)

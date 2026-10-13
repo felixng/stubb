@@ -86,3 +86,12 @@ test("pickSpread keeps the first and last and spreads the rest", () => {
   assert.deepEqual(pickSpread([1, 2], 4), [1, 2]);
   assert.deepEqual(pickSpread([1, 2, 3], 1), [1]);
 });
+
+test("visitAccuracy: the worst located photo, unknown if any is unknown", async () => {
+  const { visitAccuracy } = await import("@/lib/import/drafts");
+  const at = (accuracy_m: number | null, lat: number | null = NYC.lat) => ({ date: null, time: null, lat, lng: lat == null ? null : NYC.lng, accuracy_m });
+  assert.equal(visitAccuracy([at(8), at(20)]), 20);
+  assert.equal(visitAccuracy([at(8), at(null)]), null);
+  assert.equal(visitAccuracy([at(8), at(null, null)]), 8); // unlocated photos don't count
+  assert.equal(visitAccuracy([at(null, null)]), null);
+});
