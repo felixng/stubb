@@ -134,5 +134,23 @@ Owner's call: sharing should feel like Hevy. Saving a new entry now opens a shar
 ### 2026-10-13: Landing page SEO basics
 The landing page gets a canonical URL, full Open Graph/X tags with a generated 1200×630 preview image (`opengraph-image.tsx`), `WebSite` structured data, a sitemap, and a `Sitemap:` line in `robots.txt`. The public origin comes from `NEXT_PUBLIC_SITE_URL`, falling back to Vercel's production domain. `/login` is no longer disallowed in `robots.txt`: it's linked from the landing menu, and crawlers must fetch it to see its `noindex`. The preview image uses the regular-weight Geist that ships with `next/og`; a heavy font file would match the wordmark better.
 
+### 2026-10-13: Stubbed's Instagram account is @stubbedapp
+Owner's info. The share screen's caption reads "Share your show · Tag @stubbedapp" (like Hevy's "Tag @hevyapp"), and the copied/shared text ends "Logged on Stubbed @stubbedapp". The handle is not drawn on the cards themselves; they carry the `stubbed` wordmark and the user's handle.
+
+### 2026-10-13: Public profile at /@handle
+Modelled on Hevy's profile (owner's screenshots). `/@handle` (rewritten to `app/u/[handle]`) shows a cover strip of up to five recent public photos, avatar, handle and display name, three stats (shows, theatres, cities), a month calendar, and public entries as cards, newest first.
+- **Opt-in is the handle** (owner's call): a profile is live once a handle is set in `/app/profile` and off when it's cleared. No separate switch.
+- **Public entries only, for everyone**, including the owner looking at their own page. The page reads with the publishable key and no session (`createPublicClient`), so RLS can't return private rows. Stats come from `public_profile_stats(profile_id)` in Postgres, so iOS gets the same numbers.
+- **Month calendar** (owner's go-ahead for this slice of the "theatregoing calendar" idea): one month at a time, Monday first, show days filled in coral and linked to their entry. It opens on the month of the latest show, since most months have none. Granularity toggles and heatmap shading are still undecided.
+- Rendered per request, not cached, so an entry made private disappears straight away. Its own `og:image` waits for the server-rendered card (share cards above are drawn on the phone); until then it inherits the site's.
+
+### 2026-10-13: Landing page content for search and AI answers (GEO)
+The landing page was too thin for search engines or AI assistants to describe (171 words, one heading level). Added, all worded for the private beta (no open sign-up, no prices, no dates):
+- A "What is Stubbed?" section in plain, quotable sentences, a visible "What you can do" heading over the feature cards (now h3, plus "Bring your history" and "Public or private"), and a "Questions" FAQ. The FAQ list (`components/landing/Faq.tsx`) also feeds `FAQPage` structured data and `/llms.txt`, so they can't drift.
+- Structured data is now a graph: `WebSite`, `Organization`, `WebApplication` (no offers, since sign-ups aren't open) and `FAQPage`. Add `sameAs` links to `Organization` once there are social accounts.
+- Title 56 characters, description 158, the hero phone image has alt text.
+- The page is ~650 words. An audit tool asked for 800; padding a landing page reads worse to people and AI, so it stops there.
+- FAQ commitments to check: "logging your shows and getting your own data out will always be free" (from the ground rules in `docs/MONETISATION.md`), CSV export ("you'll be able to"), and "a native iPhone app is planned".
+
 ### 2026-10-13: Terms of Service and Privacy Policy
 Added `/terms` and `/privacy`, linked from the footer, plus a privacy link under the waitlist form. Written to cover the UK (UK GDPR, DPA 2018, PECR, Consumer Rights Act, Online Safety Act), the EU (GDPR, consumer law, DSA notice and action) and the US (CCPA/CPRA and other state laws, CalOPPA, COPPA, DMCA notice). Choices: minimum age 16 everywhere (simplest age that works for GDPR consent across the EU and keeps clear of COPPA); governing law England and Wales, with consumers keeping their local mandatory protections and courts; essential cookies only, so no cookie banner. Contact email is support@getstubbed.app. The owner's call: leave out the operator's legal name and postal address for the private beta; UK/EU GDPR and the UK E-Commerce Regulations expect both, so add them to `apps/web/src/lib/legal.ts` before public launch (the pages show them once set). Not legal advice: have a lawyer review before public launch. Update the policy in the same change whenever a feature starts collecting or sharing something new.

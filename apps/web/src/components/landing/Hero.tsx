@@ -57,7 +57,7 @@ export function Hero() {
               className="absolute top-1/2 left-1/2 aspect-square w-[min(100%,460px)] -translate-1/2 rounded-full bg-glow shadow-[0_0_0_28px_color-mix(in_srgb,var(--tint)_16%,transparent)]"
             />
             <div className="relative h-[460px] w-[310px] overflow-hidden mask-[linear-gradient(to_bottom,white_80%,transparent)]">
-              <PhoneFrame priority>
+              <PhoneFrame priority alt="The Stubbed diary on a phone">
                 <DiaryScreenMock />
               </PhoneFrame>
             </div>

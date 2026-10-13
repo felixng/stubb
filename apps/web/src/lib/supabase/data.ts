@@ -67,3 +67,14 @@ export async function getShareCard(id: string) {
     timesSeen: upTo.filter((r) => r.show_id === entry.show.id).length,
   };
 }
+
+export async function getOwnProfile() {
+  const { supabase, userId } = await ownerContext();
+  if (!userId) return null;
+  const { data } = await supabase
+    .from("profiles")
+    .select("handle, display_name")
+    .eq("id", userId)
+    .maybeSingle<{ handle: string | null; display_name: string | null }>();
+  return data;
+}

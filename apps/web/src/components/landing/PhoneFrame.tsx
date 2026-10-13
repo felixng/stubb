@@ -8,8 +8,9 @@ export function PhoneFrame({
   className = "",
   children,
   priority = false,
+  alt = "",
   ...props
-}: React.ComponentPropsWithoutRef<"div"> & { priority?: boolean }) {
+}: React.ComponentPropsWithoutRef<"div"> & { priority?: boolean; alt?: string }) {
   return (
     <div className={`relative aspect-366/729 ${className}`} {...props}>
       <div className="absolute inset-y-[calc(1/729*100%)] right-[calc(5/729*100%)] left-[calc(7/729*100%)] rounded-[calc(58/366*100%)/calc(58/729*100%)] shadow-lg" />
@@ -18,7 +19,7 @@ export function PhoneFrame({
       </div>
       <Image
         src={frame}
-        alt=""
+        alt={alt}
         className="pointer-events-none absolute inset-0 h-full w-full"
         unoptimized
         priority={priority}
