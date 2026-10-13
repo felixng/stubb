@@ -214,6 +214,11 @@ export function LogForm({ initial }: { initial?: EntryDraft }) {
       if (meta.time) body.set("time", meta.time);
       if (where.city) body.set("city", where.city);
       if (where.country) body.set("country", where.country);
+      // ~100 m precision: enough to search the area if no theatre was found.
+      if (meta.lat != null && meta.lng != null) {
+        body.set("lat", meta.lat.toFixed(3));
+        body.set("lng", meta.lng.toFixed(3));
+      }
       body.set(
         "candidates",
         JSON.stringify(candidates.map((c) => ({ osm_id: c.osm_id, name: c.name, distance_m: c.distance_m }))),
