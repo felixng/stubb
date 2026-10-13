@@ -19,8 +19,7 @@ import {
   type Visibility,
 } from "@/lib/entries";
 import type { Identification } from "@/lib/identify";
-import { IDENTIFY_PHOTO_EDGE, readPhotoMeta, reencodeJpeg, STORED_PHOTO_EDGE, type PhotoMeta } from "@/lib/photo";
-import type { NearbyPlaces } from "@/lib/places";
+import { lookupNearby, preparePhoto, requestIdentify, type Place, type PreparedPhoto } from "@/lib/import/photo-pipeline";
 import { createClient } from "@/lib/supabase/client";
 import { DateField } from "../DateField";
 import { RatingInput } from "./RatingInput";
@@ -190,15 +189,9 @@ export function LogForm({ initial }: { initial?: EntryDraft }) {
     setStarted(true);
     setDetect({ step: "reading" });
 
-    let meta: PhotoMeta;
-    let stored: Blob;
-    let small: Blob;
+    let prepared: PreparedPhoto;
     try {
-      [meta, stored, small] = await Promise.all([
-        readPhotoMeta(file),
-        reencodeJpeg(file, STORED_PHOTO_EDGE),
-        reencodeJpeg(file, IDENTIFY_PHOTO_EDGE, 0.8),
-      ]);
+      prepared = await preparePhoto(file);
     } catch {
       if (!current()) return;
       setPhotoError("Couldn’t read that photo. Try another, or fill in the details below.");
@@ -206,6 +199,7 @@ export function LogForm({ initial }: { initial?: EntryDraft }) {
       return;
     }
     if (!current()) return;
+    const { meta, stored, small } = prepared;
     setPhoto({ stored, previewUrl: URL.createObjectURL(stored) });
     setExistingPhoto(null);
     if (meta.date && !touched.current.date) {
@@ -215,32 +209,11 @@ export function LogForm({ initial }: { initial?: EntryDraft }) {
 
     // Nearby theatres, matched to venues already in the catalogue.
     let candidates: NearbyVenue[] = [];
-    let where = { city: null as string | null, country: null as string | null };
-    if (meta.lat != null && meta.lng != null) {
+    let where: Place = { city: null, country: null };
+    const point = meta.lat != null && meta.lng != null ? { lat: meta.lat, lng: meta.lng } : null;
+    if (point) {
       setDetect({ step: "nearby" });
-      try {
-        const res = await fetch("/api/photo/nearby", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ lat: meta.lat, lng: meta.lng }),
-        });
-        if (res.ok) {
-          const found = (await res.json()) as NearbyPlaces;
-          where = { city: found.city, country: found.country };
-          const osmIds = found.candidates.map((c) => c.osm_id);
-          const { data: known } = osmIds.length
-            ? await createClient().from("venues").select("id, name, city, country, lat, lng, osm_id").in("osm_id", osmIds)
-            : { data: [] as Venue[] };
-          candidates = found.candidates.map((c) => {
-            const row = (known as Venue[] | null)?.find((v) => v.osm_id === c.osm_id);
-            return row
-              ? { ...row, distance_m: c.distance_m }
-              : { name: c.name, city: c.city, country: c.country, lat: c.lat, lng: c.lng, osm_id: c.osm_id, distance_m: c.distance_m };
-          });
-        }
-      } catch {
-        // Offline or the lookup failed: carry on without nearby theatres.
-      }
+      ({ candidates, place: where } = await lookupNearby(point.lat, point.lng));
       if (!current()) return;
       setNearby(candidates);
       setPlace(where);
@@ -248,33 +221,16 @@ export function LogForm({ initial }: { initial?: EntryDraft }) {
       if (candidates.length === 1 && !touched.current.venue && !live.current.venue) autoVenue(candidates[0]);
     }
 
-    // Ask Claude for the show (and to choose between neighbouring theatres).
+    // Ask the AI for the show (and to choose between neighbouring theatres).
     setDetect({ step: "identifying" });
-    let result: Identification | null = null;
-    let note: string | undefined;
-    try {
-      const body = new FormData();
-      body.set("photo", small, "photo.jpg");
-      if (meta.date) body.set("date", meta.date);
-      if (meta.time) body.set("time", meta.time);
-      if (where.city) body.set("city", where.city);
-      if (where.country) body.set("country", where.country);
-      // ~100 m precision: enough to search the area if no theatre was found.
-      if (meta.lat != null && meta.lng != null) {
-        body.set("lat", meta.lat.toFixed(3));
-        body.set("lng", meta.lng.toFixed(3));
-      }
-      body.set(
-        "candidates",
-        JSON.stringify(candidates.map((c) => ({ osm_id: c.osm_id, name: c.name, distance_m: c.distance_m }))),
-      );
-      const res = await fetch("/api/photo/identify", { method: "POST", body });
-      if (res.ok) result = ((await res.json()) as { result: Identification | null }).result;
-      else if (res.status === 503) note = "Show detection isn’t set up yet.";
-      else note = "Couldn’t work out the show. Fill it in below.";
-    } catch {
-      note = "Couldn’t work out the show. Fill it in below.";
-    }
+    const outcome = await requestIdentify({ photos: [small], meta, point, place: where, candidates });
+    const result = outcome.result;
+    const note =
+      outcome.error === "not_configured"
+        ? "Show detection isn’t set up yet."
+        : outcome.error
+          ? "Couldn’t work out the show. Fill it in below."
+          : undefined;
     if (!current()) return;
     setDetect({ step: "done", result, note });
     if (!result) return;
