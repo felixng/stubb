@@ -4,6 +4,9 @@ import { useEffect, useRef, useState } from "react";
 
 import { CARD_DESIGNS, renderCard, type CardData } from "@/lib/share-card";
 
+// Stubbed's Instagram account, tagged in the caption and the copied text.
+const INSTAGRAM = "@stubbedapp";
+
 type Rendered = { file: File; url: string };
 type Variants = { photo: Rendered; clear: Rendered };
 
@@ -54,7 +57,7 @@ export function ShareSheet({ data, photoUrl, slug }: { data: CardData; photoUrl:
   const card = variants && (transparent ? variants.clear : variants.photo);
   const canShareFiles =
     typeof navigator !== "undefined" && card ? Boolean(navigator.canShare?.({ files: [card.file] })) : false;
-  const text = `${data.title} at ${data.venue}. Logged on Stubbed.`;
+  const text = `${data.title} at ${data.venue}. Logged on Stubbed ${INSTAGRAM}`;
 
   function goTo(i: number) {
     const el = scroller.current?.children[i] as HTMLElement | undefined;
@@ -159,7 +162,9 @@ export function ShareSheet({ data, photoUrl, slug }: { data: CardData; photoUrl:
         ))}
       </div>
 
-      <p className="text-center text-callout text-label">Share your show</p>
+      <p className="text-center text-callout text-label">
+        Share your show · Tag <span className="font-semibold">{INSTAGRAM}</span>
+      </p>
 
       {/* Scrolls sideways on narrow phones, like Hevy's row. */}
       <div className="-mx-4 flex items-start gap-3 overflow-x-auto px-4 pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
