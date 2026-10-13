@@ -22,6 +22,7 @@ import type { Identification } from "@/lib/identify";
 import { IDENTIFY_PHOTO_EDGE, readPhotoMeta, reencodeJpeg, STORED_PHOTO_EDGE, type PhotoMeta } from "@/lib/photo";
 import type { NearbyPlaces } from "@/lib/places";
 import { createClient } from "@/lib/supabase/client";
+import { DateField } from "../DateField";
 import { RatingInput } from "./RatingInput";
 import { ShowField } from "./ShowField";
 import { VenueField, type NearbyVenue, type VenueChoice } from "./VenueField";
@@ -290,19 +291,18 @@ export function LogForm({ initial }: { initial?: EntryDraft }) {
     setSaving(true);
     const supabase = createClient();
     const entryId = initial?.id ?? crypto.randomUUID();
+    // Which step failed, so the message can say (owner-only app, so the
+    // raw error is useful rather than alarming).
+    let step = "show";
     try {
-      const [showId, venueId] = await Promise.all([ensureShow(supabase, show), ensureVenue(supabase, venue)]);
+      const showId = await ensureShow(supabase, show);
+      step = "venue";
+      const venueId = await ensureVenue(supabase, venue);
 
-      // Upload first so the entry is written once, already pointing at it.
-      let path: string | null = existingPhoto ? (initial?.photoPath ?? null) : null;
-      if (photo) {
-        path = photoPath(userId, entryId);
-        const { error: upload } = await supabase.storage
-          .from(PHOTO_BUCKET)
-          .upload(path, photo.stored, { contentType: "image/jpeg", upsert: true, cacheControl: "3600" });
-        if (upload) throw upload;
-      }
-
+      // The entry first, so a failed photo upload never loses it. Upsert, so
+      // retrying after a later step failed doesn't trip over the same id.
+      step = "entry";
+      const keptPath = existingPhoto ? (initial?.photoPath ?? null) : null;
       const fields = {
         show_id: showId,
         venue_id: venueId,
@@ -310,37 +310,57 @@ export function LogForm({ initial }: { initial?: EntryDraft }) {
         rating,
         note: note.trim() || null,
         visibility,
-        photo_path: path,
+        photo_path: keptPath,
       };
       const { error: write } = initial
         ? await supabase.from("entries").update(fields).eq("id", entryId)
-        : await supabase.from("entries").insert({ id: entryId, ...fields });
+        : await supabase.from("entries").upsert({ id: entryId, ...fields });
       if (write) throw write;
 
       // Removed photo: the entry no longer points at it, so delete the file.
-      if (initial?.photoPath && !path) {
+      if (initial?.photoPath && !keptPath && !photo) {
         await supabase.storage.from(PHOTO_BUCKET).remove([initial.photoPath]);
       }
 
+      step = "trips";
       const before = new Set(initial?.collectionIds ?? []);
-      const after = new Set(collectionIds);
-      const added = [...after].filter((c) => !before.has(c));
-      const removed = [...before].filter((c) => !after.has(c));
+      const added = collectionIds.filter((c) => !before.has(c));
+      const removed = [...before].filter((c) => !collectionIds.includes(c));
       if (added.length) {
         const { error: link } = await supabase
           .from("entry_collections")
-          .insert(added.map((collection_id) => ({ entry_id: entryId, collection_id })));
+          .upsert(added.map((collection_id) => ({ entry_id: entryId, collection_id })), { ignoreDuplicates: true });
         if (link) throw link;
       }
       if (removed.length) {
         await supabase.from("entry_collections").delete().eq("entry_id", entryId).in("collection_id", removed);
       }
 
-      router.push(`/app/entries/${entryId}${editing ? "" : "?new=1"}`);
+      // The photo last: if it fails, the entry is still saved without it.
+      let photoFailed = false;
+      if (photo) {
+        const path = photoPath(userId, entryId);
+        const { error: upload } = await supabase.storage
+          .from(PHOTO_BUCKET)
+          .upload(path, photo.stored, { contentType: "image/jpeg", upsert: true, cacheControl: "3600" });
+        const { error: link } = upload
+          ? { error: upload }
+          : await supabase.from("entries").update({ photo_path: path }).eq("id", entryId);
+        if (link) {
+          console.error("Saving the photo failed", link);
+          photoFailed = true;
+        }
+      }
+
+      const params = new URLSearchParams();
+      if (!editing) params.set("new", "1");
+      if (photoFailed) params.set("photo", "failed");
+      router.push(`/app/entries/${entryId}${params.size ? `?${params}` : ""}`);
       router.refresh();
     } catch (err) {
-      console.error("Saving the entry failed", err);
-      setError("Couldn’t save. Check your connection and try again.");
+      console.error(`Saving the entry failed at "${step}"`, err);
+      const detail = err && typeof err === "object" && "message" in err ? String(err.message) : String(err);
+      setError(`Couldn’t save the ${step}: ${detail}`);
       setSaving(false);
     }
   }
@@ -514,18 +534,15 @@ export function LogForm({ initial }: { initial?: EntryDraft }) {
         <label htmlFor={`${id}-date`} className={label}>
           Date
         </label>
+        <DateField
+          id={`${id}-date`}
+          value={date}
+          onChange={(v) => {
+            touched.current.date = true;
+            setDate(v);
+          }}
+        />
         <div className="flex flex-wrap items-center gap-2">
-          <input
-            id={`${id}-date`}
-            type="date"
-            required
-            value={date}
-            onChange={(e) => {
-              touched.current.date = true;
-              setDate(e.target.value);
-            }}
-            className="block min-h-[50px] rounded-md border border-separator bg-surface px-4 text-body text-label shadow-sm focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus"
-          />
           {(today
             ? [
                 ["Today", today],

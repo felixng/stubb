@@ -20,6 +20,17 @@ npx supabase db reset     # re-apply migrations from scratch
 npx supabase test db      # run tests/ (also runs in CI)
 ```
 
+## Hosted project: apply new migrations before merging
+
+Nothing applies migrations to the hosted project automatically. When a PR adds a file under `migrations/`, apply it **before** merging, or the deployed app will call tables, functions or buckets that don't exist yet (this happened with `entry_photos`: saving failed until the bucket was created).
+
+```bash
+npx supabase link --project-ref <project-ref>   # once
+npx supabase db push                            # applies migrations not yet on the hosted project
+```
+
+Check what's applied with `npx supabase migration list`.
+
 ## Schema v1 (#12)
 
 | Table | Read | Write |
