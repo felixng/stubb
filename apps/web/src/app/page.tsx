@@ -17,7 +17,7 @@ export default function Home() {
     <div data-theme="light" className="flex flex-1 flex-col">
       <header>
         <Container className="flex items-center justify-between gap-4 py-6 sm:py-8">
-          <Wordmark size={28} />
+          <Wordmark size={28} href="/" />
           <div className="flex items-center gap-2">
             <p className="inline-flex min-h-7 items-center gap-2 rounded-pill bg-fill px-3 text-footnote font-medium text-label">
               <span

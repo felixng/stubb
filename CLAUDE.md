@@ -71,7 +71,7 @@ Internally, early effort (seed catalogue, marketing, outreach) focuses on the US
 
 ### Later (explicitly out of scope for now)
 - Android app. (A native SwiftUI iOS app is now planned about a month after the web validation build; see `docs/ARCHITECTURE.md`.)
-- Any monetisation (the owner is sceptical of subscriptions for this audience; ideas like ticket affiliate links or printed wrap products may be revisited later).
+- Any monetisation. Ideas are captured under "Monetisation ideas" below and in [`docs/MONETISATION.md`](docs/MONETISATION.md); none is scheduled.
 - Public API.
 
 ### Ideas to explore (not scheduled, do not build without the owner's go-ahead)
@@ -97,6 +97,17 @@ These are captured so design choices now don't block them later. None of them be
   2. **Log in with Discord:** Supabase Auth supports Discord OAuth out of the box.
   3. **Link a group to a Discord server:** e.g. sync membership or roles with a group. Needs a hosted bot, so it costs real effort; only worth it once groups exist.
 - Pairs naturally with groups: many fan communities like the Minceuencers already live on Discord.
+
+**Monetisation ideas**
+- The owner is sceptical of subscriptions for this audience, so anything paid must sit on top of a complete free product: logging, diary, stats, share cards and CSV export stay free.
+- Candidate paid features (comparable pricing in [`docs/MONETISATION.md`](docs/MONETISATION.md)):
+  1. **Multiple photos per entry.** Free: one photo per entry. Paid: several. Rough price idea: £3/month or £15/year.
+  2. **Import credits.** Email/photo import costs us real LLM spend, so a free allowance, then paid packs of import runs (one-off purchase, not a subscription).
+  3. **Long-range insights.** Free stats cover the current and previous year; paid unlocks multi-year trends and comparisons (in the style of Bevel's long-term insights).
+- Other ideas from earlier: ticket affiliate links, printed year-end wrap products.
+- **[Decision needed]** Whether to charge at all, which features, subscription vs. one-off, and price points.
+- Design so these don't need a rewrite later: store photos in a separate table rather than the single `entries.photo_url` column, and log each import run per user (`import_drafts` already does).
+- Blockers to remember: Vercel Hobby is non-commercial only (see `docs/ARCHITECTURE.md`), and iOS digital purchases must go through Apple in-app purchase.
 
 **Theatregoing calendar (habit heatmap)**
 - A GitHub-contributions-style grid showing how often the user goes to the theatre, with each cell shaded by the number of entries in that period.
