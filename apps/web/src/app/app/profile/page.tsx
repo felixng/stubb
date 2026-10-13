@@ -9,10 +9,15 @@ export const metadata: Metadata = { title: "Profile" };
 async function Form() {
   const [{ userId }, profile] = await Promise.all([ownerContext(), getOwnProfile()]);
   if (!userId) return null;
-  return <ProfileForm userId={userId} initial={profile ?? { handle: null, display_name: null }} />;
+  return (
+    <ProfileForm
+      userId={userId}
+      initial={profile ?? { handle: null, display_name: null, bio: null, link: null, is_private: false }}
+    />
+  );
 }
 
-// Handle and display name for the public profile (/@handle).
+// Everything on the public profile (/@handle), and whether it is private.
 export default function ProfilePage() {
   return (
     <section className="flex flex-col gap-5">

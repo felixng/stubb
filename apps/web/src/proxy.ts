@@ -8,5 +8,5 @@ export async function proxy(request: NextRequest) {
 // Only signed-in surfaces need the session refreshed. Keeping the public
 // landing page and share cards out of the proxy keeps them fast and cacheable.
 export const config = {
-  matcher: ["/app/:path*", "/login", "/auth/:path*"],
+  matcher: ["/app/:path*", "/login", "/welcome", "/auth/:path*"],
 };

@@ -5,26 +5,26 @@ import { useRouter } from "next/navigation";
 import { useId, useState } from "react";
 
 import { Button } from "@/components/ui/Button";
-import { HANDLE_PATTERN } from "@/lib/profile-handle";
+import { BIO_MAX, NAME_MAX, handleProblem, normalizeHandle, normalizeLink } from "@/lib/profile-handle";
+import type { OwnProfile } from "@/lib/supabase/data";
 import { createClient } from "@/lib/supabase/client";
 import { fieldClass } from "./log/Typeahead";
 
 const label = "text-subheadline font-medium text-label";
+const optional = <span className="font-normal text-label-secondary">(optional)</span>;
 
-// Handle and display name. Setting a handle is what turns the public profile
-// (/@handle) on; clearing it turns it off. RLS limits the write to the
-// signed-in user's own row.
-export function ProfileForm({
-  userId,
-  initial,
-}: {
-  userId: string;
-  initial: { handle: string | null; display_name: string | null };
-}) {
+// Handle, name, bio, link and the private switch. Everyone has a handle (set
+// at /welcome), so the public profile (/@handle) always exists; going private
+// hides its shows, trips and stats from everyone else. RLS limits the write
+// to the signed-in user's own row and enforces the privacy.
+export function ProfileForm({ userId, initial }: { userId: string; initial: OwnProfile }) {
   const id = useId();
   const router = useRouter();
   const [handle, setHandle] = useState(initial.handle ?? "");
   const [displayName, setDisplayName] = useState(initial.display_name ?? "");
+  const [bio, setBio] = useState(initial.bio ?? "");
+  const [link, setLink] = useState(initial.link ?? "");
+  const [isPrivate, setIsPrivate] = useState(initial.is_private);
   const [saved, setSaved] = useState(initial.handle);
   const [saving, setSaving] = useState(false);
   const [status, setStatus] = useState<{ ok: boolean; text: string } | null>(null);
@@ -32,14 +32,21 @@ export function ProfileForm({
   async function save(e: React.FormEvent) {
     e.preventDefault();
     setStatus(null);
-    const h = handle.trim().replace(/^@/, "").toLowerCase();
-    if (h && !HANDLE_PATTERN.test(h)) {
-      return setStatus({ ok: false, text: "Use 3–20 lowercase letters, numbers or underscores." });
-    }
+    const h = normalizeHandle(handle);
+    const problem = handleProblem(h);
+    if (problem) return setStatus({ ok: false, text: problem });
+    const url = normalizeLink(link);
+    if (link.trim() && !url) return setStatus({ ok: false, text: "That link doesn’t look like a web address." });
     setSaving(true);
     const { error } = await createClient()
       .from("profiles")
-      .update({ handle: h || null, display_name: displayName.trim() || null })
+      .update({
+        handle: h,
+        display_name: displayName.trim() || null,
+        bio: bio.trim() || null,
+        link: url,
+        is_private: isPrivate,
+      })
       .eq("id", userId);
     setSaving(false);
     if (error) {
@@ -49,8 +56,9 @@ export function ProfileForm({
       });
     }
     setHandle(h);
-    setSaved(h || null);
-    setStatus({ ok: true, text: h ? "Saved. Your profile is live." : "Saved. Your public profile is off." });
+    setLink(url ?? "");
+    setSaved(h);
+    setStatus({ ok: true, text: isPrivate ? "Saved. Your profile is private." : "Saved. Your profile is public." });
     router.refresh();
   }
 
@@ -69,32 +77,87 @@ export function ProfileForm({
             className={`${fieldClass} pl-9`}
             value={handle}
             maxLength={21}
+            required
             autoCapitalize="none"
             autoCorrect="off"
             spellCheck={false}
             placeholder="sillyelphaba"
             aria-describedby={`${id}-handle-hint`}
-            onChange={(e) => setHandle(e.target.value.toLowerCase())}
+            onChange={(e) => setHandle(normalizeHandle(e.target.value))}
           />
         </div>
         <p id={`${id}-handle-hint`} className="text-footnote text-label-secondary">
-          Your public profile is at /@{handle.replace(/^@/, "") || "handle"} and shows public entries only. Leave
-          empty to turn it off.
+          Your profile is at /@{handle || "handle"}.
         </p>
       </div>
       <div className="flex flex-col gap-2">
         <label htmlFor={`${id}-name`} className={label}>
-          Display name <span className="font-normal text-label-secondary">(optional)</span>
+          Display name {optional}
         </label>
         <input
           id={`${id}-name`}
           className={fieldClass}
           value={displayName}
-          maxLength={50}
+          maxLength={NAME_MAX}
           autoComplete="name"
           onChange={(e) => setDisplayName(e.target.value)}
         />
       </div>
+      <div className="flex flex-col gap-2">
+        <div className="flex items-baseline justify-between gap-2">
+          <label htmlFor={`${id}-bio`} className={label}>
+            Bio {optional}
+          </label>
+          <span className="text-footnote text-label-secondary">
+            {bio.length}/{BIO_MAX}
+          </span>
+        </div>
+        <textarea
+          id={`${id}-bio`}
+          className={`${fieldClass} resize-none py-3`}
+          rows={3}
+          value={bio}
+          maxLength={BIO_MAX}
+          onChange={(e) => setBio(e.target.value)}
+        />
+      </div>
+      <div className="flex flex-col gap-2">
+        <label htmlFor={`${id}-link`} className={label}>
+          Link {optional}
+        </label>
+        <input
+          id={`${id}-link`}
+          className={fieldClass}
+          type="url"
+          inputMode="url"
+          autoCapitalize="none"
+          autoCorrect="off"
+          spellCheck={false}
+          value={link}
+          placeholder="instagram.com/yourname"
+          onChange={(e) => setLink(e.target.value)}
+        />
+      </div>
+      <label
+        htmlFor={`${id}-private`}
+        className="flex cursor-pointer items-start justify-between gap-4 rounded-md border border-separator bg-surface px-4 py-3 shadow-sm"
+      >
+        <span className="flex flex-col gap-0.5">
+          <span className="text-body font-medium text-label">Private profile</span>
+          <span id={`${id}-private-hint`} className="text-footnote text-label-secondary">
+            Only you see your shows, trips and stats. Others see your handle, name, bio and link.
+          </span>
+        </span>
+        <input
+          id={`${id}-private`}
+          type="checkbox"
+          role="switch"
+          checked={isPrivate}
+          aria-describedby={`${id}-private-hint`}
+          onChange={(e) => setIsPrivate(e.target.checked)}
+          className="mt-1 size-5 shrink-0 accent-tint focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus"
+        />
+      </label>
       {status && (
         <p role={status.ok ? "status" : "alert"} className={`text-footnote ${status.ok ? "text-label" : "text-destructive"}`}>
           {status.text}
@@ -108,7 +171,7 @@ export function ProfileForm({
           href={`/@${saved}`}
           className="inline-flex min-h-[50px] items-center justify-center rounded-pill bg-tint-fill px-6 text-headline text-tint-text hover:bg-fill focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus"
         >
-          View public profile
+          View profile
         </Link>
       )}
     </form>

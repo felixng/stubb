@@ -139,7 +139,7 @@ Owner's info. The share screen's caption reads "Share your show · Tag @stubbeda
 
 ### 2026-10-13: Public profile at /@handle
 Modelled on Hevy's profile (owner's screenshots). `/@handle` (rewritten to `app/u/[handle]`) shows a cover strip of up to five recent public photos, avatar, handle and display name, three stats (shows, theatres, cities), a month calendar, and public entries as cards, newest first.
-- **Opt-in is the handle** (owner's call): a profile is live once a handle is set in `/app/profile` and off when it's cleared. No separate switch.
+- **Opt-in is the handle** (owner's call): a profile is live once a handle is set in `/app/profile` and off when it's cleared. No separate switch. *Superseded below by "Private profiles, Hevy style".*
 - **Public entries only, for everyone**, including the owner looking at their own page. The page reads with the publishable key and no session (`createPublicClient`), so RLS can't return private rows. Stats come from `public_profile_stats(profile_id)` in Postgres, so iOS gets the same numbers.
 - **Month calendar** (owner's go-ahead for this slice of the "theatregoing calendar" idea): one month at a time, Monday first, show days filled in coral and linked to their entry. It opens on the month of the latest show, since most months have none. Granularity toggles and heatmap shading are still undecided.
 - Rendered per request, not cached, so an entry made private disappears straight away. Its own `og:image` waits for the server-rendered card (share cards above are drawn on the phone); until then it inherits the site's.
@@ -157,3 +157,13 @@ Added `/terms` and `/privacy`, linked from the footer, plus a privacy link under
 
 ### 2026-10-13: The entry page is the share screen
 Owner's call: sharing is first class. The separate `/app/entries/[id]/share` page is gone; the entry page (`/app/entries/[id]`, where logging lands with "Logged. Share it?") opens with the card carousel and action row. **Edit** is now one of the actions in that row, after Copy text. Below the actions: the entry's type, full date, note, trips and visibility, then Delete. Replaces the "Share button on the entry page" part of "Share cards are drawn on the phone".
+
+### 2026-10-13: Profile onboarding at /welcome
+Owner's call: a signed-in user with no handle is sent to `/welcome` before any `/app` page, to set their name (required), handle (required), a bio (optional, ≤ 160 characters) and one link (optional, e.g. Instagram; `https://` is added to a bare `instagram.com/you`). `profiles` gains public `bio` and `link` columns (migration `20261013130000_profile_onboarding.sql`); the link must be an http(s) URL in Postgres too, so it is safe to render as a link later. The proxy does the check; once a handle exists it remembers that in an `httpOnly` cookie holding the user id, so later navigations skip the profile lookup. The handle field checks availability as it's typed, and the save still catches a clash. No reserved-handle list yet.
+
+### 2026-10-13: Private profiles, Hevy style
+Owner's call, after looking at how Hevy does it. Replaces "opt-in is the handle":
+- **Everyone has a handle and a profile page.** The handle is set at `/welcome` and can be changed but not removed (a trigger refuses setting it back to null).
+- **Private profile switch** in `/app/profile` (`profiles.is_private`, default off). A private `/@handle` shows only the handle, name, avatar, bio and link, with "This profile is private" and no stats, calendar, cover photos or entries, and isn't indexed. Enforced in RLS, not just on the page: other people can't read a private profile's entries or trips (even public ones), their trip links or their photos. Per-entry visibility and the default visibility are unchanged, like Hevy's per-workout setting.
+- `/app/profile` also edits bio and link, and `/@handle` shows them.
+- **Follows later (Phase 3).** Then "private" becomes "approved followers can see it", as in Hevy, via follow requests.

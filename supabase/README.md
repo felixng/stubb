@@ -35,9 +35,9 @@ Check what's applied with `npx supabase migration list`.
 
 | Table | Read | Write |
 |-------|------|-------|
-| `profiles` | Everyone (anon: handle, display name, avatar only) | Own row; created by a trigger on sign-up |
+| `profiles` | Everyone (anon: handle, display name, avatar, bio, link only) | Own row; created by a trigger on sign-up |
 | `shows`, `venues` | Everyone | Signed-in users add; creators edit their own unverified rows; `verified` is set from the dashboard |
-| `entries`, `collections` | Everyone if `visibility = 'public'`; owner always | Owner only |
+| `entries`, `collections` | Everyone if `visibility = 'public'` and the owner's profile isn't private; owner always | Owner only |
 | `entry_collections` | Everyone if both ends are public; owner always | Owner, linking own entries to own collections |
 
 | Storage `entry-photos` | Owner always; everyone else only while the entry using the file is public | Owner, into `{user_id}/` only. JPEG ≤ 5 MB, re-encoded on the device so it carries no EXIF/GPS |

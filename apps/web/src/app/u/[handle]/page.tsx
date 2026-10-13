@@ -8,8 +8,8 @@ import { PublicEntryCard } from "@/components/profile/PublicEntryCard";
 import { getPublicProfile } from "@/lib/profile";
 
 // Public profile, served at /@handle (rewritten here in next.config.ts).
-// Opt-in: only profiles with a handle have one, and it shows public entries
-// only. Reads go through the publishable key, never the visitor's session.
+// Every user has one (the handle is set at /welcome). It shows public entries
+// only, and a private profile shows just its header. Reads go through the publishable key, never the visitor's session.
 // Follows the visitor's light/dark setting (docs/DESIGN.md).
 
 export async function generateMetadata({ params }: PageProps<"/u/[handle]">): Promise<Metadata> {
@@ -18,13 +18,22 @@ export async function generateMetadata({ params }: PageProps<"/u/[handle]">): Pr
   if (!data) return { title: "Not found — Stubbed", robots: { index: false } };
   const { profile, stats } = data;
   const name = profile.display_name ? `${profile.display_name} (@${profile.handle})` : `@${profile.handle}`;
-  const description = `${count(stats.shows, "show")} at ${count(stats.venues, "theatre")}. ${name}’s theatre diary on Stubbed.`;
+  const description = stats
+    ? `${count(stats.shows, "show")} at ${count(stats.venues, "theatre")}. ${name}’s theatre diary on Stubbed.`
+    : `${name}’s theatre diary on Stubbed is private.`;
   return {
     title: `${name} — Stubbed`,
     description,
+    // Nothing worth indexing on a private profile.
+    ...(profile.is_private ? { robots: { index: false } } : {}),
     alternates: { canonical: `/@${profile.handle}` },
     openGraph: { type: "profile", title: name, description, url: `/@${profile.handle}`, username: profile.handle },
   };
+}
+
+// "https://www.instagram.com/you/" → "instagram.com/you"
+function displayLink(link: string) {
+  return link.replace(/^https?:\/\/(www\.)?/, "").replace(/\/$/, "");
 }
 
 function count(n: number, noun: string) {
@@ -63,22 +72,46 @@ async function Profile({ params }: PageProps<"/u/[handle]">) {
             </h1>
             {profile.display_name && <p className="text-subheadline text-label-secondary">{profile.display_name}</p>}
           </div>
-          <dl className="flex gap-8">
-            {[
-              ["Shows", stats.shows],
-              ["Theatres", stats.venues],
-              ["Cities", stats.cities],
-            ].map(([label, value]) => (
-              <div key={label} className="flex flex-col-reverse">
-                <dt className="text-footnote text-label-secondary">{label}</dt>
-                <dd className="text-title-2 font-display text-label tabular-nums">{value}</dd>
-              </div>
-            ))}
-          </dl>
+          {(profile.bio || profile.link) && (
+            <div className="flex flex-col gap-1">
+              {profile.bio && <p className="whitespace-pre-line text-body text-label">{profile.bio}</p>}
+              {profile.link && (
+                <a
+                  href={profile.link}
+                  rel="nofollow ugc noopener noreferrer"
+                  target="_blank"
+                  className="w-fit max-w-full truncate text-subheadline font-semibold text-tint-text underline-offset-2 hover:underline"
+                >
+                  {displayLink(profile.link)}
+                </a>
+              )}
+            </div>
+          )}
+          {stats && (
+            <dl className="flex gap-8">
+              {[
+                ["Shows", stats.shows],
+                ["Theatres", stats.venues],
+                ["Cities", stats.cities],
+              ].map(([label, value]) => (
+                <div key={label} className="flex flex-col-reverse">
+                  <dt className="text-footnote text-label-secondary">{label}</dt>
+                  <dd className="text-title-2 font-display text-label tabular-nums">{value}</dd>
+                </div>
+              ))}
+            </dl>
+          )}
         </div>
       </section>
 
-      {entries.length === 0 ? (
+      {profile.is_private ? (
+        <div className="flex flex-col items-center gap-2 rounded-md border border-separator bg-surface px-6 py-12 text-center shadow-sm">
+          <h2 className="text-headline text-label">This profile is private</h2>
+          <p className="max-w-[320px] text-subheadline text-label-secondary">
+            @{profile.handle} keeps their shows to themselves.
+          </p>
+        </div>
+      ) : entries.length === 0 ? (
         <div className="flex flex-col items-center gap-2 rounded-md border border-separator bg-surface px-6 py-12 text-center shadow-sm">
           <h2 className="text-headline text-label">No public shows yet</h2>
           <p className="max-w-[320px] text-subheadline text-label-secondary">
