@@ -29,6 +29,8 @@ npx supabase test db      # run tests/ (also runs in CI)
 | `entries`, `collections` | Everyone if `visibility = 'public'`; owner always | Owner only |
 | `entry_collections` | Everyone if both ends are public; owner always | Owner, linking own entries to own collections |
 
+| Storage `entry-photos` | Owner always; everyone else only while the entry using the file is public | Owner, into `{user_id}/` only. JPEG ≤ 5 MB, re-encoded on the device so it carries no EXIF/GPS |
+
 New entries and collections take `visibility` from `profiles.default_visibility` (default `public`) unless given.
 
 ## Auth (#13)
