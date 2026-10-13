@@ -115,3 +115,11 @@ Owner's question after a photo at the National Theatre listed 5 nearby theatres 
 
 ### 2026-10-13: Default AI chain is Claude Opus 5.5, then Claude Haiku 5.5
 Owner's call: `DEFAULT_CHAIN` in `lib/ai/index.ts` is now `anthropic:claude-opus-5-5,anthropic:claude-haiku-5-5`; Groq is no longer first and the other providers are out of the default. Haiku runs when Opus errors, declines, or (for photo identify) can't name the show at medium or high confidence. Groq, Gemini and Cerebras keep working when named in `AI_MODELS` or picked on the import screen. No `AI_MODELS` overrides are set in Vercel, so this applies to the log form and the import tool's "Default chain" option.
+
+### 2026-10-13: Admin role; import model comparison is admin-only
+Owner's call. An admin is a user whose Supabase Auth `app_metadata.role` is `"admin"`. Only the service role can write `app_metadata` (users can't, unlike `user_metadata`), and it rides in the session token, so the check needs no table or migration. Make an account admin in the Supabase SQL editor, then sign out and in again so the token picks it up:
+`update auth.users set raw_app_meta_data = raw_app_meta_data || '{"role":"admin"}' where email = '<owner email>';`
+- Admin pages live under `/app/admin` (index: `/app/admin`; model comparison: `/app/admin/import`). Non-admins get a 404 there, from the proxy and again from the page itself.
+- Everywhere else an admin sees exactly what any user sees, so the owner can test the real flow. Nothing outside `/app/admin` links to it; open it by URL.
+- `/app/import` stays for everyone, without the model picker or comparison: it uses the default AI chain, like the log form.
+- Server side, `/api/ai/providers` and the `model` option on `/api/import/email` and `/api/photo/identify` are admin-only (403 otherwise).

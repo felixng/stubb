@@ -1,7 +1,7 @@
 import { parseModelChoice } from "@/lib/ai";
 import { identifyConfigured, identifyShow, type IdentifyInput } from "@/lib/identify";
 import { MAX_IDENTIFY_PHOTOS } from "@/lib/import/drafts";
-import { requireUserId } from "@/lib/supabase/require-user";
+import { currentUser } from "@/lib/supabase/require-user";
 
 // The photo-identify call can include several web searches.
 export const maxDuration = 90;
@@ -11,17 +11,19 @@ const MAX_PHOTO_BYTES = 1_500_000;
 // POST multipart: photo (JPEG re-encoded on the device; repeat the field for
 // up to 4 photos of one visit, #18), date, time, city,
 // country, lat/lng (rounded), candidates (JSON), optional model
-// ("provider[:model]", runs only that one) → a suggested show and venue (#14).
+// ("provider[:model]", runs only that one; admins only) → a suggested show and venue (#14).
 // 503 "not_configured" until an AI key (GROQ_API_KEY or ANTHROPIC_API_KEY)
 // is set; the form then just skips the suggestion.
 export async function POST(request: Request) {
-  if (!(await requireUserId())) {
+  const user = await currentUser();
+  if (!user) {
     return Response.json({ error: "unauthorized" }, { status: 401 });
   }
   const form = await request.formData().catch(() => null);
-  // Optional "provider" or "provider:model" from the import tool's picker.
+  // Optional "provider" or "provider:model" from the admin import tool's picker.
   const models = parseModelChoice(form?.get("model"));
   if (models === null) return Response.json({ error: "invalid_model" }, { status: 400 });
+  if (models && !user.admin) return Response.json({ error: "forbidden" }, { status: 403 });
   if (!identifyConfigured(models)) {
     return Response.json({ error: models ? "model_unavailable" : "not_configured" }, { status: models ? 400 : 503 });
   }

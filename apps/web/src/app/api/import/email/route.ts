@@ -1,7 +1,7 @@
 import { parseModelChoice } from "@/lib/ai";
 import { MAX_EMAIL_CHARS } from "@/lib/import/email-parse";
 import { emailConfigured, extractEmail } from "@/lib/import/extract-email";
-import { requireUserId } from "@/lib/supabase/require-user";
+import { currentUser } from "@/lib/supabase/require-user";
 
 export const maxDuration = 60;
 
@@ -27,13 +27,16 @@ const field = (v: unknown, max: number) => (typeof v === "string" && v.trim() ? 
 // POST { subject, from, sent, text, model? } → the shows one email books
 // (#17), and which model read it. The client decodes the email file and
 // sends one email per call, a few at a time. `model` ("provider[:model]")
-// runs only that model. 503 "not_configured" until an AI key is set.
+// runs only that model; admins only (the admin import tool), everyone else
+// gets the default chain. 503 "not_configured" until an AI key is set.
 export async function POST(request: Request) {
-  const userId = await requireUserId();
-  if (!userId) return Response.json({ error: "unauthorized" }, { status: 401 });
+  const user = await currentUser();
+  if (!user) return Response.json({ error: "unauthorized" }, { status: 401 });
+  const userId = user.id;
 
   const body = (await request.json().catch(() => null)) as Record<string, unknown> | null;
   const models = parseModelChoice(body?.model);
+  if (models && !user.admin) return Response.json({ error: "forbidden" }, { status: 403 });
   if (models === null) return Response.json({ error: "invalid_model" }, { status: 400 });
   if (!emailConfigured(models)) {
     return Response.json({ error: models ? "model_unavailable" : "not_configured" }, { status: models ? 400 : 503 });

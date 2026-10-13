@@ -84,7 +84,11 @@ function fromIdentification(result: Identification, date: string | null): Extrac
 // photos, see what was read from each, correct the drafts, and save the ones
 // you tick. Nothing is written until "Save". Built from the shared
 // lib/import steps so a mobile-first flow can reuse them.
-export function ImportTool() {
+//
+// `admin` (the admin import page only) adds the model picker and compares
+// models side by side. Without it, every source goes to the default chain,
+// exactly as for any other user.
+export function ImportTool({ admin = false }: { admin?: boolean }) {
   const id = useId();
   const [jobs, setJobs] = useState<Job[]>([]);
   const [drafts, setDrafts] = useState<Draft[]>([]);
@@ -93,7 +97,7 @@ export function ImportTool() {
   const [dragging, setDragging] = useState(false);
   const [notice, setNotice] = useState<string | null>(null);
   // COMPARE_ALL (default), DEFAULT_CHAIN, or "provider[:model]" (see ModelPicker).
-  const [model, setModel] = useState(COMPARE_ALL);
+  const [model, setModel] = useState(admin ? COMPARE_ALL : DEFAULT_CHAIN);
   const [providers, setProviders] = useState<ProvidersInfo | null>(null);
 
   const [userId, setUserId] = useState<string | null>(null);
@@ -141,11 +145,12 @@ export function ImportTool() {
   useEffect(() => () => urls.current.forEach((u) => URL.revokeObjectURL(u)), []);
 
   useEffect(() => {
+    if (!admin) return;
     fetch("/api/ai/providers")
       .then((res) => (res.ok ? res.json() : null))
       .then((data: ProvidersInfo | null) => setProviders(data))
       .catch(() => setProviders(null));
-  }, []);
+  }, [admin]);
 
   const updateJob = (ref: string, patch: Partial<Job>) =>
     setJobs((js) => js.map((j) => (j.ref === ref ? { ...j, ...patch } : j)));
@@ -522,7 +527,7 @@ export function ImportTool() {
         <h2 id={`${id}-add`} className="text-title-2 font-display text-label">
           Add emails or photos
         </h2>
-        <ModelPicker value={model} onChange={setModel} info={providers} />
+        {admin && <ModelPicker value={model} onChange={setModel} info={providers} />}
         <div
           onDragOver={(e) => {
             e.preventDefault();
@@ -603,11 +608,11 @@ export function ImportTool() {
 
       {/* What we read from each source */}
       {jobs.length > 0 && (
-        // Wider than the app column on desktop, so compared answers sit side
-        // by side; the column width on phones.
+        // Admin: wider than the app column on desktop, so compared answers sit
+        // side by side; the column width on phones.
         <section
           aria-labelledby={`${id}-read`}
-          className="flex flex-col gap-3 lg:relative lg:left-1/2 lg:w-[min(1120px,calc(100vw-4rem))] lg:-translate-x-1/2"
+          className={`flex flex-col gap-3 ${admin ? "lg:relative lg:left-1/2 lg:w-[min(1120px,calc(100vw-4rem))] lg:-translate-x-1/2" : ""}`}
         >
           <div className="flex items-center justify-between gap-3">
             <h2 id={`${id}-read`} className="text-title-2 font-display text-label">
@@ -659,7 +664,7 @@ export function ImportTool() {
                         ? [
                             j.found ? `${j.found} show${j.found === 1 ? "" : "s"} found` : null,
                             j.detail,
-                            j.attempts && j.chosen != null && `drafts from ${modelName(j.attempts.find((a) => a.model === j.chosen))}`,
+                            admin && j.attempts && j.chosen != null && `drafts from ${modelName(j.attempts.find((a) => a.model === j.chosen))}`,
                           ]
                             .filter(Boolean)
                             .join(" · ") || "Done"
@@ -668,7 +673,7 @@ export function ImportTool() {
                           : STATE_TEXT[j.state]}
                     </p>
                   </div>
-                  {j.attempts && j.attempts.length > 1 && (
+                  {admin && j.attempts && j.attempts.length > 1 && (
                     <CompareGrid
                       attempts={j.attempts}
                       names={providerNames}

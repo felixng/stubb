@@ -4,9 +4,10 @@ import { ImportTool } from "@/components/app/import/ImportTool";
 
 export const metadata: Metadata = { title: "Import" };
 
-// Bulk import from confirmation emails or photos (#17, #18). Testing
-// version, used on desktop for now; the steps live in lib/import so a
-// mobile-first flow can reuse them.
+// Bulk import from confirmation emails or photos (#17, #18), as every user
+// gets it: the default AI chain, no model picker. Admins compare models at
+// /app/admin/import. The steps live in lib/import so a mobile-first flow can
+// reuse them.
 export default function ImportPage() {
   return (
     <section className="flex flex-col gap-5">
