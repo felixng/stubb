@@ -8,8 +8,8 @@ export const maxDuration = 60;
 // Best-effort per-user limit. In memory, so it resets per server instance,
 // but it stops a runaway client loop from draining the spend limit.
 const WINDOW_MS = 10 * 60_000;
-// Compare mode sends each email to every provider and every compared Claude
-// model, so up to 7 calls each.
+// Compare mode sends each email to every provider and both compared Claude
+// models, so up to 5 calls each.
 const MAX_PER_WINDOW = 1000;
 const calls = new Map<string, number[]>();
 

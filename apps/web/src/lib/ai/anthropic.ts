@@ -3,9 +3,9 @@
 import Anthropic from "@anthropic-ai/sdk";
 import type { AiProvider } from "./types";
 
-// The Claude models the import tool compares side by side: fastest and
-// cheapest (Haiku) to most capable and priciest (Fable).
-const COMPARE_MODELS = ["claude-opus-5-5", "claude-sonnet-5-5", "claude-haiku-5-5", "claude-fable-5-1"];
+// The Claude models the import tool compares side by side: the most capable
+// default (Opus) against the fastest and cheapest (Haiku). Owner's pick.
+const COMPARE_MODELS = ["claude-opus-5-5", "claude-haiku-5-5"];
 
 export const anthropic: AiProvider = {
   id: "anthropic",

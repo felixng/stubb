@@ -133,7 +133,7 @@ export function ModelPicker({
                     .map((p) => (p.compareModels.length > 1 ? `${p.name} (${p.compareModels.length} models)` : p.name))
                     .join(", ")
                 : "every provider with an API key"
-            } at once (photos skip text-only models), so it costs one call per column. Fable is the priciest Claude model. Pick whose answer to use for each.`
+            } at once (photos skip text-only models), so it costs one call per column. Pick whose answer to use for each.`
           : value === DEFAULT_CHAIN
             ? "Tries each model in order and falls back when one fails or isn’t sure."
             : `Only ${picked?.name ?? provider} runs, with no fallback. Leave the model empty for its default${
