@@ -11,6 +11,7 @@ A short log of choices made and why. Newest at the bottom. See `CLAUDE.md` for t
 | 5 | Reactions / comments: include or defer | Phase 3 | |
 | 6 | Badges: app-defined only, or user/group-defined too? | When badges are scheduled | Idea; see `CLAUDE.md` "Ideas to explore" |
 | 7 | Discord: channel webhook vs. Discord login vs. server/bot integration | When Discord is scheduled | Idea; tied to groups |
+| 8 | Monetisation: charge at all? Which features (extra photos, import credits, long-range insights), subscription vs. one-off, prices | Before any paid feature | Ideas only; see `docs/MONETISATION.md` |
 
 ## Log
 
