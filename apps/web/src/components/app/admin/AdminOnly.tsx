@@ -8,8 +8,8 @@ import { currentUser } from "@/lib/supabase/require-user";
 // reads the session.
 //
 // Admin pages are marked so they're never mistaken for the real app: an
-// "Admin only" pill, and a faint tiled watermark over the whole page that
-// doesn't catch taps or clicks. Both render only after the check passes.
+// "Admin only" pill, and a faint tiled watermark on the page background.
+// Both render only after the check passes.
 export async function AdminOnly({ children }: { children: React.ReactNode }) {
   const user = await currentUser();
   if (!user?.admin) notFound();
@@ -27,11 +27,12 @@ export async function AdminOnly({ children }: { children: React.ReactNode }) {
 const ROWS = 14;
 const PER_ROW = 6;
 
-// Above the page content but under the header and tab bar (z-20), so it
-// shows over cards too; pointer-events-none keeps everything usable.
+// Behind everything: -z-10 inside the app shell's stacking context (its
+// `isolate`) puts it over the page background but under the content, so
+// cards and other filled boxes cover it.
 function AdminWatermark() {
   return (
-    <div aria-hidden="true" className="pointer-events-none fixed inset-0 z-10 overflow-hidden select-none">
+    <div aria-hidden="true" className="pointer-events-none fixed inset-0 -z-10 overflow-hidden select-none">
       <div className="absolute top-1/2 left-1/2 flex w-[250vmax] -translate-x-1/2 -translate-y-1/2 -rotate-[24deg] flex-col gap-16">
         {Array.from({ length: ROWS }, (_, r) => (
           <div key={r} className={`flex justify-center gap-16 whitespace-nowrap ${r % 2 ? "translate-x-24" : ""}`}>
