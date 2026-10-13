@@ -20,7 +20,7 @@ export default function AdminPage() {
   return (
     <section className="flex flex-col gap-5">
       <div className="flex flex-col gap-1">
-        <h1 className="text-large-title font-display text-label">Admin</h1>
+        <h1 className="text-title font-display text-label">Admin</h1>
         <p className="text-subheadline text-label-secondary">Only admins can open these pages. The rest of the app is the same for everyone.</p>
       </div>
       <Suspense fallback={<p className="text-subheadline text-label-secondary">Loading…</p>}>

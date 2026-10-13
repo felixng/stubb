@@ -16,7 +16,7 @@ export default function AdminImportPage() {
         <Link href="/app/admin" className="text-subheadline font-semibold text-tint-text underline-offset-2 hover:underline">
           Admin
         </Link>
-        <h1 className="text-large-title font-display text-label">Import: compare models</h1>
+        <h1 className="text-title font-display text-label">Import: compare models</h1>
         <p className="text-subheadline text-label-secondary">
           Read past shows from ticket emails or theatre photos with the models you pick. You check every one before it’s saved.
         </p>
