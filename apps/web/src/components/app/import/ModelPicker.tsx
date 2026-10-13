@@ -4,7 +4,15 @@ import { useEffect, useId } from "react";
 
 import { fieldClass } from "../log/Typeahead";
 
-export type ProviderInfo = { id: string; name: string; defaultModel: string; images: boolean; configured: boolean };
+export type ProviderInfo = {
+  id: string;
+  name: string;
+  defaultModel: string;
+  images: boolean;
+  configured: boolean;
+  // What the provider serves to this key, when it can list them.
+  models: string[];
+};
 export type ProvidersInfo = { providers: ProviderInfo[]; defaults: { email: string[]; identify: string[] } };
 
 // Send each source to every provider with a key and compare (the default).
@@ -99,12 +107,19 @@ export function ModelPicker({
             </label>
             <input
               id={`${id}-model`}
+              list={`${id}-models`}
               value={model}
               onChange={(e) => set(e.target.value.trim() ? `${provider}:${e.target.value.trim()}` : provider)}
               placeholder={picked?.defaultModel ?? "Model id"}
               spellCheck={false}
               className={`${fieldClass} min-w-0 flex-1 basis-56 font-mono text-footnote`}
             />
+            {/* Suggestions from the provider's own model list. */}
+            <datalist id={`${id}-models`}>
+              {picked?.models.map((m) => (
+                <option key={m} value={m} />
+              ))}
+            </datalist>
           </>
         )}
       </div>
@@ -115,7 +130,9 @@ export function ModelPicker({
             } at once (photos skip text-only models), so it costs one call per provider. Pick whose answer to use for each.`
           : value === DEFAULT_CHAIN
             ? "Tries each model in order and falls back when one fails or isn’t sure."
-            : `Only ${picked?.name ?? provider} runs, with no fallback. Leave the model empty for its default.${
+            : `Only ${picked?.name ?? provider} runs, with no fallback. Leave the model empty for its default${
+                picked?.defaultModel ? ` (${picked.defaultModel})` : ""
+              }.${
                 picked && !picked.images ? " It can’t read photos." : ""
               }`}{" "}
         Applies to files added from now on.

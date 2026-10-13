@@ -13,8 +13,9 @@ type GeminiResponse = {
 
 export const gemini: AiProvider = {
   id: "gemini",
-  // Alias for the newest Flash model, so a preview retiring doesn't break us.
-  defaultModel: "gemini-flash-latest",
+  // Owner's pick: the model the free-tier key has quota for. (The
+  // "gemini-flash-latest" alias hit the key's quota limit.)
+  defaultModel: "gemini-3.8-flash",
   images: true,
   configured: () => Boolean(process.env.GEMINI_API_KEY),
 

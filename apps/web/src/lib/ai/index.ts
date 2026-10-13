@@ -7,7 +7,9 @@
 //   3. AI_MODELS,
 //   4. DEFAULT_CHAIN: Groq first, Claude as the fallback.
 // Each is a comma-separated list of "provider" or "provider:model", e.g.
-//   AI_MODELS="groq:meta-llama/llama-4-maverick-17b-128e-instruct,anthropic"
+//   AI_MODELS="groq:qwen/qwen3.6-27b,anthropic"
+// A bare "provider" uses that provider's current default: Groq and Cerebras
+// pick the first of their preferred models they still serve.
 // Providers: groq, anthropic, gemini, cerebras. Models whose provider has no
 // API key are skipped, so a chain degrades to whatever is configured, and
 // requests with images skip text-only providers. A model that
@@ -37,7 +39,7 @@ export function parseChain(spec: string): ModelRef[] {
       const id = (i < 0 ? s : s.slice(0, i)) as ProviderId;
       const provider = PROVIDERS[id];
       if (!provider) throw new Error(`Unknown AI provider "${id}" in "${spec}"`);
-      return { provider: id, model: i < 0 ? provider.defaultModel : s.slice(i + 1) };
+      return i < 0 ? { provider: id, model: provider.defaultModel, auto: true } : { provider: id, model: s.slice(i + 1) };
     });
 }
 
@@ -54,17 +56,29 @@ export function aiConfigured(task?: string, needs?: { images?: boolean }, models
   return resolveChain(task, models, needs).length > 0;
 }
 
-export type ProviderInfo = { id: ProviderId; name: string; defaultModel: string; images: boolean; configured: boolean };
+export type ProviderInfo = {
+  id: ProviderId;
+  name: string;
+  // The model used when none is named, as currently resolved.
+  defaultModel: string;
+  images: boolean;
+  configured: boolean;
+  // Models the provider serves to this key, where it can list them.
+  models: string[];
+};
 
-// For pickers in testing tools: every provider, and whether it has a key.
-export function listProviders(): ProviderInfo[] {
-  return (Object.values(PROVIDERS) as AiProvider[]).map((p) => ({
-    id: p.id,
-    name: NAMES[p.id],
-    defaultModel: p.defaultModel,
-    images: p.images,
-    configured: p.configured(),
-  }));
+// For pickers in testing tools: every provider, whether it has a key, and
+// (for configured providers that can say) which models it serves.
+export async function listProviders(): Promise<ProviderInfo[]> {
+  return Promise.all(
+    (Object.values(PROVIDERS) as AiProvider[]).map(async (p) => {
+      const configured = p.configured();
+      const [defaultModel, models] = configured
+        ? await Promise.all([p.resolveDefault?.() ?? p.defaultModel, p.listModels?.() ?? []])
+        : [p.defaultModel, []];
+      return { id: p.id, name: NAMES[p.id], defaultModel, images: p.images, configured, models };
+    }),
+  );
 }
 
 // The chain a task uses by default, for display ("groq → anthropic").
@@ -110,16 +124,23 @@ export async function generateJson<T>(request: JsonRequest, options: GenerateOpt
   for (const ref of chain) {
     const remaining = deadline - Date.now();
     if (remaining < 1_000) break;
-    const label = `${ref.provider}:${ref.model}`;
+    const provider = PROVIDERS[ref.provider];
+    let model = ref.model;
+    let label = `${ref.provider}:${model}`;
     try {
       const started = Date.now();
-      const raw = await PROVIDERS[ref.provider].generateJson(ref.model, request, AbortSignal.timeout(remaining));
+      // No model named: whichever preferred model the provider still serves.
+      if (ref.auto && provider.resolveDefault) {
+        model = await provider.resolveDefault();
+        label = `${ref.provider}:${model}`;
+      }
+      const raw = await provider.generateJson(model, request, AbortSignal.timeout(Math.max(1, deadline - Date.now())));
       if (raw == null) {
         console.warn("AI empty", options.task ?? "", label);
         continue;
       }
       const result = options.parse(raw);
-      const answer = { result, model: ref };
+      const answer = { result, model: { provider: ref.provider, model } };
       console.info("AI answered", options.task ?? "", label, `${Date.now() - started}ms`);
       if (!options.accept || options.accept(result)) return answer;
       console.info("AI not accepted, trying next", options.task ?? "", label);
