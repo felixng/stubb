@@ -87,7 +87,9 @@ export async function POST(request: Request) {
     // `model` says which provider answered ("groq:…"), for the import tool.
     return Response.json({ result: answer?.result ?? null, model: answer ? `${answer.model.provider}:${answer.model.model}` : null });
   } catch (error) {
-    console.error("Identify failed", error instanceof Error ? error.message : error);
-    return Response.json({ error: "identify_failed" }, { status: 502 });
+    const detail = error instanceof Error ? error.message.slice(0, 300) : null;
+    console.error("Identify failed", detail ?? error);
+    // The provider's status and message (never the key), for the import tool.
+    return Response.json({ error: "identify_failed", detail }, { status: 502 });
   }
 }

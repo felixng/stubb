@@ -16,13 +16,15 @@ import {
   type PhotoSource,
   type Reading,
 } from "@/lib/import/drafts";
+import { pickBest, type Attempt } from "@/lib/import/compare";
 import { EMAIL_FILE_ACCEPT, parseEmailFile, type ParsedEmail } from "@/lib/import/email-parse";
 import type { EmailExtraction } from "@/lib/import/extract-email";
 import { lookupNearby, preparePhoto, requestIdentify, type PreparedPhoto } from "@/lib/import/photo-pipeline";
 import { resolveShow, resolveVenue, runPool, saveDraft, SaveError } from "@/lib/import/resolve";
 import { createClient } from "@/lib/supabase/client";
 import { DraftCard, type Draft } from "./DraftCard";
-import { ModelPicker } from "./ModelPicker";
+import { CompareGrid } from "./CompareGrid";
+import { COMPARE_ALL, DEFAULT_CHAIN, ModelPicker, type ProvidersInfo } from "./ModelPicker";
 
 // One thing being read: an email, or a group of photos from one visit.
 type Job = {
@@ -32,6 +34,10 @@ type Job = {
   detail: string | null;
   state: "queued" | "reading" | "nearby" | "identifying" | "done" | "failed";
   found: number;
+  // One per model asked; several in compare mode.
+  attempts?: Attempt[];
+  // `model` of the attempt the drafts came from.
+  chosen?: string | null;
 };
 
 type PhotoItem = PreparedPhoto & { ref: string; fileName: string; previewUrl: string };
@@ -45,7 +51,8 @@ const STATE_TEXT: Record<Job["state"], string> = {
   failed: "Failed",
 };
 
-// Claude calls run a few at a time: quick enough, and gentle on rate limits.
+// AI calls run a few at a time: quick enough, and gentle on rate limits.
+// Compare mode multiplies calls per source, so it runs fewer sources at once.
 const EMAIL_CONCURRENCY = 3;
 const PHOTO_CONCURRENCY = 2;
 
@@ -53,20 +60,20 @@ const isImage = (f: File) => f.type.startsWith("image/") || /\.(jpe?g|png|heic|h
 
 // A photo's own time isn't the curtain time, so `time` stays empty: it would
 // stop the draft merging with the booking email for the same show.
-function fromIdentification(result: Identification | null, date: string | null, reason?: string): Extracted {
+function fromIdentification(result: Identification, date: string | null): Extracted {
   return {
-    show_title: result?.show_title ?? null,
-    show_type: result?.show_type ?? null,
-    venue_name: result?.venue_name ?? null,
-    venue_osm_id: result?.venue_osm_id ?? null,
+    show_title: result.show_title,
+    show_type: result.show_type,
+    venue_name: result.venue_name,
+    venue_osm_id: result.venue_osm_id,
     city: null,
     country: null,
     date,
     time: null,
     seats: null,
     price: null,
-    confidence: result?.confidence ?? "low",
-    reason: result?.reason || reason || "",
+    confidence: result.confidence,
+    reason: result.reason,
   };
 }
 
@@ -82,8 +89,9 @@ export function ImportTool() {
   const [pasted, setPasted] = useState("");
   const [dragging, setDragging] = useState(false);
   const [notice, setNotice] = useState<string | null>(null);
-  // "" = the configured chain; else "provider[:model]" (see ModelPicker).
-  const [model, setModel] = useState("");
+  // COMPARE_ALL (default), DEFAULT_CHAIN, or "provider[:model]" (see ModelPicker).
+  const [model, setModel] = useState(COMPARE_ALL);
+  const [providers, setProviders] = useState<ProvidersInfo | null>(null);
 
   const [userId, setUserId] = useState<string | null>(null);
   const [collections, setCollections] = useState<Collection[]>([]);
@@ -100,6 +108,10 @@ export function ImportTool() {
   const urls = useRef<string[]>([]);
   const existingRef = useRef(existing);
   existingRef.current = existing;
+  // Per source: how to turn an attempt into drafts, and the drafts it made,
+  // so "Use this" can swap one model's reading for another's.
+  const appliers = useRef(new Map<string, (attempt: Attempt) => Promise<string[]>>());
+  const jobDrafts = useRef(new Map<string, string[]>());
 
   useEffect(() => {
     const supabase = createClient();
@@ -125,6 +137,13 @@ export function ImportTool() {
 
   useEffect(() => () => urls.current.forEach((u) => URL.revokeObjectURL(u)), []);
 
+  useEffect(() => {
+    fetch("/api/ai/providers")
+      .then((res) => (res.ok ? res.json() : null))
+      .then((data: ProvidersInfo | null) => setProviders(data))
+      .catch(() => setProviders(null));
+  }, []);
+
   const updateJob = (ref: string, patch: Partial<Job>) =>
     setJobs((js) => js.map((j) => (j.ref === ref ? { ...j, ...patch } : j)));
   const updateDraft = (key: string, patch: Partial<Draft>) =>
@@ -133,7 +152,7 @@ export function ImportTool() {
   // A new reading either joins a draft for the same show and date (a
   // reminder for a booking already read) or becomes a new draft, which is
   // then matched to the catalogue.
-  async function addReading(reading: Reading, extra: Pick<Draft, "nearby" | "place" | "photos">) {
+  async function addReading(reading: Reading, extra: Pick<Draft, "nearby" | "place" | "photos">): Promise<{ key: string; created: boolean }> {
     const same = draftsRef.current.find(
       (d) => d.status !== "saved" && mergeReadings([d.reading, reading]).length === 1,
     );
@@ -146,7 +165,7 @@ export function ImportTool() {
             : d,
         ),
       );
-      return;
+      return { key: same.key, created: false };
     }
     const e = reading.extracted;
     const key = `draft-${++seq.current}`;
@@ -184,6 +203,61 @@ export function ImportTool() {
       include: Boolean(show && venue && e.date && !duplicate),
       status: "ready",
     });
+    return { key, created: true };
+  }
+
+  // Which models to ask for one source: every provider with a key (photos:
+  // only those that read images) in compare mode, else the one picked.
+  function targets(chosen: string, images: boolean): string[] {
+    if (chosen !== COMPARE_ALL) return [chosen === DEFAULT_CHAIN ? "" : chosen];
+    const ids = (providers?.providers ?? []).filter((p) => p.configured && (!images || p.images)).map((p) => p.id);
+    // Provider list not loaded (or nothing configured): the server decides.
+    return ids.length ? ids : [""];
+  }
+
+  // Asks each model in parallel and shows each answer as it lands.
+  async function runAttempts(ref: string, models: string[], call: (model: string) => Promise<Omit<Attempt, "model" | "state" | "ms">>) {
+    updateJob(ref, { attempts: models.map((model) => ({ model, state: "running", ms: null, readBy: null, shows: [], note: null })) });
+    return Promise.all(
+      models.map(async (model) => {
+        const started = performance.now();
+        let attempt: Attempt;
+        try {
+          attempt = { model, state: "done", ...(await call(model)), ms: performance.now() - started };
+        } catch (err) {
+          const note = err instanceof Error ? err.message : "Failed";
+          attempt = { model, state: "failed", ms: performance.now() - started, readBy: null, shows: [], note };
+        }
+        setJobs((js) => js.map((j) => (j.ref === ref ? { ...j, attempts: j.attempts?.map((x) => (x.model === model ? attempt : x)) } : j)));
+        return attempt;
+      }),
+    );
+  }
+
+  // Turns one attempt into drafts, replacing drafts an earlier choice made
+  // for this source (unless saved, or shared with another source).
+  async function chooseAttempt(ref: string, attempt: Attempt | null) {
+    const previous = new Set(jobDrafts.current.get(ref) ?? []);
+    if (previous.size) {
+      draftsRef.current = draftsRef.current.filter((d) => !previous.has(d.key) || d.status === "saved");
+      setDrafts((ds) => ds.filter((d) => !previous.has(d.key) || d.status === "saved"));
+    }
+    jobDrafts.current.set(ref, []);
+    updateJob(ref, { chosen: attempt?.model ?? null, found: attempt?.shows.length ?? 0 });
+    if (!attempt) return;
+    const created = await appliers.current.get(ref)?.(attempt);
+    jobDrafts.current.set(ref, created ?? []);
+  }
+
+  async function finishJob(ref: string, attempts: Attempt[], kind: "email" | "identify") {
+    const order = (providers?.defaults[kind] ?? []).map((m) => m.split(":")[0]);
+    const best = pickBest(attempts, order);
+    const done = attempts.some((a) => a.state === "done");
+    updateJob(ref, {
+      state: done ? "done" : "failed",
+      detail: best ? best.note : (attempts.find((a) => a.note)?.note ?? null),
+    });
+    await chooseAttempt(ref, best);
   }
 
   async function readEmails(files: File[], text?: string) {
@@ -215,57 +289,54 @@ export function ImportTool() {
       })),
     ]);
 
-    await runPool(batch.filter((p) => p.text), EMAIL_CONCURRENCY, async (email) => {
+    const models = targets(chosen, false);
+    await runPool(batch.filter((p) => p.text), models.length > 1 ? 2 : EMAIL_CONCURRENCY, async (email) => {
       updateJob(email.ref, { state: "reading" });
-      try {
+      appliers.current.set(email.ref, async (attempt) => {
+        const source = { kind: "email" as const, ref: email.ref, fileName: email.fileName, subject: email.subject, from: email.from, sent: email.sent, trimmed: email.trimmed, readBy: attempt.readBy };
+        const keys: string[] = [];
+        for (const extracted of attempt.shows) {
+          const added = await addReading({ extracted, sources: [source] }, { nearby: [], place: { city: extracted.city, country: extracted.country }, photos: [] });
+          if (added.created) keys.push(added.key);
+        }
+        return keys;
+      });
+      const attempts = await runAttempts(email.ref, models, async (m) => {
         const res = await fetch("/api/import/email", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ subject: email.subject, from: email.from, sent: email.sent, text: email.text, model: chosen || undefined }),
+          body: JSON.stringify({ subject: email.subject, from: email.from, sent: email.sent, text: email.text, model: m || undefined }),
         });
         if (!res.ok) {
-          const { error: code } = (await res.json().catch(() => ({}))) as { error?: string };
-          const error =
+          const { error: code, detail } = (await res.json().catch(() => ({}))) as { error?: string; detail?: string | null };
+          throw new Error(
             res.status === 503
               ? "Import isn’t set up yet (no API key)."
               : res.status === 429
                 ? "Too many at once. Try again in a few minutes."
                 : code === "model_unavailable" || code === "invalid_model"
-                  ? `Can’t use ${chosen}: no API key, or not a valid model.`
-                  : "Couldn’t read this email.";
-          updateJob(email.ref, { state: "failed", detail: error });
-          return;
+                  ? `Can’t use ${m}: no API key, or not a valid model.`
+                  : `Couldn’t read this email.${detail ? ` ${detail}` : ""}`,
+          );
         }
         const { result, model: readBy } = (await res.json()) as { result: EmailExtraction | null; model: string | null };
         const shows = result?.shows ?? [];
-        updateJob(email.ref, {
-          state: "done",
-          found: shows.length,
-          detail: [
-            result?.kind === "not_a_booking" || !shows.length
-              ? "No booking found"
-              : result?.kind && result.kind !== "booking"
-                ? `${result.kind[0].toUpperCase()}${result.kind.slice(1)}`
-                : null,
-            readBy && `read by ${readBy}`,
-          ]
-            .filter(Boolean)
-            .join(" · "),
-        });
-        const source = { kind: "email" as const, ref: email.ref, fileName: email.fileName, subject: email.subject, from: email.from, sent: email.sent, trimmed: email.trimmed, readBy };
-        for (const extracted of shows) {
-          await addReading({ extracted, sources: [source] }, { nearby: [], place: { city: extracted.city, country: extracted.country }, photos: [] });
-        }
-      } catch {
-        updateJob(email.ref, { state: "failed", detail: "Couldn’t read this email." });
-      }
+        const note =
+          result?.kind === "not_a_booking" || !shows.length
+            ? "No booking found"
+            : result?.kind && result.kind !== "booking"
+              ? `${result.kind[0].toUpperCase()}${result.kind.slice(1)}`
+              : null;
+        return { readBy, shows, note };
+      });
+      await finishJob(email.ref, attempts, "email");
     });
   }
 
   async function readPhotos(files: File[]) {
     const chosen = model;
     // Read and re-encode every photo on the device first, so they can be
-    // grouped by visit before any Claude call.
+    // grouped by visit before any AI call.
     const items: PhotoItem[] = [];
     const prepRef = `prep@${++seq.current}`;
     setJobs((js) => [...js, { ref: prepRef, kind: "photos", label: `${files.length} photo${files.length === 1 ? "" : "s"}`, detail: null, state: "reading", found: 0 }]);
@@ -299,7 +370,8 @@ export function ImportTool() {
       ...groupJobs.map((j): Job => ({ ref: j.ref, kind: "photos", label: j.label, detail: null, state: "queued", found: 0 })),
     ]);
 
-    await runPool(groupJobs, PHOTO_CONCURRENCY, async ({ ref, group }) => {
+    const models = targets(chosen, true);
+    await runPool(groupJobs, models.length > 1 ? 1 : PHOTO_CONCURRENCY, async ({ ref, group }) => {
       const point = centroid(group);
       const dated = group.find((p) => p.date) ?? group[0];
       let nearby: Draft["nearby"] = [];
@@ -308,45 +380,46 @@ export function ImportTool() {
         updateJob(ref, { state: "nearby" });
         ({ candidates: nearby, place } = await lookupNearby(point.lat, point.lng));
       }
-      updateJob(ref, { state: "identifying" });
-      const outcome = await requestIdentify({
-        photos: pickSpread(group, MAX_IDENTIFY_PHOTOS).map((p) => p.small),
-        meta: dated.meta,
-        point,
-        place,
-        candidates: nearby,
-        model: chosen || undefined,
-      });
       const where = [place.city, nearby.length ? `${nearby.length} theatre${nearby.length === 1 ? "" : "s"} nearby` : point ? "no theatre found nearby" : "no location in photo"]
         .filter(Boolean)
         .join(" · ");
-      updateJob(ref, {
-        state: outcome.error ? "failed" : "done",
-        found: outcome.result?.show_title ? 1 : 0,
-        detail:
-          outcome.error === "not_configured"
-            ? "Show detection isn’t set up yet (no API key)."
-            : outcome.error === "model_unavailable"
-              ? `Can’t use ${chosen} for photos: no API key, or it can’t read images.`
-              : outcome.error
-                ? "Couldn’t work out the show."
-                : [where, outcome.model && `read by ${outcome.model}`].filter(Boolean).join(" · "),
+      updateJob(ref, { state: "identifying", label: `${groupJobs.find((j) => j.ref === ref)?.label} · ${where}` });
+
+      appliers.current.set(ref, async (attempt) => {
+        const sources: PhotoSource[] = group.map((p) => ({
+          kind: "photo",
+          ref: p.ref,
+          fileName: p.fileName,
+          previewUrl: p.previewUrl,
+          date: p.meta.date,
+          time: p.meta.time,
+          hasLocation: p.meta.lat != null,
+          readBy: attempt.readBy,
+        }));
+        const added = await addReading(
+          { extracted: attempt.shows[0], sources },
+          { nearby, place, photos: group.map((p) => ({ stored: p.stored, previewUrl: p.previewUrl })) },
+        );
+        return added.created ? [added.key] : [];
       });
-      const sources: PhotoSource[] = group.map((p) => ({
-        kind: "photo",
-        ref: p.ref,
-        fileName: p.fileName,
-        previewUrl: p.previewUrl,
-        date: p.meta.date,
-        time: p.meta.time,
-        hasLocation: p.meta.lat != null,
-        readBy: outcome.model ?? null,
-      }));
-      const extracted = fromIdentification(outcome.result, dated.meta.date, outcome.result ? undefined : "Couldn’t tell the show from these photos.");
-      await addReading(
-        { extracted: { ...extracted, city: place.city, country: place.country }, sources },
-        { nearby, place, photos: group.map((p) => ({ stored: p.stored, previewUrl: p.previewUrl })) },
-      );
+
+      const photos = pickSpread(group, MAX_IDENTIFY_PHOTOS).map((p) => p.small);
+      const attempts = await runAttempts(ref, models, async (m) => {
+        const outcome = await requestIdentify({ photos, meta: dated.meta, point, place, candidates: nearby, model: m || undefined });
+        if (outcome.error) {
+          throw new Error(
+            outcome.error === "not_configured"
+              ? "Show detection isn’t set up yet (no API key)."
+              : outcome.error === "model_unavailable"
+                ? `Can’t use ${m} for photos: no API key, or it can’t read images.`
+                : `Couldn’t work out the show.${outcome.detail ? ` ${outcome.detail}` : ""}`,
+          );
+        }
+        const r = outcome.result;
+        const shows = r && (r.show_title || r.venue_name) ? [{ ...fromIdentification(r, dated.meta.date), city: place.city, country: place.country }] : [];
+        return { readBy: outcome.model ?? null, shows, note: shows.length ? null : "Couldn’t tell the show from these photos." };
+      });
+      await finishJob(ref, attempts, "identify");
     });
   }
 
@@ -358,6 +431,9 @@ export function ImportTool() {
     if (photos.length) void readPhotos(photos);
     if (others.length) void readEmails(others);
   }
+
+  const providerNames = Object.fromEntries((providers?.providers ?? []).map((p) => [p.id, p.name]));
+  const modelName = (a: Attempt | undefined) => (a ? (a.readBy ?? (a.model || "the default chain")) : "");
 
   const duplicateOf = (d: Draft) =>
     (d.show?.id && d.date && existing.find((x) => x.show_id === d.show!.id && x.date === d.date)?.id) || null;
@@ -420,6 +496,8 @@ export function ImportTool() {
     setDrafts([]);
     draftsRef.current = [];
     setEmails(new Map());
+    appliers.current.clear();
+    jobDrafts.current.clear();
     setNotice(null);
   }
 
@@ -430,7 +508,7 @@ export function ImportTool() {
         <h2 id={`${id}-add`} className="text-title-2 font-display text-label">
           Add emails or photos
         </h2>
-        <ModelPicker value={model} onChange={setModel} />
+        <ModelPicker value={model} onChange={setModel} info={providers} />
         <div
           onDragOver={(e) => {
             e.preventDefault();
@@ -511,7 +589,12 @@ export function ImportTool() {
 
       {/* What we read from each source */}
       {jobs.length > 0 && (
-        <section aria-labelledby={`${id}-read`} className="flex flex-col gap-3">
+        // Wider than the app column on desktop, so compared answers sit side
+        // by side; the column width on phones.
+        <section
+          aria-labelledby={`${id}-read`}
+          className="flex flex-col gap-3 lg:relative lg:left-1/2 lg:w-[min(1120px,calc(100vw-4rem))] lg:-translate-x-1/2"
+        >
           <div className="flex items-center justify-between gap-3">
             <h2 id={`${id}-read`} className="text-title-2 font-display text-label">
               What we read
@@ -536,15 +619,32 @@ export function ImportTool() {
                     <span className="size-3 animate-spin rounded-full border-2 border-outline border-t-transparent" />
                   )}
                 </span>
-                <div className="min-w-0 flex-1">
-                  <p className="truncate text-body text-label">{j.label}</p>
-                  <p className={`text-footnote ${j.state === "failed" ? "text-destructive" : "text-label-secondary"}`}>
-                    {j.state === "done"
-                      ? [j.found ? `${j.found} show${j.found === 1 ? "" : "s"} found` : null, j.detail].filter(Boolean).join(" · ") || "Done"
-                      : j.state === "failed"
-                        ? (j.detail ?? "Failed")
-                        : STATE_TEXT[j.state]}
-                  </p>
+                <div className="flex min-w-0 flex-1 flex-col gap-2">
+                  <div>
+                    <p className="truncate text-body text-label">{j.label}</p>
+                    <p className={`text-footnote ${j.state === "failed" ? "text-destructive" : "text-label-secondary"}`}>
+                      {j.state === "done"
+                        ? [
+                            j.found ? `${j.found} show${j.found === 1 ? "" : "s"} found` : null,
+                            j.detail,
+                            j.attempts && j.chosen != null && `drafts from ${modelName(j.attempts.find((a) => a.model === j.chosen))}`,
+                          ]
+                            .filter(Boolean)
+                            .join(" · ") || "Done"
+                        : j.state === "failed"
+                          ? (j.detail ?? "Failed")
+                          : STATE_TEXT[j.state]}
+                    </p>
+                  </div>
+                  {j.attempts && j.attempts.length > 1 && (
+                    <CompareGrid
+                      attempts={j.attempts}
+                      names={providerNames}
+                      chosen={j.chosen ?? null}
+                      disabled={saving || j.state !== "done"}
+                      onUse={(attempt) => void chooseAttempt(j.ref, attempt)}
+                    />
+                  )}
                 </div>
               </li>
             ))}

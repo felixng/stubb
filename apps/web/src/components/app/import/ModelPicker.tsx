@@ -1,27 +1,31 @@
 "use client";
 
-import { useEffect, useId, useState } from "react";
+import { useEffect, useId } from "react";
 
 import { fieldClass } from "../log/Typeahead";
 
-type ProviderInfo = { id: string; name: string; defaultModel: string; images: boolean; configured: boolean };
-type Info = { providers: ProviderInfo[]; defaults: { email: string[]; identify: string[] } };
+export type ProviderInfo = { id: string; name: string; defaultModel: string; images: boolean; configured: boolean };
+export type ProvidersInfo = { providers: ProviderInfo[]; defaults: { email: string[]; identify: string[] } };
+
+// Send each source to every provider with a key and compare (the default).
+export const COMPARE_ALL = "all";
+// The configured chain, with fallback (what the log form uses).
+export const DEFAULT_CHAIN = "chain";
 
 const STORAGE_KEY = "stubbed.import.model";
 
 // Remembered per browser; storage can be unavailable (private mode).
 function load() {
   try {
-    return localStorage.getItem(STORAGE_KEY) ?? "";
+    return localStorage.getItem(STORAGE_KEY);
   } catch {
-    return "";
+    return null;
   }
 }
 
 function store(value: string) {
   try {
-    if (value) localStorage.setItem(STORAGE_KEY, value);
-    else localStorage.removeItem(STORAGE_KEY);
+    localStorage.setItem(STORAGE_KEY, value);
   } catch {
     // Not remembered; it still applies to this session.
   }
@@ -30,23 +34,29 @@ function store(value: string) {
 const short = (ref: string) => ref.split(":")[0];
 
 // Owner testing aid for the import tool: which AI reads emails and photos.
-// "" is the configured chain (with fallbacks); "provider" or
-// "provider:model" runs only that model, so results can be compared.
-export function ModelPicker({ value, onChange }: { value: string; onChange: (value: string) => void }) {
+// COMPARE_ALL asks every configured provider and shows the answers side by
+// side; DEFAULT_CHAIN runs the configured chain; "provider" or
+// "provider:model" runs only that model.
+export function ModelPicker({
+  value,
+  onChange,
+  info,
+}: {
+  value: string;
+  onChange: (value: string) => void;
+  info: ProvidersInfo | null;
+}) {
   const id = useId();
-  const [info, setInfo] = useState<Info | null>(null);
+  const single = value !== COMPARE_ALL && value !== DEFAULT_CHAIN;
   const colon = value.indexOf(":");
-  const provider = colon < 0 ? value : value.slice(0, colon);
-  const model = colon < 0 ? "" : value.slice(colon + 1);
+  const provider = single ? (colon < 0 ? value : value.slice(0, colon)) : "";
+  const model = single && colon >= 0 ? value.slice(colon + 1) : "";
   const picked = info?.providers.find((p) => p.id === provider);
+  const configured = info?.providers.filter((p) => p.configured) ?? [];
 
   useEffect(() => {
     const saved = load();
     if (saved) onChange(saved);
-    fetch("/api/ai/providers")
-      .then((res) => (res.ok ? res.json() : null))
-      .then((data: Info | null) => setInfo(data))
-      .catch(() => setInfo(null));
     // Once, on mount: restore the saved choice.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -66,20 +76,23 @@ export function ModelPicker({ value, onChange }: { value: string; onChange: (val
       <div className="flex flex-wrap gap-2">
         <select
           id={`${id}-provider`}
-          value={provider}
+          value={single ? provider : value}
           onChange={(e) => set(e.target.value)}
           className={`${fieldClass} min-w-0 flex-1 basis-48 cursor-pointer`}
         >
-          <option value="">Default, with fallback (emails: {chain(info?.defaults.email)}; photos: {chain(info?.defaults.identify)})</option>
+          <option value={COMPARE_ALL}>Compare all providers side by side</option>
+          <option value={DEFAULT_CHAIN}>
+            Default chain, with fallback (emails: {chain(info?.defaults.email)}; photos: {chain(info?.defaults.identify)})
+          </option>
           {info?.providers.map((p) => (
             <option key={p.id} value={p.id} disabled={!p.configured}>
-              {p.name}
+              {p.name} only
               {p.configured ? "" : " (no API key)"}
               {p.images ? "" : " (text only)"}
             </option>
           ))}
         </select>
-        {provider && (
+        {single && (
           <>
             <label htmlFor={`${id}-model`} className="sr-only">
               Model id
@@ -96,11 +109,15 @@ export function ModelPicker({ value, onChange }: { value: string; onChange: (val
         )}
       </div>
       <p className="text-footnote text-label-secondary">
-        {provider
-          ? `Only ${picked?.name ?? provider} runs, with no fallback, so you can compare. Leave the model empty for its default.${
-              picked && !picked.images ? " It can’t read photos." : ""
-            }`
-          : "Tries each model in order and falls back when one fails or isn’t sure."}{" "}
+        {value === COMPARE_ALL
+          ? `Each email or photo visit goes to ${
+              configured.length ? configured.map((p) => p.name).join(", ") : "every provider with an API key"
+            } at once (photos skip text-only models), so it costs one call per provider. Pick whose answer to use for each.`
+          : value === DEFAULT_CHAIN
+            ? "Tries each model in order and falls back when one fails or isn’t sure."
+            : `Only ${picked?.name ?? provider} runs, with no fallback. Leave the model empty for its default.${
+                picked && !picked.images ? " It can’t read photos." : ""
+              }`}{" "}
         Applies to files added from now on.
       </p>
     </div>

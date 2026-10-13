@@ -63,6 +63,8 @@ export type IdentifyOutcome = {
   result: Identification | null;
   model?: string | null;
   error?: "not_configured" | "model_unavailable" | "failed";
+  // The provider's own error message, when the server passes it on.
+  detail?: string | null;
 };
 
 // Asks Claude for the show (and to choose between neighbouring theatres).
@@ -103,8 +105,8 @@ export async function requestIdentify({
     const res = await fetch("/api/photo/identify", { method: "POST", body });
     if (res.ok) return (await res.json()) as { result: Identification | null; model: string | null };
     if (res.status === 503) return { result: null, error: "not_configured" };
-    const { error } = (await res.json().catch(() => ({}))) as { error?: string };
-    return { result: null, error: error === "model_unavailable" ? "model_unavailable" : "failed" };
+    const { error, detail } = (await res.json().catch(() => ({}))) as { error?: string; detail?: string | null };
+    return { result: null, error: error === "model_unavailable" ? "model_unavailable" : "failed", detail };
   } catch {
     return { result: null, error: "failed" };
   }

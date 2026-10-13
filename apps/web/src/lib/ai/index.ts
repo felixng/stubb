@@ -10,7 +10,7 @@
 //   AI_MODELS="groq:meta-llama/llama-4-maverick-17b-128e-instruct,anthropic"
 // Providers: groq, anthropic, gemini, cerebras. Models whose provider has no
 // API key are skipped, so a chain degrades to whatever is configured, and
-// requests with images skip text-only providers (Cerebras). A model that
+// requests with images skip text-only providers. A model that
 // throws, declines, or gives an answer the caller's `accept` rejects hands
 // over to the next one.
 import { anthropic } from "./anthropic";
