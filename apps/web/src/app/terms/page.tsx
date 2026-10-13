@@ -199,9 +199,9 @@ export default function TermsPage() {
       <Section id="third-party" title="Other services">
         <p>
           The Service links to and works with other services, such as Google
-          sign-in and the apps you share to, like Instagram. Their own terms and
-          privacy policies apply when you use them, and we aren’t responsible for
-          them.
+          and Apple sign-in and the apps you share to, like Instagram. Their own
+          terms and privacy policies apply when you use them, and we aren’t
+          responsible for them.
         </p>
       </Section>
 

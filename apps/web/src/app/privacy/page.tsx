@@ -90,6 +90,12 @@ export default function PrivacyPage() {
             password or access to anything else in your Google account.
           </li>
           <li>
+            <strong>If you sign in with Apple</strong>, Apple shares your name
+            and email address with us (or a private relay address, if you choose
+            to hide your email). We don’t get your Apple Account password or
+            access to anything else in your Apple Account.
+          </li>
+          <li>
             <strong>Your profile</strong>: handle, display name, avatar, bio, a
             link if you add one, and your default visibility setting.
           </li>
@@ -201,8 +207,8 @@ export default function PrivacyPage() {
           We use only cookies that are strictly necessary to keep you signed in
           and protect your account. We don’t use analytics, advertising or
           tracking cookies, so we don’t ask for cookie consent. The landing page
-          sets no cookies at all. If you choose to sign in with Google, Google
-          sets its own cookies on its own website.
+          sets no cookies at all. If you choose to sign in with Google or Apple,
+          they set their own cookies on their own websites.
         </p>
         <p>
           Because we don’t track you across websites, there is nothing for a
@@ -234,6 +240,10 @@ export default function PrivacyPage() {
           <li>
             <strong>Google</strong>: sign-in, only if you choose “Continue with
             Google”.
+          </li>
+          <li>
+            <strong>Apple</strong>: sign-in, only if you choose “Continue with
+            Apple”.
           </li>
           <li>
             <strong>OpenStreetMap services</strong>: nearby-theatre lookups, as
