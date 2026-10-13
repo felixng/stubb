@@ -32,6 +32,6 @@ test("listProviders reports every provider without exposing keys", async () => {
 
 test("Claude runs several models side by side in compare mode", async () => {
   const claude = (await listProviders()).find((p) => p.id === "anthropic");
-  assert.deepEqual(claude?.compareModels, ["claude-opus-5-5", "claude-sonnet-5-5", "claude-haiku-5-5", "claude-fable-5-1"]);
+  assert.deepEqual(claude?.compareModels, ["claude-opus-5-5", "claude-haiku-5-5"]);
   for (const m of claude?.compareModels ?? []) assert.deepEqual(parseModelChoice(`anthropic:${m}`), [{ provider: "anthropic", model: m }]);
 });

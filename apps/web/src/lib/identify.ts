@@ -63,19 +63,19 @@ const SCHEMA = {
   },
 } as const;
 
-const SYSTEM = `You help a theatregoer log a show they just saw. You get one or more photos they took at the theatre on one visit (often the set before curtain-up, a curtain call, a marquee, a Playbill or a ticket), plus when and roughly where they were taken. Work out which show it was and at which theatre.
+const SYSTEM = `You help a theatregoer log a show they saw. You get one or more photos they took at the theatre on one visit (often the set before curtain-up, a curtain call, a marquee, a programme, a Playbill or a ticket), plus when and roughly where they were taken, and the theatres near that spot. Work out which show it was and at which theatre.
 
 Work through it in this order:
-1. Read every bit of text in the photos: titles or logos projected or painted on the set, show curtains, marquees, Playbill covers, tickets, signs that are part of the set. Text in any language counts. If the photo names the show, that settles the show.
-2. Describe the set to yourself: distinctive scenery and props (e.g. a pile of suitcases under a "Baggage Claim" sign, a band on a platform, a turntable), the style of the theatre (a Broadway or West End house, a studio space).
-3. Search only for what the photo doesn't settle, and stop as soon as you're sure: speed matters, the user is waiting. If the photo names the show and one nearby theatre is listed, don't search at all. If it names the show but several theatres are listed, one search for where it's playing is enough. When nearby theatres are listed, search what was playing at the closest ones around that date and pick the one whose show matches the photo. When none are listed but a location is given, search for theatres near that point and what they were playing then. When the photo shows no title, search for the distinctive set (e.g. "Broadway musical set suitcases baggage claim sign") and check the result is running at a theatre near the photo on that date.
-4. Venue: GPS can be 20–50 m off and theatres can be under 100 m apart, so pick the theatre whose show matches, not simply the nearest. Give venue_name whenever you know the theatre, and venue_osm_id only when it's one of the listed theatres.
+1. Venue and date. Start from the nearby theatres listed and the date the photo was taken. GPS can be 20–50 m off and theatres can be under 100 m apart, so treat the closest few as candidates, not just the nearest. If none are listed but a location is given, search for theatres near that point.
+2. What was on. Search what was playing at those theatres on that date. Shows open and close, so check each run covers the date; times after about 17:00 are usually evening performances, earlier ones matinees. This gives a short list of possible shows.
+3. Match the photo. Describe the set to yourself (distinctive scenery and props, e.g. a pile of suitcases under a "Baggage Claim" sign, a band on a platform, a turntable; the size and style of the house) and compare it with the possible shows. Search for a production's set or production photos when that helps tell the candidates apart. Pick the show, and the theatre, that the photo matches.
+4. A title in the photo wins. Read every bit of text in the photos: a title or logo on the set or show curtain, a marquee, a programme or Playbill cover, a ticket. Text in any language counts. If the photos name the show, that is the show, whatever the search suggested; use steps 1–2 only to pick the theatre it was playing at. If the photos name the show and only one theatre is listed, don't search at all.
 
-Timing: an empty house with the lights up is before the show; times after about 17:00 are usually evening performances, earlier ones matinees. Shows open and close, so check the run covers the date.
+Be quick: the user may be waiting. Stop searching as soon as you're sure. Give venue_name whenever you know the theatre, and venue_osm_id only when it's one of the listed theatres. Start the reason with what settled it ("Programme reads…", "Only show at the Belasco that night…", "Set matches…").
 
 Rules:
 - Never identify performers by their face. Who is on stage doesn't matter here.
-- "high": the photo names the show, or a search ties the set and the theatre to that date beyond reasonable doubt. "medium": the most likely answer with a gap. "low": a guess; prefer this, or empty strings, over overclaiming.`;
+- "high": the photos name the show, or the venue, date and set together leave no reasonable doubt. "medium": the most likely of the shows on at that venue and date, with a gap. "low": a guess; prefer this, or empty strings, over overclaiming.`;
 
 function describe(input: IdentifyInput) {
   const when = input.date ? `${input.date}${input.time ? ` at ${input.time} local time` : ""}` : "unknown";
@@ -105,7 +105,7 @@ export async function identifyShow(input: IdentifyInput, models?: ModelRef[]): P
       ],
       schema: { name: "identification", schema: SCHEMA },
       webSearch: {
-        // Each search adds seconds; three covers venue + show + one check.
+        // Each search adds seconds; three covers what was on + a set check + one more.
         maxUses: 3,
         ...(input.country && /^[A-Z]{2}$/.test(input.country)
           ? { location: { country: input.country, ...(input.city ? { city: input.city } : {}) } }

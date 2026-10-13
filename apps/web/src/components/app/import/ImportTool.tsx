@@ -206,14 +206,14 @@ export function ImportTool() {
     return { key, created: true };
   }
 
-  // Which models to ask for one source: every provider with a key (photos:
-  // only those that read images) in compare mode, else the one picked.
+  // Which models to ask for one source: in compare mode, a column per
+  // compare model of each configured provider that has some (photos: only
+  // providers that read images); otherwise the one picked.
   function targets(chosen: string, images: boolean): string[] {
     if (chosen !== COMPARE_ALL) return [chosen === DEFAULT_CHAIN ? "" : chosen];
-    // Providers with several compare models (Claude) get a column per model.
     const ids = (providers?.providers ?? [])
       .filter((p) => p.configured && (!images || p.images))
-      .flatMap((p) => (p.compareModels.length ? p.compareModels.map((m) => `${p.id}:${m}`) : [p.id]));
+      .flatMap((p) => p.compareModels.map((m) => `${p.id}:${m}`));
     // Provider list not loaded (or nothing configured): the server decides.
     return ids.length ? ids : [""];
   }
