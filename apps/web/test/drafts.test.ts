@@ -21,7 +21,7 @@ const extracted = (over: Partial<Extracted>): Extracted => ({
 
 const reading = (ref: string, over: Partial<Extracted>): Reading => ({
   extracted: extracted(over),
-  sources: [{ kind: "email", ref, fileName: ref, subject: null, from: null, sent: null, trimmed: false }],
+  sources: [{ kind: "email", ref, fileName: ref, subject: null, from: null, sent: null, trimmed: false, readBy: null }],
 });
 
 test("showKey ignores case, punctuation, accents and a leading article", () => {

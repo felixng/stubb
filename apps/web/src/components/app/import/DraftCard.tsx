@@ -70,6 +70,7 @@ export function DraftCard({
   const conf = CONFIDENCE[e.confidence];
   const emails = draft.reading.sources.filter((s) => s.kind === "email");
   const locked = draft.status === "saving" || draft.status === "saved";
+  const readBy = [...new Set(draft.reading.sources.map((s) => s.readBy).filter((m): m is string => Boolean(m)))];
 
   if (draft.status === "saved") {
     return (
@@ -163,6 +164,7 @@ export function DraftCard({
           <p className="text-footnote text-label-secondary">{[e.seats && `Seats ${e.seats}`, e.price].filter(Boolean).join(" · ")}</p>
         )}
         {e.reason && <p className="text-footnote text-label-secondary">{e.reason}</p>}
+        {readBy.length > 0 && <p className="font-mono text-caption text-label-secondary">Read by {readBy.join(", ")}</p>}
       </div>
 
       {duplicateOf && (

@@ -58,7 +58,12 @@ export async function lookupNearby(lat: number, lng: number): Promise<{ candidat
 
 // `error` is set when no answer came back; null `result` without an error
 // means Claude looked and couldn't tell.
-export type IdentifyOutcome = { result: Identification | null; error?: "not_configured" | "failed" };
+// `model` is which one answered ("groq:…"), when the server says.
+export type IdentifyOutcome = {
+  result: Identification | null;
+  model?: string | null;
+  error?: "not_configured" | "model_unavailable" | "failed";
+};
 
 // Asks Claude for the show (and to choose between neighbouring theatres).
 // `photos` are the small re-encoded copies, 1 to 4 from the same visit.
@@ -68,12 +73,15 @@ export async function requestIdentify({
   point,
   place,
   candidates,
+  model,
 }: {
   photos: Blob[];
   meta: Pick<PhotoMeta, "date" | "time">;
   point: { lat: number; lng: number } | null;
   place: Place;
   candidates: NearbyVenue[];
+  // "provider" or "provider:model" to run only that model (import tool).
+  model?: string;
 }): Promise<IdentifyOutcome> {
   try {
     const body = new FormData();
@@ -87,13 +95,16 @@ export async function requestIdentify({
       body.set("lat", point.lat.toFixed(3));
       body.set("lng", point.lng.toFixed(3));
     }
+    if (model) body.set("model", model);
     body.set(
       "candidates",
       JSON.stringify(candidates.map((c) => ({ osm_id: c.osm_id, name: c.name, distance_m: c.distance_m }))),
     );
     const res = await fetch("/api/photo/identify", { method: "POST", body });
-    if (res.ok) return { result: ((await res.json()) as { result: Identification | null }).result };
-    return { result: null, error: res.status === 503 ? "not_configured" : "failed" };
+    if (res.ok) return (await res.json()) as { result: Identification | null; model: string | null };
+    if (res.status === 503) return { result: null, error: "not_configured" };
+    const { error } = (await res.json().catch(() => ({}))) as { error?: string };
+    return { result: null, error: error === "model_unavailable" ? "model_unavailable" : "failed" };
   } catch {
     return { result: null, error: "failed" };
   }

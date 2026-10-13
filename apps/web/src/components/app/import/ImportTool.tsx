@@ -22,6 +22,7 @@ import { lookupNearby, preparePhoto, requestIdentify, type PreparedPhoto } from 
 import { resolveShow, resolveVenue, runPool, saveDraft, SaveError } from "@/lib/import/resolve";
 import { createClient } from "@/lib/supabase/client";
 import { DraftCard, type Draft } from "./DraftCard";
+import { ModelPicker } from "./ModelPicker";
 
 // One thing being read: an email, or a group of photos from one visit.
 type Job = {
@@ -81,6 +82,8 @@ export function ImportTool() {
   const [pasted, setPasted] = useState("");
   const [dragging, setDragging] = useState(false);
   const [notice, setNotice] = useState<string | null>(null);
+  // "" = the configured chain; else "provider[:model]" (see ModelPicker).
+  const [model, setModel] = useState("");
 
   const [userId, setUserId] = useState<string | null>(null);
   const [collections, setCollections] = useState<Collection[]>([]);
@@ -184,6 +187,8 @@ export function ImportTool() {
   }
 
   async function readEmails(files: File[], text?: string) {
+    // The model picked when the files were added, even if changed meanwhile.
+    const chosen = model;
     const parsed: ParsedEmail[] = [];
     for (const f of files) {
       try {
@@ -216,26 +221,38 @@ export function ImportTool() {
         const res = await fetch("/api/import/email", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ subject: email.subject, from: email.from, sent: email.sent, text: email.text }),
+          body: JSON.stringify({ subject: email.subject, from: email.from, sent: email.sent, text: email.text, model: chosen || undefined }),
         });
         if (!res.ok) {
-          const error = res.status === 503 ? "Import isn’t set up yet (no API key)." : res.status === 429 ? "Too many at once. Try again in a few minutes." : "Couldn’t read this email.";
+          const { error: code } = (await res.json().catch(() => ({}))) as { error?: string };
+          const error =
+            res.status === 503
+              ? "Import isn’t set up yet (no API key)."
+              : res.status === 429
+                ? "Too many at once. Try again in a few minutes."
+                : code === "model_unavailable" || code === "invalid_model"
+                  ? `Can’t use ${chosen}: no API key, or not a valid model.`
+                  : "Couldn’t read this email.";
           updateJob(email.ref, { state: "failed", detail: error });
           return;
         }
-        const { result } = (await res.json()) as { result: EmailExtraction | null };
+        const { result, model: readBy } = (await res.json()) as { result: EmailExtraction | null; model: string | null };
         const shows = result?.shows ?? [];
         updateJob(email.ref, {
           state: "done",
           found: shows.length,
-          detail:
+          detail: [
             result?.kind === "not_a_booking" || !shows.length
               ? "No booking found"
               : result?.kind && result.kind !== "booking"
                 ? `${result.kind[0].toUpperCase()}${result.kind.slice(1)}`
                 : null,
+            readBy && `read by ${readBy}`,
+          ]
+            .filter(Boolean)
+            .join(" · "),
         });
-        const source = { kind: "email" as const, ref: email.ref, fileName: email.fileName, subject: email.subject, from: email.from, sent: email.sent, trimmed: email.trimmed };
+        const source = { kind: "email" as const, ref: email.ref, fileName: email.fileName, subject: email.subject, from: email.from, sent: email.sent, trimmed: email.trimmed, readBy };
         for (const extracted of shows) {
           await addReading({ extracted, sources: [source] }, { nearby: [], place: { city: extracted.city, country: extracted.country }, photos: [] });
         }
@@ -246,6 +263,7 @@ export function ImportTool() {
   }
 
   async function readPhotos(files: File[]) {
+    const chosen = model;
     // Read and re-encode every photo on the device first, so they can be
     // grouped by visit before any Claude call.
     const items: PhotoItem[] = [];
@@ -297,6 +315,7 @@ export function ImportTool() {
         point,
         place,
         candidates: nearby,
+        model: chosen || undefined,
       });
       const where = [place.city, nearby.length ? `${nearby.length} theatre${nearby.length === 1 ? "" : "s"} nearby` : point ? "no theatre found nearby" : "no location in photo"]
         .filter(Boolean)
@@ -304,7 +323,14 @@ export function ImportTool() {
       updateJob(ref, {
         state: outcome.error ? "failed" : "done",
         found: outcome.result?.show_title ? 1 : 0,
-        detail: outcome.error === "not_configured" ? "Show detection isn’t set up yet (no API key)." : outcome.error ? "Couldn’t work out the show." : where,
+        detail:
+          outcome.error === "not_configured"
+            ? "Show detection isn’t set up yet (no API key)."
+            : outcome.error === "model_unavailable"
+              ? `Can’t use ${chosen} for photos: no API key, or it can’t read images.`
+              : outcome.error
+                ? "Couldn’t work out the show."
+                : [where, outcome.model && `read by ${outcome.model}`].filter(Boolean).join(" · "),
       });
       const sources: PhotoSource[] = group.map((p) => ({
         kind: "photo",
@@ -314,6 +340,7 @@ export function ImportTool() {
         date: p.meta.date,
         time: p.meta.time,
         hasLocation: p.meta.lat != null,
+        readBy: outcome.model ?? null,
       }));
       const extracted = fromIdentification(outcome.result, dated.meta.date, outcome.result ? undefined : "Couldn’t tell the show from these photos.");
       await addReading(
@@ -403,6 +430,7 @@ export function ImportTool() {
         <h2 id={`${id}-add`} className="text-title-2 font-display text-label">
           Add emails or photos
         </h2>
+        <ModelPicker value={model} onChange={setModel} />
         <div
           onDragOver={(e) => {
             e.preventDefault();

@@ -25,6 +25,8 @@ const PROVIDERS: Record<ProviderId, AiProvider> = { groq, anthropic, gemini, cer
 
 const DEFAULT_CHAIN = "groq,anthropic";
 
+const NAMES: Record<ProviderId, string> = { groq: "Groq", anthropic: "Claude", gemini: "Gemini", cerebras: "Cerebras" };
+
 export function parseChain(spec: string): ModelRef[] {
   return spec
     .split(",")
@@ -48,8 +50,39 @@ export function resolveChain(task?: string, models?: ModelRef[], needs?: { image
   });
 }
 
-export function aiConfigured(task?: string, needs?: { images?: boolean }) {
-  return resolveChain(task, undefined, needs).length > 0;
+export function aiConfigured(task?: string, needs?: { images?: boolean }, models?: ModelRef[]) {
+  return resolveChain(task, models, needs).length > 0;
+}
+
+export type ProviderInfo = { id: ProviderId; name: string; defaultModel: string; images: boolean; configured: boolean };
+
+// For pickers in testing tools: every provider, and whether it has a key.
+export function listProviders(): ProviderInfo[] {
+  return (Object.values(PROVIDERS) as AiProvider[]).map((p) => ({
+    id: p.id,
+    name: NAMES[p.id],
+    defaultModel: p.defaultModel,
+    images: p.images,
+    configured: p.configured(),
+  }));
+}
+
+// The chain a task uses by default, for display ("groq → anthropic").
+export function chainFor(task?: string, needs?: { images?: boolean }): ModelRef[] {
+  return resolveChain(task, undefined, needs);
+}
+
+// A model picked by a client ("provider" or "provider:model") → a one-model
+// chain with no fallback, so providers can be compared. Undefined when none
+// was picked; null when it's not a known provider or a plausible model id.
+export function parseModelChoice(value: unknown): ModelRef[] | null | undefined {
+  if (value == null || value === "") return undefined;
+  if (typeof value !== "string" || value.length > 120 || !/^[a-z]+(:[\w.\-/@]+)?$/i.test(value)) return null;
+  try {
+    return parseChain(value);
+  } catch {
+    return null;
+  }
 }
 
 export type GenerateOptions<T> = {

@@ -1,11 +1,11 @@
-// Reading show bookings out of one confirmation email with Claude (#17).
+// Reading show bookings out of one confirmation email with an AI model (#17).
 //
-// Server only (needs ANTHROPIC_API_KEY). Gets the email's text, already
+// Server only. Goes through lib/ai (task "email"), so AI_MODELS_EMAIL or the
+// import tool's model picker choose the provider. Gets the email's text, already
 // decoded on the device, and returns every performance it books: one email
 // can hold several. Results are drafts for the review screen; nothing is
 // saved until the owner confirms. The email text is never stored or logged.
-import Anthropic from "@anthropic-ai/sdk";
-
+import { aiConfigured, generateJson, type Generated, type ModelRef } from "@/lib/ai";
 import { SHOW_TYPES } from "@/lib/identify";
 import type { Extracted } from "./drafts";
 
@@ -80,31 +80,30 @@ function describe(input: EmailInput) {
   ].join("\n");
 }
 
-export async function extractEmail(input: EmailInput): Promise<EmailExtraction | null> {
-  const client = new Anthropic({ timeout: 60_000, maxRetries: 1 });
-  const response = await client.beta.messages.create({
-    model: "claude-opus-5-5",
-    max_tokens: 16000,
-    betas: ["server-side-fallback-2026-07-01"],
-    fallbacks: "default",
-    system: SYSTEM,
-    // Low effort: a structured read of one email, many in a row.
-    output_config: { effort: "low", format: { type: "json_schema", schema: SCHEMA } },
-    messages: [{ role: "user", content: describe(input) }],
-  });
+export function emailConfigured(models?: ModelRef[]) {
+  return aiConfigured("email", undefined, models);
+}
 
-  if (response.stop_reason === "refusal") {
-    console.error("Email extraction refused", response.stop_details?.category ?? null);
-    return null;
-  }
-  const json = response.content
-    .map((b) => (b.type === "text" ? b.text : ""))
-    .join("")
-    .trim();
-  if (!json) return null;
-  // Token counts only: the email itself never goes to the logs.
-  console.info("Email extraction", response.usage.input_tokens, "in /", response.usage.output_tokens, "out");
-  return clean(JSON.parse(json) as { kind: string; shows: Record<string, string>[] });
+// `models`: a chain picked by the caller; otherwise the configured chain.
+export async function extractEmail(input: EmailInput, models?: ModelRef[]): Promise<Generated<EmailExtraction> | null> {
+  const answer = await generateJson(
+    {
+      system: SYSTEM,
+      content: [{ type: "text", text: describe(input) }],
+      schema: { name: "email_bookings", schema: SCHEMA },
+      // Low effort: a structured read of one email, many in a row.
+      effort: "low",
+    },
+    {
+      task: "email",
+      models,
+      parse: (raw) => clean(raw as { kind: string; shows: Record<string, string>[] }),
+      budgetMs: 55_000,
+    },
+  );
+  // Never the email itself: only what came out.
+  if (answer) console.info("Email extraction", answer.model.provider, answer.result.kind, answer.result.shows.length, "shows");
+  return answer;
 }
 
 const blank = (v: unknown) => (typeof v === "string" && v.trim() ? v.trim().slice(0, 200) : null);

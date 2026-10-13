@@ -7,7 +7,7 @@
 // date plus a search cover generic stage shots and shows newer than the
 // model's training data. The result is only a suggestion: the log form shows
 // it for the user to confirm, and low confidence never fills a field.
-import { aiConfigured, generateJson } from "@/lib/ai";
+import { aiConfigured, generateJson, type Generated, type ModelRef } from "@/lib/ai";
 
 export type IdentifyInput = {
   // One or more photos from the same visit (up to MAX_IDENTIFY_PHOTOS in
@@ -89,11 +89,13 @@ function describe(input: IdentifyInput) {
   return `Photo taken: ${when}\nArea: ${area}\nLocation (approx.): ${point}\nNearby theatres:\n${nearby}`;
 }
 
-export function identifyConfigured() {
-  return aiConfigured("identify", { images: true });
+// `models`: a chain picked by the caller (the import tool's model picker);
+// otherwise the configured chain for "identify".
+export function identifyConfigured(models?: ModelRef[]) {
+  return aiConfigured("identify", { images: true }, models);
 }
 
-export async function identifyShow(input: IdentifyInput): Promise<Identification | null> {
+export async function identifyShow(input: IdentifyInput, models?: ModelRef[]): Promise<Generated<Identification> | null> {
   const answer = await generateJson(
     {
       system: SYSTEM,
@@ -114,6 +116,7 @@ export async function identifyShow(input: IdentifyInput): Promise<Identification
     },
     {
       task: "identify",
+      models,
       parse: (raw) => clean(raw as Identification, input),
       // A model that can't name the show, or only guesses, hands over to the
       // next one (by default Claude with web search).
@@ -124,7 +127,7 @@ export async function identifyShow(input: IdentifyInput): Promise<Identification
   if (!answer) return null;
   const { result, model } = answer;
   console.info("Identify", model.provider, result.confidence, result.show_title, "|", result.reason);
-  return result;
+  return answer;
 }
 
 // Keep only what the form can trust: empty strings become null, and an

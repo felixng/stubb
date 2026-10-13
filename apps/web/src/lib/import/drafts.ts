@@ -36,6 +36,8 @@ export type EmailSource = {
   from: string | null;
   sent: string | null;
   trimmed: boolean;
+  // Which model read it, e.g. "groq:meta-llama/…".
+  readBy: string | null;
 };
 
 export type PhotoSource = {
@@ -46,6 +48,7 @@ export type PhotoSource = {
   date: string | null;
   time: string | null;
   hasLocation: boolean;
+  readBy: string | null;
 };
 
 export type SourceRef = EmailSource | PhotoSource;
