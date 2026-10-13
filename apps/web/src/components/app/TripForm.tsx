@@ -6,6 +6,7 @@ import { useId, useState } from "react";
 import { Button } from "@/components/ui/Button";
 import type { Collection, Visibility } from "@/lib/entries";
 import { createClient } from "@/lib/supabase/client";
+import { DateField } from "./DateField";
 import { fieldClass } from "./log/Typeahead";
 
 const label = "text-subheadline font-medium text-label";
@@ -97,13 +98,13 @@ export function TripForm({
           <label htmlFor={`${id}-start`} className={label}>
             From <span className="font-normal text-label-secondary">(optional)</span>
           </label>
-          <input id={`${id}-start`} type="date" className={fieldClass} value={start} onChange={(e) => setStart(e.target.value)} />
+          <DateField id={`${id}-start`} compact placeholder="Start" value={start} onChange={setStart} />
         </div>
         <div className="flex flex-col gap-2">
           <label htmlFor={`${id}-end`} className={label}>
             To <span className="font-normal text-label-secondary">(optional)</span>
           </label>
-          <input id={`${id}-end`} type="date" className={fieldClass} value={end} min={start || undefined} onChange={(e) => setEnd(e.target.value)} />
+          <DateField id={`${id}-end`} compact placeholder="End" value={end} min={start || undefined} onChange={setEnd} />
         </div>
       </div>
       {kind === "trip" && (

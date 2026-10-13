@@ -24,6 +24,11 @@ async function Entry({ params, searchParams }: PageProps<"/app/entries/[id]">) {
           Logged.
         </p>
       )}
+      {query.photo === "failed" && (
+        <p role="alert" className="rounded-md bg-fill px-4 py-3 text-subheadline text-destructive">
+          Saved, but the photo didn’t upload. Edit the entry to add it again.
+        </p>
+      )}
       {photoUrl && (
         // eslint-disable-next-line @next/next/no-img-element -- signed Storage URL
         <img src={photoUrl} alt="" className="max-h-[60vh] w-full rounded-md bg-fill object-cover" />
