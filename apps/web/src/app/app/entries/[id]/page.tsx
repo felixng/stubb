@@ -60,6 +60,12 @@ async function Entry({ params, searchParams }: PageProps<"/app/entries/[id]">) {
       </div>
       <div className="flex flex-col gap-3 pt-2">
         <Link
+          href={`/app/entries/${entry.id}/share`}
+          className="inline-flex min-h-[50px] items-center justify-center rounded-pill bg-tint px-6 text-headline text-on-tint shadow-btn hover:bg-tint-pressed focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus"
+        >
+          Share
+        </Link>
+        <Link
           href={`/app/entries/${entry.id}/edit`}
           className="inline-flex min-h-[50px] items-center justify-center rounded-pill bg-tint-fill px-6 text-headline text-tint-text hover:bg-fill focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus"
         >
