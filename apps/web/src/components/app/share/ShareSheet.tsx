@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 
 import { CARD_DESIGNS, renderCard, type CardData } from "@/lib/share-card";
@@ -15,7 +16,17 @@ type Variants = { photo: Rendered; clear: Rendered };
 // sheet or the camera roll. Every card is drawn on the device, with and
 // without its background, before any button is tapped, so the share sheet
 // opens straight from the tap (iOS needs that).
-export function ShareSheet({ data, photoUrl, slug }: { data: CardData; photoUrl: string | null; slug: string }) {
+export function ShareSheet({
+  data,
+  photoUrl,
+  slug,
+  editHref,
+}: {
+  data: CardData;
+  photoUrl: string | null;
+  slug: string;
+  editHref?: string;
+}) {
   const [cards, setCards] = useState<Variants[] | null>(null);
   const [failed, setFailed] = useState(false);
   const [active, setActive] = useState(0);
@@ -208,6 +219,14 @@ export function ShareSheet({ data, photoUrl, slug }: { data: CardData; photoUrl:
             <path d="M15.5 8.5V6a1.5 1.5 0 0 0-1.5-1.5H6A1.5 1.5 0 0 0 4.5 6v8A1.5 1.5 0 0 0 6 15.5h2.5" />
           </Circle>
         </Action>
+        {editHref && (
+          <Link href={editHref} className={ACTION}>
+            <Circle>
+              <path d="M14.5 5.5l4 4M4.5 19.5l1-4.5L16 4.5a1.4 1.4 0 0 1 2 0l1.5 1.5a1.4 1.4 0 0 1 0 2L9 18.5z" />
+            </Circle>
+            Edit
+          </Link>
+        )}
       </div>
 
       <p role="status" className="min-h-5 text-center text-footnote text-label-secondary">
@@ -216,6 +235,9 @@ export function ShareSheet({ data, photoUrl, slug }: { data: CardData; photoUrl:
     </section>
   );
 }
+
+const ACTION =
+  "flex w-[72px] shrink-0 cursor-pointer flex-col items-center gap-1.5 rounded-md text-footnote text-label focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus disabled:cursor-wait disabled:opacity-40";
 
 function Action({
   label,
@@ -236,7 +258,7 @@ function Action({
       onClick={onClick}
       disabled={disabled}
       aria-pressed={pressed}
-      className="flex w-[72px] shrink-0 cursor-pointer flex-col items-center gap-1.5 rounded-md text-footnote text-label focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus disabled:cursor-wait disabled:opacity-40"
+      className={ACTION}
     >
       {children}
       {label}

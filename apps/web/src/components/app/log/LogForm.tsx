@@ -396,13 +396,11 @@ export function LogForm({ initial }: { initial?: EntryDraft }) {
         }
       }
 
-      // A new entry goes straight to sharing, as in Hevy. If its photo
-      // failed, the entry page says so first.
+      // The entry page is the share screen, so a new entry lands on sharing.
       const params = new URLSearchParams();
       if (!editing) params.set("new", "1");
       if (photoFailed) params.set("photo", "failed");
-      const next = !editing && !photoFailed ? `/app/entries/${entryId}/share` : `/app/entries/${entryId}`;
-      router.push(`${next}${params.size ? `?${params}` : ""}`);
+      router.push(`/app/entries/${entryId}${params.size ? `?${params}` : ""}`);
       router.refresh();
     } catch (err) {
       console.error(`Saving the entry failed at "${step}"`, err);
