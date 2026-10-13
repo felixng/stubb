@@ -1,0 +1,134 @@
+// From "what a source said" to form values, and from confirmed drafts to
+// entries (#17, #18). Works with the browser Supabase client; every rule is
+// still enforced by RLS and constraints.
+import type { SupabaseClient } from "@supabase/supabase-js";
+
+import {
+  ensureShow,
+  ensureVenue,
+  PHOTO_BUCKET,
+  photoPath,
+  type NearbyVenue,
+  type NewShow,
+  type Show,
+  type Venue,
+  type VenueChoice,
+} from "@/lib/entries";
+import type { Extracted, Place } from "./drafts";
+
+// An existing catalogue show with the same title (any case), or a new one
+// to create on save.
+export async function resolveShow(supabase: SupabaseClient, e: Extracted): Promise<Show | NewShow | null> {
+  if (!e.show_title) return null;
+  const { data } = await supabase.rpc("search_shows", { q: e.show_title });
+  const same = (data as Show[] | null)?.find((s) => s.title.toLowerCase() === e.show_title!.toLowerCase());
+  return same ?? { title: e.show_title, type: e.show_type ?? "musical" };
+}
+
+// A nearby theatre the source picked, then a catalogue venue with the same
+// name (in the same city when we know it), then a new venue. A lone nearby
+// theatre wins when the source named none.
+export async function resolveVenue(
+  supabase: SupabaseClient,
+  e: Extracted,
+  nearby: NearbyVenue[],
+  place: Place,
+): Promise<VenueChoice | null> {
+  const picked = nearby.find((c) => c.osm_id && c.osm_id === e.venue_osm_id);
+  if (picked) return picked;
+  if (!e.venue_name) return nearby.length === 1 ? nearby[0] : null;
+  const name = e.venue_name.toLowerCase();
+  const byName = nearby.find((c) => c.name.toLowerCase() === name);
+  if (byName) return byName;
+  const near = nearby[0];
+  const { data } = await supabase.rpc("search_venues", {
+    q: e.venue_name,
+    near_lat: near?.lat ?? null,
+    near_lng: near?.lng ?? null,
+  });
+  const city = (e.city ?? place.city ?? "").toLowerCase();
+  const same = (data as Venue[] | null)?.filter((v) => v.name.toLowerCase() === name);
+  const match = same?.find((v) => !city || (v.city ?? "").toLowerCase() === city) ?? (city ? undefined : same?.[0]);
+  return match ?? { name: e.venue_name, city: e.city ?? place.city, country: e.country ?? place.country };
+}
+
+export type ConfirmedDraft = {
+  show: Show | NewShow;
+  venue: VenueChoice;
+  date: string;
+  rating: number | null;
+  note: string | null;
+  collectionIds: string[];
+  // The clean 1600px copy to attach, if any.
+  photo: Blob | null;
+};
+
+export class SaveError extends Error {
+  readonly step: string;
+  constructor(step: string, detail: string) {
+    super(`Couldn’t save the ${step}: ${detail}`);
+    this.step = step;
+  }
+}
+
+// Same order as the log form: catalogue rows, the entry, its trips, then the
+// photo, so a failed upload never loses the entry. Visibility is left to the
+// database default (the owner's profile setting).
+export async function saveDraft(
+  supabase: SupabaseClient,
+  userId: string,
+  draft: ConfirmedDraft,
+): Promise<{ id: string; photoFailed: boolean }> {
+  const id = crypto.randomUUID();
+  let step = "show";
+  try {
+    const showId = await ensureShow(supabase, draft.show);
+    step = "venue";
+    const venueId = await ensureVenue(supabase, draft.venue);
+    step = "entry";
+    const { error: write } = await supabase.from("entries").insert({
+      id,
+      show_id: showId,
+      venue_id: venueId,
+      date: draft.date,
+      rating: draft.rating,
+      note: draft.note?.trim() || null,
+    });
+    if (write) throw write;
+    step = "trips";
+    if (draft.collectionIds.length) {
+      const { error: link } = await supabase
+        .from("entry_collections")
+        .insert(draft.collectionIds.map((collection_id) => ({ entry_id: id, collection_id })));
+      if (link) throw link;
+    }
+  } catch (err) {
+    const detail = err && typeof err === "object" && "message" in err ? String(err.message) : String(err);
+    throw new SaveError(step, detail);
+  }
+
+  let photoFailed = false;
+  if (draft.photo) {
+    const path = photoPath(userId, id);
+    const { error: upload } = await supabase.storage
+      .from(PHOTO_BUCKET)
+      .upload(path, draft.photo, { contentType: "image/jpeg", upsert: true, cacheControl: "3600" });
+    const { error: link } = upload
+      ? { error: upload }
+      : await supabase.from("entries").update({ photo_path: path }).eq("id", id);
+    if (link) {
+      console.error("Saving the photo failed", link);
+      photoFailed = true;
+    }
+  }
+  return { id, photoFailed };
+}
+
+// Runs `fn` over `items`, at most `limit` at a time, in order of start.
+export async function runPool<T>(items: T[], limit: number, fn: (item: T) => Promise<void>) {
+  let next = 0;
+  const worker = async () => {
+    while (next < items.length) await fn(items[next++]);
+  };
+  await Promise.all(Array.from({ length: Math.min(limit, items.length) }, worker));
+}
