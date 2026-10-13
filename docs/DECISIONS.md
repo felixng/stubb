@@ -73,3 +73,9 @@ Owner's call. The log form starts with a photo and fills in what it can: the dat
 
 ### 2026-10-13: App and sign-in are always light; landing menu links to sign-in
 Owner's call: `/app` and `/login` now stay light whatever the device setting, like the landing page (`data-theme="light"`). Dark mode can come back later; the tokens are unchanged. The landing page gets a hamburger menu next to the beta pill whose only item is "Sign in", so the login page is no longer unlinked. Sign-ups stay off, so the link reveals nothing.
+
+### 2026-10-13: AI calls go through `lib/ai`, Groq first
+Owner's call. All model calls go through `apps/web/src/lib/ai`: a feature sends a provider-neutral request (system prompt, text/image parts, JSON Schema, optional web search) and gets back the first acceptable answer from an ordered chain of models. Providers live side by side (`groq.ts`, `anthropic.ts`); adding one is a new file plus an entry in the registry.
+- Default chain: Groq (`meta-llama/llama-4-scout-17b-16e-instruct`, vision + JSON Schema) then Claude (`claude-opus-5-5` with web search). Called with `fetch`, so Groq adds no dependency.
+- Swap or reorder models with `AI_MODELS` or a per-task `AI_MODELS_<TASK>` (e.g. `AI_MODELS_IDENTIFY="anthropic,groq"`); providers without a key are skipped.
+- A model that errors, declines, or isn't accepted by the feature hands over to the next. Photo identify only accepts a named show at medium or high confidence, since Groq's vision models can't search the web; otherwise Claude gets a go. The whole chain shares one time budget so the fallback fits in the route's limit.

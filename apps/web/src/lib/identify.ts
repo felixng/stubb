@@ -1,12 +1,12 @@
 // Identify a show from a photo (#14, reused by #18's batch import).
 //
-// Claude gets a downscaled, re-encoded copy of the photo (no EXIF), the
+// The model gets a downscaled, re-encoded copy of the photo (no EXIF), the
 // theatres near where it was taken, and the date and time, with web search
 // on. The photo often settles it (show curtain, Playbill, marquee); venue and
 // date plus a search cover generic stage shots and shows newer than the
 // model's training data. The result is only a suggestion: the log form shows
 // it for the user to confirm, and low confidence never fills a field.
-import Anthropic from "@anthropic-ai/sdk";
+import { aiConfigured, generateJson } from "@/lib/ai";
 
 export type IdentifyInput = {
   photo: { base64: string; mediaType: "image/jpeg" };
@@ -14,7 +14,7 @@ export type IdentifyInput = {
   time: string | null; // "19:42", local to where the photo was taken
   city: string | null;
   country: string | null; // ISO 3166-1 alpha-2 when known
-  // Rounded to ~100 m. Lets Claude search the area when OpenStreetMap
+  // Rounded to ~100 m. Lets the model search the area when OpenStreetMap
   // finds no theatre (or is down). Sent for this call only, never stored.
   point: { lat: number; lng: number } | null;
   candidates: { osm_id: string; name: string; distance_m: number }[];
@@ -31,7 +31,7 @@ export type Identification = {
   reason: string;
 };
 
-// Structured output. No nullable fields: the API rejects a "string or null"
+// Structured output. No nullable fields: Anthropic's API rejects a "string or null"
 // type combined with an enum, so "unknown" is an empty string instead.
 const SCHEMA = {
   type: "object",
@@ -87,69 +87,41 @@ function describe(input: IdentifyInput) {
 }
 
 export function identifyConfigured() {
-  return Boolean(process.env.ANTHROPIC_API_KEY);
+  return aiConfigured("identify");
 }
 
 export async function identifyShow(input: IdentifyInput): Promise<Identification | null> {
-  const client = new Anthropic({ timeout: 80_000, maxRetries: 1 });
-  const web_search: Anthropic.Beta.BetaWebSearchTool20260209 = {
-    type: "web_search_20260209",
-    name: "web_search",
-    // Each search adds seconds; three covers venue + show + one check.
-    max_uses: 3,
-    // Localises results ("what's on near me") when we know the area.
-    ...(input.country && /^[A-Z]{2}$/.test(input.country)
-      ? { user_location: { type: "approximate", country: input.country, ...(input.city ? { city: input.city } : {}) } }
-      : {}),
-  };
-
-  const messages: Anthropic.Beta.BetaMessageParam[] = [
+  const answer = await generateJson(
     {
-      role: "user",
+      system: SYSTEM,
       content: [
-        { type: "image", source: { type: "base64", media_type: input.photo.mediaType, data: input.photo.base64 } },
+        { type: "image", base64: input.photo.base64, mediaType: input.photo.mediaType },
         { type: "text", text: describe(input) },
       ],
-    },
-  ];
-
-  // A long web search can pause the turn; resume it a couple of times.
-  for (let attempt = 0; attempt < 3; attempt++) {
-    const response = await client.beta.messages.create({
-      model: "claude-opus-5-5",
-      max_tokens: 16000,
-      betas: ["server-side-fallback-2026-07-01"],
-      fallbacks: "default",
-      system: SYSTEM,
+      schema: { name: "identification", schema: SCHEMA },
+      webSearch: {
+        // Each search adds seconds; three covers venue + show + one check.
+        maxUses: 3,
+        ...(input.country && /^[A-Z]{2}$/.test(input.country)
+          ? { location: { country: input.country, ...(input.city ? { city: input.city } : {}) } }
+          : {}),
+      },
       // Low effort: this runs while the user waits on the log form.
-      output_config: { effort: "low", format: { type: "json_schema", schema: SCHEMA } },
-      tools: [web_search],
-      messages,
-    });
-
-    if (response.stop_reason === "pause_turn") {
-      messages.push({ role: "assistant", content: response.content });
-      continue;
-    }
-    if (response.stop_reason === "refusal") {
-      console.error("Identify refused", response.stop_details?.category ?? null);
-      return null;
-    }
-
-    // With web search the answer can arrive split across several text
-    // blocks (citations); the JSON is everything after the last search.
-    const lastTool = response.content.findLastIndex((b) => b.type !== "text");
-    const json = response.content
-      .slice(lastTool + 1)
-      .map((b) => (b.type === "text" ? b.text : ""))
-      .join("")
-      .trim();
-    if (!json) return null;
-    const result = clean(JSON.parse(json) as Identification, input);
-    console.info("Identify", result.confidence, result.show_title, "|", result.reason);
-    return result;
-  }
-  return null;
+      effort: "low",
+    },
+    {
+      task: "identify",
+      parse: (raw) => clean(raw as Identification, input),
+      // A model that can't name the show, or only guesses, hands over to the
+      // next one (by default Claude with web search).
+      accept: (result) => result.show_title !== null && result.confidence !== "low",
+      budgetMs: 80_000,
+    },
+  );
+  if (!answer) return null;
+  const { result, model } = answer;
+  console.info("Identify", model.provider, result.confidence, result.show_title, "|", result.reason);
+  return result;
 }
 
 // Keep only what the form can trust: empty strings become null, and an
