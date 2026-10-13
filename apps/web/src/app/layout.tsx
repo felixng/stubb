@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import { SITE_DESCRIPTION, SITE_NAME, SITE_TITLE, SITE_URL } from "@/lib/site";
+import { SiteAnalytics } from "@/components/SiteAnalytics";
 import "./globals.css";
 
 // Type is the system font (SF Pro on Apple devices), set in globals.css, so
@@ -35,6 +36,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
     <html lang="en" className="h-full antialiased">
       <body className="flex min-h-full flex-col font-sans text-body">
         {children}
+        <SiteAnalytics />
       </body>
     </html>
   );

@@ -179,6 +179,33 @@ export default function PrivacyPage() {
           pages you visit, to keep the service running and secure. Legal basis:
           our legitimate interest in operating a secure service.
         </p>
+
+        <SubHeading>Usage statistics</SubHeading>
+        <p>
+          To learn what works and what to improve, we count:
+        </p>
+        <List>
+          <li>
+            <strong>Visits to our public pages</strong> (the home page, these
+            legal pages and public profiles), using Vercel Web Analytics: the
+            page, the referring website, and your country, device type and
+            browser. It uses no cookies, and doesn’t identify you or follow you
+            across websites or from one day to the next. Pages inside your
+            account aren’t counted.
+          </li>
+          <li>
+            <strong>Some things you do in your account</strong>: when you log
+            a new entry (whether you started from a photo, whether we could
+            work out the show, and whether you added a rating or a note, but not
+            what they say), and when you share, save or copy a share card
+            (which button and card design). This is stored with your account so
+            we can see how many people keep logging and sharing.
+          </li>
+        </List>
+        <p>
+          Legal basis: our legitimate interest in understanding how Stubbed is
+          used so we can improve it.
+        </p>
       </Section>
 
       <Section id="public" title="What other people can see">
@@ -207,8 +234,9 @@ export default function PrivacyPage() {
           We use only cookies that are strictly necessary to keep you signed in
           and protect your account. We don’t use analytics, advertising or
           tracking cookies, so we don’t ask for cookie consent. The landing page
-          sets no cookies at all. If you choose to sign in with Google or Apple,
-          they set their own cookies on their own websites.
+          sets no cookies at all; our visit statistics work without them. If
+          you choose to sign in with Google or Apple, they set their own
+          cookies on their own websites.
         </p>
         <p>
           Because we don’t track you across websites, there is nothing for a
@@ -228,7 +256,7 @@ export default function PrivacyPage() {
             <strong>Supabase</strong>: database, sign-in and photo storage.
           </li>
           <li>
-            <strong>Vercel</strong>: website hosting.
+            <strong>Vercel</strong>: website hosting and visit statistics.
           </li>
           <li>
             <strong>AI providers</strong>: reading photos and ticket emails, as
@@ -281,6 +309,10 @@ export default function PrivacyPage() {
             account. When you delete your account or an entry, we delete it from
             the live service within 30 days; copies in backups are overwritten
             within a further 90 days.
+          </li>
+          <li>
+            <strong>Usage statistics</strong> about your account: for as long
+            as you have an account, and deleted with it.
           </li>
           <li>
             <strong>Technical logs</strong>: kept by our providers for a short

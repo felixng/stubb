@@ -3,7 +3,9 @@
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 
+import { track } from "@/lib/analytics";
 import { CARD_DESIGNS, renderCard, type CardData } from "@/lib/share-card";
+import { createClient } from "@/lib/supabase/client";
 
 // Stubbed's Instagram account, tagged in the caption and the copied text.
 const INSTAGRAM = "@stubbedapp";
@@ -83,7 +85,12 @@ export function ShareSheet({
     setActive(Math.max(0, Math.min(CARD_DESIGNS.length - 1, i)));
   }
 
-  function download() {
+  // Which button was used, on which design: the share loop's main signal.
+  function record(action: "stories" | "more" | "download" | "copy_text") {
+    void track(createClient(), "card_shared", { action, design: CARD_DESIGNS[active].id, transparent });
+  }
+
+  function saveImage() {
     if (!card) return;
     const a = document.createElement("a");
     a.href = card.url;
@@ -91,11 +98,17 @@ export function ShareSheet({
     a.click();
   }
 
+  function download() {
+    saveImage();
+    record("download");
+  }
+
   async function share(withText: boolean) {
     if (!card) return;
     setNotice(null);
     if (!canShareFiles) {
-      download();
+      saveImage();
+      record(withText ? "more" : "stories");
       setNotice(withText ? "Image saved." : "Image saved. Add it to your story from Instagram.");
       return;
     }
@@ -103,6 +116,7 @@ export function ShareSheet({
     // image when text comes with it.
     try {
       await navigator.share(withText ? { files: [card.file], text } : { files: [card.file] });
+      record(withText ? "more" : "stories");
     } catch (err) {
       if (err instanceof DOMException && err.name === "AbortError") return;
       console.error("Sharing failed", err);
@@ -113,6 +127,7 @@ export function ShareSheet({
   async function copyText() {
     try {
       await navigator.clipboard.writeText(text);
+      record("copy_text");
       setNotice("Text copied.");
     } catch {
       setNotice("Couldn’t copy the text.");

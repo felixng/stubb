@@ -5,6 +5,7 @@ import { useEffect, useId, useRef, useState, useSyncExternalStore } from "react"
 
 import { Button } from "@/components/ui/Button";
 import { Chip } from "@/components/ui/Chip";
+import { track } from "@/lib/analytics";
 import {
   activeTripFor,
   ensureShow,
@@ -394,6 +395,16 @@ export function LogForm({ initial }: { initial?: EntryDraft }) {
           console.error("Saving the photo failed", link);
           photoFailed = true;
         }
+      }
+
+      // How new entries get logged: photo or by hand, and how far detection got.
+      if (!editing) {
+        void track(supabase, "entry_logged", {
+          method: photo ? "photo" : "manual",
+          detection: detect.step === "done" ? (detect.result?.confidence ?? "none") : detect.step === "idle" ? "skipped" : "pending",
+          rated: rating != null,
+          has_note: Boolean(note.trim()),
+        });
       }
 
       // The entry page is the share screen, so a new entry lands on sharing.
