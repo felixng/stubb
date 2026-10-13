@@ -10,8 +10,8 @@ const MAX_PHOTO_BYTES = 1_500_000;
 // POST multipart: photo (JPEG re-encoded on the device; repeat the field for
 // up to 4 photos of one visit, #18), date, time, city,
 // country, lat/lng (rounded), candidates (JSON) → a suggested show and venue (#14).
-// 503 "not_configured" until ANTHROPIC_API_KEY is set; the form then just
-// skips the suggestion.
+// 503 "not_configured" until an AI key (GROQ_API_KEY or ANTHROPIC_API_KEY)
+// is set; the form then just skips the suggestion.
 export async function POST(request: Request) {
   if (!(await requireUserId())) {
     return Response.json({ error: "unauthorized" }, { status: 401 });

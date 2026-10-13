@@ -42,7 +42,8 @@ export type EntryDraft = {
 type Photo = { stored: Blob; previewUrl: string };
 
 // What the photo tells us, step by step. Each step fills only fields the
-// user hasn't touched, and only when it's confident.
+// user hasn't set, and only when it's confident. Removing or replacing the
+// photo clears what it filled.
 type Detect =
   | { step: "idle" }
   | { step: "reading" | "nearby" | "identifying" }
@@ -99,6 +100,48 @@ export function LogForm({ initial }: { initial?: EntryDraft }) {
   const live = useRef({ show, venue });
   live.current = { show, venue };
   const run = useRef(0);
+  // Fields whose current value came from the photo. Removing or replacing
+  // the photo clears these (and only these), so a new photo can fill them.
+  const fromPhoto = useRef({ show: false, venue: false, date: false });
+
+  // Detection sets fields through these, so they can be cleared later.
+  const autoShow = (v: Show | NewShow) => {
+    fromPhoto.current.show = true;
+    live.current.show = v;
+    setShow(v);
+  };
+  const autoVenue = (v: VenueChoice) => {
+    fromPhoto.current.venue = true;
+    live.current.venue = v;
+    setVenue(v);
+  };
+
+  // Stop waiting on detection; keep what's already filled (e.g. the date).
+  function skipDetection() {
+    run.current++;
+    setDetect({ step: "done", result: null, note: "Skipped. Fill in the rest below." });
+  }
+
+  // Forget everything the previous photo filled in or found.
+  function clearPhotoResults() {
+    run.current++;
+    const f = fromPhoto.current;
+    if (f.show) {
+      live.current.show = null;
+      setShow(null);
+    }
+    if (f.venue) {
+      live.current.venue = null;
+      setVenue(null);
+    }
+    if (f.date) setDate("");
+    fromPhoto.current = { show: false, venue: false, date: false };
+    setSuggestion(null);
+    setNearby([]);
+    setPlace({ city: null, country: null });
+    setPhotoError(null);
+    setDetect({ step: "idle" });
+  }
 
   // The owner's default visibility, trips and labels, and recent venues.
   useEffect(() => {
@@ -140,12 +183,10 @@ export function LogForm({ initial }: { initial?: EntryDraft }) {
   }, [photo]);
 
   async function onPhoto(file: File) {
-    const token = ++run.current;
+    clearPhotoResults();
+    const token = run.current;
     const current = () => token === run.current;
     setStarted(true);
-    setPhotoError(null);
-    setSuggestion(null);
-    setNearby([]);
     setDetect({ step: "reading" });
 
     let prepared: PreparedPhoto;
@@ -161,7 +202,10 @@ export function LogForm({ initial }: { initial?: EntryDraft }) {
     const { meta, stored, small } = prepared;
     setPhoto({ stored, previewUrl: URL.createObjectURL(stored) });
     setExistingPhoto(null);
-    if (meta.date && !touched.current.date) setDate(meta.date);
+    if (meta.date && !touched.current.date) {
+      fromPhoto.current.date = true;
+      setDate(meta.date);
+    }
 
     // Nearby theatres, matched to venues already in the catalogue.
     let candidates: NearbyVenue[] = [];
@@ -174,10 +218,10 @@ export function LogForm({ initial }: { initial?: EntryDraft }) {
       setNearby(candidates);
       setPlace(where);
       // One theatre in range is as good as an answer.
-      if (candidates.length === 1 && !touched.current.venue && !live.current.venue) setVenue(candidates[0]);
+      if (candidates.length === 1 && !touched.current.venue && !live.current.venue) autoVenue(candidates[0]);
     }
 
-    // Ask Claude for the show (and to choose between neighbouring theatres).
+    // Ask the AI for the show (and to choose between neighbouring theatres).
     setDetect({ step: "identifying" });
     const outcome = await requestIdentify({ photos: [small], meta, point, place: where, candidates });
     const result = outcome.result;
@@ -208,16 +252,16 @@ export function LogForm({ initial }: { initial?: EntryDraft }) {
     if (result.show_title && !touched.current.show && !live.current.show) {
       const { data } = await supabase.rpc("search_shows", { q: result.show_title });
       const same = (data as Show[] | null)?.find((s) => s.title.toLowerCase() === result.show_title!.toLowerCase());
-      setShow(same ?? { title: result.show_title, type: result.show_type ?? "musical" });
+      autoShow(same ?? { title: result.show_title, type: result.show_type ?? "musical" });
     }
     if (touched.current.venue) return;
     const picked = candidates.find((c) => c.osm_id === result.venue_osm_id);
     if (picked) {
-      setVenue(picked);
+      autoVenue(picked);
     } else if (result.venue_name && !live.current.venue) {
       const { data } = await supabase.rpc("search_venues", { q: result.venue_name });
       const same = (data as Venue[] | null)?.find((v) => v.name.toLowerCase() === result.venue_name!.toLowerCase());
-      setVenue(same ?? { name: result.venue_name, city: where.city, country: where.country });
+      autoVenue(same ?? { name: result.venue_name, city: where.city, country: where.country });
     }
   }
 
@@ -406,10 +450,9 @@ export function LogForm({ initial }: { initial?: EntryDraft }) {
               <button
                 type="button"
                 onClick={() => {
-                  run.current++;
+                  clearPhotoResults();
                   setPhoto(null);
                   setExistingPhoto(null);
-                  setDetect({ step: "idle" });
                 }}
                 className="min-h-11 rounded-pill px-3 text-subheadline font-semibold text-destructive hover:bg-fill focus-visible:outline-2 focus-visible:outline-focus"
               >
@@ -420,12 +463,7 @@ export function LogForm({ initial }: { initial?: EntryDraft }) {
           <p role="status" aria-live="polite" className="px-3 text-footnote text-label-secondary">
             {photoError ? (
               <span className="text-destructive">{photoError}</span>
-            ) : status ? (
-              <span className="inline-flex items-center gap-2">
-                <span aria-hidden="true" className="size-3 animate-spin rounded-full border-2 border-outline border-t-transparent" />
-                {status}
-              </span>
-            ) : result && result.confidence !== "low" ? (
+            ) : busy ? null : result && result.confidence !== "low" ? (
               `${result.confidence === "high" ? "Matched" : "Probably"}: ${result.reason}`
             ) : detect.step === "done" ? (
               (detect.note ?? (result ? null : "Couldn’t tell the show from this photo."))
@@ -434,184 +472,222 @@ export function LogForm({ initial }: { initial?: EntryDraft }) {
         </div>
       </div>
 
-      {/* Show */}
-      <div className="flex flex-col gap-2">
-        <span id={`${id}-show`} className={label}>
-          Show
-        </span>
-        <div aria-busy={busy && !show}>
-          <ShowField
-            labelledBy={`${id}-show`}
-            value={show}
-            onChange={(s) => {
-              touched.current.show = true;
-              setSuggestion(null);
-              setShow(s);
-            }}
-          />
-        </div>
-        {suggestion && !show && (
-          <div className="flex flex-wrap items-center gap-2">
-            <Chip
-              onClick={() => {
-                const s = suggestion;
-                setSuggestion(null);
-                touched.current.show = false;
-                void applyIdentification(s, nearby, place);
-              }}
-            >
-              Maybe {suggestion.show_title}?
-            </Chip>
-            <span className="text-footnote text-label-secondary">{suggestion.reason}</span>
-          </div>
-        )}
-      </div>
-
-      {/* Venue */}
-      <div className="flex flex-col gap-2">
-        <span id={`${id}-venue`} className={label}>
-          Venue
-        </span>
-        <VenueField
-          labelledBy={`${id}-venue`}
-          value={venue}
-          onChange={(v) => {
-            touched.current.venue = true;
-            setVenue(v);
-          }}
-          nearby={nearby}
-          suggestions={venueSuggestions}
-          place={venuePlace}
-        />
-      </div>
-
-      {/* Date */}
-      <div className="flex flex-col gap-2">
-        <label htmlFor={`${id}-date`} className={label}>
-          Date
-        </label>
-        <DateField
-          id={`${id}-date`}
-          value={date}
-          onChange={(v) => {
-            touched.current.date = true;
-            setDate(v);
-          }}
-        />
-        <div className="flex flex-wrap items-center gap-2">
-          {(today
-            ? [
-                ["Today", today],
-                ["Yesterday", localToday(-1)],
-              ]
-            : []
-          ).map(([text, value]) => (
-            <Chip
-              key={text}
-              selected={date === value}
-              onClick={() => {
-                touched.current.date = true;
-                setDate(value);
-              }}
-            >
-              {text}
-            </Chip>
-          ))}
-        </div>
-      </div>
-
-      {/* Rating */}
-      <div className="flex flex-col gap-1">
-        <span id={`${id}-rating`} className={label}>
-          Rating
-        </span>
-        <RatingInput labelledBy={`${id}-rating`} value={rating} onChange={setRating} />
-      </div>
-
-      {/* Note */}
-      <div className="flex flex-col gap-2">
-        <label htmlFor={`${id}-note`} className={label}>
-          Note <span className="font-normal text-label-secondary">(optional)</span>
-        </label>
-        <textarea
-          id={`${id}-note`}
-          rows={note ? 5 : 2}
-          maxLength={10000}
-          value={note}
-          onChange={(e) => setNote(e.target.value)}
-          onFocus={(e) => (e.currentTarget.rows = 5)}
-          placeholder="What stayed with you?"
-          className="block w-full rounded-md border border-separator bg-surface px-4 py-3 text-body text-label shadow-sm placeholder:text-label-secondary focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus"
-        />
-      </div>
-
-      {/* Trips and labels */}
-      <div className="flex flex-col gap-2">
-        <span id={`${id}-trips`} className={label}>
-          Trips and labels
-        </span>
-        {collections.length ? (
-          <div role="group" aria-labelledby={`${id}-trips`} className="flex flex-wrap gap-2">
-            {collections.map((c) => (
-              <Chip
-                key={c.id}
-                selected={collectionIds.includes(c.id)}
-                onClick={() => {
-                  touched.current.collections = true;
-                  setCollectionIds((ids) => (ids.includes(c.id) ? ids.filter((x) => x !== c.id) : [...ids, c.id]));
+      {/* While the photo is checked, the fields are locked and greyed out
+          (inert: no taps, no focus) under one spinner. The photo row above
+          stays live so the photo can still be changed or removed. */}
+      <div className="relative">
+        <div
+          inert={busy}
+          aria-busy={busy}
+          className={`flex flex-col gap-6 transition-opacity duration-200 ${busy ? "opacity-35 select-none" : ""}`}
+        >
+          {/* Show */}
+          <div className="flex flex-col gap-2">
+            <span id={`${id}-show`} className={label}>
+              Show
+            </span>
+            <div>
+              <ShowField
+                labelledBy={`${id}-show`}
+                value={show}
+                onChange={(s) => {
+                  // Clearing with "Change" isn't a choice; a new photo may refill it.
+                  touched.current.show = s !== null;
+                  fromPhoto.current.show = false;
+                  setSuggestion(null);
+                  setShow(s);
                 }}
-              >
-                {c.name}
-              </Chip>
-            ))}
+              />
+            </div>
+            {suggestion && !show && (
+              <div className="flex flex-wrap items-center gap-2">
+                <Chip
+                  onClick={() => {
+                    const s = suggestion;
+                    setSuggestion(null);
+                    touched.current.show = false;
+                    void applyIdentification(s, nearby, place);
+                  }}
+                >
+                  Maybe {suggestion.show_title}?
+                </Chip>
+                <span className="text-footnote text-label-secondary">{suggestion.reason}</span>
+              </div>
+            )}
           </div>
-        ) : (
-          <p className="text-footnote text-label-secondary">
-            None yet. Create one under Trips, like “NYC Oct 2026”.
-          </p>
-        )}
-      </div>
 
-      {/* Visibility */}
-      <div className="flex flex-col gap-2">
-        <span id={`${id}-visibility`} className={label}>
-          Who can see this
-        </span>
-        <div role="radiogroup" aria-labelledby={`${id}-visibility`} className="flex gap-2">
-          {(["public", "private"] as const).map((v) => (
-            <button
-              key={v}
-              type="button"
-              role="radio"
-              aria-checked={visibility === v}
-              onClick={() => {
-                touched.current.visibility = true;
-                setVisibility(v);
+          {/* Venue */}
+          <div className="flex flex-col gap-2">
+            <span id={`${id}-venue`} className={label}>
+              Venue
+            </span>
+            <VenueField
+              labelledBy={`${id}-venue`}
+              value={venue}
+              onChange={(v) => {
+                touched.current.venue = v !== null;
+                fromPhoto.current.venue = false;
+                setVenue(v);
               }}
-              className={`min-h-11 flex-1 rounded-pill px-4 text-subheadline font-semibold focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus ${
-                visibility === v ? "bg-label text-background" : "bg-fill text-label"
-              }`}
-            >
-              {v === "public" ? "Public" : "Private"}
-            </button>
-          ))}
+              nearby={nearby}
+              suggestions={venueSuggestions}
+              place={venuePlace}
+            />
+          </div>
+
+          {/* Date */}
+          <div className="flex flex-col gap-2">
+            <label htmlFor={`${id}-date`} className={label}>
+              Date
+            </label>
+            <DateField
+              id={`${id}-date`}
+              value={date}
+              onChange={(v) => {
+                touched.current.date = true;
+                fromPhoto.current.date = false;
+                setDate(v);
+              }}
+            />
+            <div className="flex flex-wrap items-center gap-2">
+              {(today
+                ? [
+                    ["Today", today],
+                    ["Yesterday", localToday(-1)],
+                  ]
+                : []
+              ).map(([text, value]) => (
+                <Chip
+                  key={text}
+                  selected={date === value}
+                  onClick={() => {
+                    touched.current.date = true;
+                    fromPhoto.current.date = false;
+                    setDate(value);
+                  }}
+                >
+                  {text}
+                </Chip>
+              ))}
+            </div>
+          </div>
+
+          {/* Rating */}
+          <div className="flex flex-col gap-1">
+            <span id={`${id}-rating`} className={label}>
+              Rating
+            </span>
+            <RatingInput labelledBy={`${id}-rating`} value={rating} onChange={setRating} />
+          </div>
+
+          {/* Note */}
+          <div className="flex flex-col gap-2">
+            <label htmlFor={`${id}-note`} className={label}>
+              Note <span className="font-normal text-label-secondary">(optional)</span>
+            </label>
+            <textarea
+              id={`${id}-note`}
+              rows={note ? 5 : 2}
+              maxLength={10000}
+              value={note}
+              onChange={(e) => setNote(e.target.value)}
+              onFocus={(e) => (e.currentTarget.rows = 5)}
+              placeholder="What stayed with you?"
+              className="block w-full rounded-md border border-separator bg-surface px-4 py-3 text-body text-label shadow-sm placeholder:text-label-secondary focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus"
+            />
+          </div>
+
+          {/* Trips and labels */}
+          <div className="flex flex-col gap-2">
+            <span id={`${id}-trips`} className={label}>
+              Trips and labels
+            </span>
+            {collections.length ? (
+              <div role="group" aria-labelledby={`${id}-trips`} className="flex flex-wrap gap-2">
+                {collections.map((c) => (
+                  <Chip
+                    key={c.id}
+                    selected={collectionIds.includes(c.id)}
+                    onClick={() => {
+                      touched.current.collections = true;
+                      setCollectionIds((ids) => (ids.includes(c.id) ? ids.filter((x) => x !== c.id) : [...ids, c.id]));
+                    }}
+                  >
+                    {c.name}
+                  </Chip>
+                ))}
+              </div>
+            ) : (
+              <p className="text-footnote text-label-secondary">
+                None yet. Create one under Trips, like “NYC Oct 2026”.
+              </p>
+            )}
+          </div>
+
+          {/* Visibility */}
+          <div className="flex flex-col gap-2">
+            <span id={`${id}-visibility`} className={label}>
+              Who can see this
+            </span>
+            <div role="radiogroup" aria-labelledby={`${id}-visibility`} className="flex gap-2">
+              {(["public", "private"] as const).map((v) => (
+                <button
+                  key={v}
+                  type="button"
+                  role="radio"
+                  aria-checked={visibility === v}
+                  onClick={() => {
+                    touched.current.visibility = true;
+                    setVisibility(v);
+                  }}
+                  className={`min-h-11 flex-1 rounded-pill px-4 text-subheadline font-semibold focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus ${
+                    visibility === v ? "bg-label text-background" : "bg-fill text-label"
+                  }`}
+                >
+                  {v === "public" ? "Public" : "Private"}
+                </button>
+              ))}
+            </div>
+            <p className="text-footnote text-label-secondary">
+              {visibility === "public" ? "Anyone with the link can see this entry." : "Only you can see this entry."}
+            </p>
+          </div>
+
+          {error && (
+            <p role="alert" className="text-footnote text-destructive">
+              {error}
+            </p>
+          )}
+
+          {/* Sits on the tab bar (49px); the bottom padding clears its raised Log button. */}
+          <div className="sticky bottom-[calc(env(safe-area-inset-bottom)+49px)] z-10 -mx-4 bg-background/90 px-4 pt-3 pb-7 backdrop-blur">
+            <Button type="submit" className="w-full" disabled={saving}>
+              {saving ? "Saving…" : editing ? "Save changes" : "Save"}
+            </Button>
+          </div>
         </div>
-        <p className="text-footnote text-label-secondary">
-          {visibility === "public" ? "Anyone with the link can see this entry." : "Only you can see this entry."}
-        </p>
-      </div>
 
-      {error && (
-        <p role="alert" className="text-footnote text-destructive">
-          {error}
-        </p>
-      )}
-
-      {/* Sits on the tab bar (49px); the bottom padding clears its raised Log button. */}
-      <div className="sticky bottom-[calc(env(safe-area-inset-bottom)+49px)] z-10 -mx-4 bg-background/90 px-4 pt-3 pb-7 backdrop-blur">
-        <Button type="submit" className="w-full" disabled={saving}>
-          {saving ? "Saving…" : editing ? "Save changes" : "Save"}
-        </Button>
+        {busy && (
+          <div className="pointer-events-none absolute inset-0 z-20">
+            <div className="sticky top-[35vh] flex justify-center pt-6">
+              <div className="pointer-events-auto flex w-full max-w-[300px] flex-col items-center gap-3 rounded-lg border border-separator bg-surface px-6 py-5 text-center shadow-lg">
+                <span
+                  aria-hidden="true"
+                  className="size-8 animate-spin rounded-full border-[3px] border-fill border-t-tint"
+                />
+                <p role="status" aria-live="polite" className="text-headline text-label">
+                  {status}
+                </p>
+                <p className="text-footnote text-label-secondary">
+                  {detect.step === "identifying" ? "This can take a little while." : "Just a moment."}
+                </p>
+                <Button variant="ghost" size="sm" onClick={skipDetection}>
+                  Fill in myself
+                </Button>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     </form>
   );
