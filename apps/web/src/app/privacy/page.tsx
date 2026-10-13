@@ -141,8 +141,9 @@ export default function PrivacyPage() {
           <li>
             send the clean copy of the photo, its date and time, an approximate
             location (rounded to about 100 metres) and the nearby theatres to
-            Anthropic’s Claude AI, which may search the web to identify the
-            show.
+            an AI provider (see{" "}
+            <TextLink href="#sharing">who we share data with</TextLink>), which
+            may search the web to identify the show.
           </li>
         </List>
         <p>
@@ -151,6 +152,19 @@ export default function PrivacyPage() {
           Legal basis: performing our contract with you, as this is a feature
           you choose to use. We don’t make any decisions about you by
           automated means that have legal or similarly significant effects.
+        </p>
+
+        <SubHeading>Importing ticket emails</SubHeading>
+        <p>
+          If you import booking confirmation emails, your browser opens the
+          email files and sends only their readable text (subject, sender, date
+          and body) to our servers, where an AI provider reads out the show,
+          venue, date, time, seats and price. Booking emails can contain other
+          details, such as your name, address or an order number; we don’t
+          look for or keep them. The email text isn’t stored or logged: you get
+          draft entries to review, and only what you confirm is saved. Legal
+          basis: performing our contract with you, as this is a feature you
+          choose to use.
         </p>
 
         <SubHeading>Technical data</SubHeading>
@@ -207,9 +221,11 @@ export default function PrivacyPage() {
             <strong>Vercel</strong>: website hosting.
           </li>
           <li>
-            <strong>Anthropic</strong>: show detection from photos, as described
-            above. Under its commercial terms, Anthropic doesn’t use this data to
-            train its models.
+            <strong>AI providers</strong>: reading photos and ticket emails, as
+            described above. We use Anthropic (Claude) by default, and may use
+            Google (Gemini), Groq or Cerebras instead. We use their paid
+            business services, whose terms don’t allow them to use this data to
+            train their models.
           </li>
           <li>
             <strong>Google</strong>: sign-in, only if you choose “Continue with
@@ -257,8 +273,9 @@ export default function PrivacyPage() {
             period, typically no more than 30 days.
           </li>
           <li>
-            <strong>Photo location and detection data</strong>: not stored. They
-            are used for the lookup and then discarded.
+            <strong>Photo location, ticket email text and AI results</strong>:
+            not stored by us. They’re used to make your drafts and then
+            discarded.
           </li>
         </List>
         <p>

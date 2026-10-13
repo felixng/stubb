@@ -189,8 +189,9 @@ export default function TermsPage() {
 
       <Section id="suggestions" title="Automatic suggestions">
         <p>
-          Stubbed can suggest the show and venue from a photo using AI and map
-          data. Suggestions can be wrong. Check them before you save; nothing is
+          Stubbed can suggest the show and venue from a photo or a ticket
+          email using AI and map data. Only import emails and photos that are
+          yours to share. Suggestions can be wrong. Check them before you save; nothing is
           saved until you confirm it.
         </p>
       </Section>

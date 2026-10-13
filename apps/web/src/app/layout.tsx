@@ -1,13 +1,26 @@
 import type { Metadata, Viewport } from "next";
+import { SITE_DESCRIPTION, SITE_NAME, SITE_TITLE, SITE_URL } from "@/lib/site";
 import "./globals.css";
 
 // Type is the system font (SF Pro on Apple devices), set in globals.css, so
 // the web matches the iOS app. No web fonts to load.
 
+// Defaults for every page. The canonical link lives on the landing page
+// itself, so other routes don't claim to be the home page.
 export const metadata: Metadata = {
-  title: "Stubbed — your theatre diary",
-  description:
-    "Log every show you see, rate it, group it into trips and share it. Coming soon.",
+  metadataBase: SITE_URL,
+  applicationName: SITE_NAME,
+  title: SITE_TITLE,
+  description: SITE_DESCRIPTION,
+  openGraph: {
+    type: "website",
+    siteName: SITE_NAME,
+    title: SITE_TITLE,
+    description: SITE_DESCRIPTION,
+    locale: "en",
+  },
+  twitter: { card: "summary_large_image" },
+  formatDetection: { telephone: false, email: false, address: false },
 };
 
 export const viewport: Viewport = {

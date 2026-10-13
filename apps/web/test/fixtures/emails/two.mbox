@@ -1,0 +1,15 @@
+From tickets@one.example Thu Oct 01 10:00:00 2026
+From: One <tickets@one.example>
+Subject: First booking
+Date: Thu, 01 Oct 2026 10:00:00 +0000
+
+Show: Hamilton
+>From the box office: enjoy.
+
+From tickets@two.example Fri Oct 02 11:00:00 2026
+From: Two <tickets@two.example>
+Subject: Second booking
+Date: Fri, 02 Oct 2026 11:00:00 +0000
+Content-Type: text/html
+
+<p>Show: <b>Wicked</b></p>
