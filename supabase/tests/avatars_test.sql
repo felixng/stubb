@@ -11,6 +11,11 @@ create function pg_temp.as_user(uid uuid) returns void language sql as $$
          set_config('request.jwt.claims', json_build_object('sub', uid, 'role', 'authenticated')::text, true);
 $$;
 
+create function pg_temp.as_admin() returns void language sql as $$
+  select set_config('role', 'postgres', true),
+         set_config('request.jwt.claims', '', true);
+$$;
+
 create function pg_temp.as_anon() returns void language sql as $$
   select set_config('role', 'anon', true),
          set_config('request.jwt.claims', '{"role":"anon"}', true);
@@ -43,9 +48,12 @@ select throws_ok(
 
 select pg_temp.as_user('bbbbbbbb-0000-0000-0000-000000000000');
 
+delete from storage.objects where bucket_id = 'avatars';
+select pg_temp.as_admin();
+
 select is(
-  (with d as (delete from storage.objects where bucket_id = 'avatars' returning 1) select count(*)::int from d),
-  0,
+  (select count(*)::int from storage.objects where bucket_id = 'avatars'),
+  1,
   'nobody deletes someone else''s avatar'
 );
 
@@ -59,9 +67,12 @@ select is(
 
 select pg_temp.as_user('aaaaaaaa-0000-0000-0000-000000000000');
 
+delete from storage.objects where bucket_id = 'avatars';
+select pg_temp.as_admin();
+
 select is(
-  (with d as (delete from storage.objects where bucket_id = 'avatars' returning 1) select count(*)::int from d),
-  1,
+  (select count(*)::int from storage.objects where bucket_id = 'avatars'),
+  0,
   'owners delete their own avatar'
 );
 

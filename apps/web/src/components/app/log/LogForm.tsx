@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useEffect, useId, useRef, useState, useSyncExternalStore } from "react";
+import { useEffect, useId, useLayoutEffect, useRef, useState, useSyncExternalStore } from "react";
 
 import { Button } from "@/components/ui/Button";
 import { Chip } from "@/components/ui/Chip";
@@ -68,7 +68,24 @@ function useToday() {
 // date fills the date at once, its location finds nearby theatres within
 // about a second, and the AI's show suggestion arrives when it's ready.
 // Nothing waits on it: every field can be used, and Save works, throughout.
+//
+// With cacheComponents, Next keeps a page we navigate away from alive (hidden)
+// and shows it again on return, state and all. After a save the form must
+// start over next time, so it remounts when it's shown again. An unsaved
+// draft is kept, so a stray tap on another tab doesn't lose it.
 export function LogForm({ initial }: { initial?: EntryDraft }) {
+  const [round, setRound] = useState(0);
+  const saved = useRef(false);
+  // Runs again each time the hidden page is shown, before it paints.
+  useLayoutEffect(() => {
+    if (!saved.current) return;
+    saved.current = false;
+    setRound((r) => r + 1);
+  }, []);
+  return <EntryForm key={round} initial={initial} onSaved={() => (saved.current = true)} />;
+}
+
+function EntryForm({ initial, onSaved }: { initial?: EntryDraft; onSaved: () => void }) {
   const id = useId();
   const router = useRouter();
   const editing = Boolean(initial);
@@ -411,6 +428,7 @@ export function LogForm({ initial }: { initial?: EntryDraft }) {
       const params = new URLSearchParams();
       if (!editing) params.set("new", "1");
       if (photoFailed) params.set("photo", "failed");
+      onSaved();
       router.push(`/app/entries/${entryId}${params.size ? `?${params}` : ""}`);
       router.refresh();
     } catch (err) {
