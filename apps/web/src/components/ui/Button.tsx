@@ -1,7 +1,8 @@
 // Triggers one action; matches FLButtonStyle in SwiftUI. One `primary` per
-// screen, `secondary` for alternatives, `ghost` for low emphasis. Capsule.
+// screen, `secondary` for alternatives, `ghost` for low emphasis, `neutral`
+// for third-party sign-in. Capsule.
 const base =
-  "inline-flex items-center justify-center gap-2 rounded-pill font-sans font-semibold transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus disabled:cursor-not-allowed disabled:opacity-40";
+  "inline-flex cursor-pointer items-center justify-center gap-2 rounded-pill font-sans font-semibold transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus disabled:cursor-not-allowed disabled:opacity-40";
 
 const sizes = {
   md: "min-h-[50px] px-6 text-headline",
@@ -12,6 +13,9 @@ const variants = {
   primary: "bg-tint text-on-tint shadow-btn hover:bg-tint-pressed",
   secondary: "bg-tint-fill text-tint-text hover:bg-fill",
   ghost: "bg-transparent text-tint-text hover:bg-tint-fill",
+  // Third-party sign-in (e.g. Google), whose brand rules ask for a neutral button.
+  neutral:
+    "border border-separator bg-surface text-label shadow-sm hover:bg-fill",
 };
 
 export function Button({

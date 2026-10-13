@@ -32,7 +32,12 @@ const tab =
   "flex min-h-[49px] flex-1 flex-col items-center gap-0.5 pt-1.5 pb-1 text-[10px] leading-[13px] font-medium focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus";
 
 export function AppTabBar() {
-  const pathname = usePathname();
+  return <AppTabBarLinks pathname={usePathname()} />;
+}
+
+// Rendered with no active tab while the page prerenders (the path is only
+// known per request), then with the real path.
+export function AppTabBarLinks({ pathname }: { pathname: string }) {
   const diary = pathname === "/app";
   const trips = pathname.startsWith("/app/trips");
   const log = pathname.startsWith("/app/log");
