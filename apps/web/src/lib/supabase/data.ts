@@ -68,13 +68,21 @@ export async function getShareCard(id: string) {
   };
 }
 
+export type OwnProfile = {
+  handle: string | null;
+  display_name: string | null;
+  bio: string | null;
+  link: string | null;
+  is_private: boolean;
+};
+
 export async function getOwnProfile() {
   const { supabase, userId } = await ownerContext();
   if (!userId) return null;
   const { data } = await supabase
     .from("profiles")
-    .select("handle, display_name")
+    .select("handle, display_name, bio, link, is_private")
     .eq("id", userId)
-    .maybeSingle<{ handle: string | null; display_name: string | null }>();
+    .maybeSingle<OwnProfile>();
   return data;
 }

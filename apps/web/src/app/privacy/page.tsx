@@ -177,11 +177,12 @@ export default function PrivacyPage() {
 
       <Section id="public" title="What other people can see">
         <p>
-          Your handle, display name, avatar, bio and link are public. Once you set a
-          handle, you also get a public profile page at /@yourhandle. It
-          shows your public entries and
-          their photos, plus stats and a calendar based only on public
-          entries. Clear your handle to take the page down. Entries and trips
+          Your handle, display name, avatar, bio and link are public, on your
+          profile page at /@yourhandle. The page also shows your public entries
+          and their photos, plus stats and a calendar based only on public
+          entries. Make your profile private in your settings and only you can
+          see your entries, trips, photos and stats; your handle, name, avatar,
+          bio and link stay visible. Otherwise, entries and trips
           are <strong>public by default</strong>: anyone, including people
           without an account and search engines, can see them, along with any
           photo attached. You can make any entry or trip private, or change your

@@ -11,13 +11,16 @@ export type PublicProfile = {
   handle: string;
   display_name: string | null;
   avatar_url: string | null;
+  bio: string | null;
+  link: string | null;
+  is_private: boolean;
 };
 
 export type ProfileStats = { shows: number; venues: number; cities: number };
 
 // Everything /@handle shows, read as a logged-out visitor would: the profile,
-// its stats, and its public entries newest first. Null when no profile has
-// that handle (a profile with no handle has no public page). Cached per
+// its stats, and its public entries newest first. A private profile comes
+// back with no stats and no entries. Null when no profile has that handle. Cached per
 // request, so the page and its metadata share one read.
 export const getPublicProfile = cache(async (rawHandle: string) => {
   // Live data, read per request, so a newly private entry disappears at once.
@@ -28,10 +31,15 @@ export const getPublicProfile = cache(async (rawHandle: string) => {
   const supabase = createPublicClient();
   const { data: profile } = await supabase
     .from("profiles")
-    .select("id, handle, display_name, avatar_url")
+    .select("id, handle, display_name, avatar_url, bio, link, is_private")
     .eq("handle", handle)
     .maybeSingle<PublicProfile>();
   if (!profile) return null;
+  // A private profile shows its header only. RLS would return no entries
+  // anyway; this skips asking.
+  if (profile.is_private) {
+    return { profile, stats: null, entries: [] as EntryRow[], photos: new Map<string, string>() };
+  }
 
   // Owner-scale (tens to hundreds of entries), so no paging yet. The explicit
   // visibility filter matches what RLS already enforces for this client.
@@ -50,7 +58,7 @@ export const getPublicProfile = cache(async (rawHandle: string) => {
 
   return {
     profile,
-    stats: stats ?? { shows: 0, venues: 0, cities: 0 },
+    stats: (stats ?? { shows: 0, venues: 0, cities: 0 }) as ProfileStats | null,
     entries,
     photos,
   };
