@@ -12,6 +12,8 @@ export type ProviderInfo = {
   configured: boolean;
   // What the provider serves to this key, when it can list them.
   models: string[];
+  // Models compare mode runs as separate columns ([] = just the default).
+  compareModels: string[];
 };
 export type ProvidersInfo = { providers: ProviderInfo[]; defaults: { email: string[]; identify: string[] } };
 
@@ -126,8 +128,12 @@ export function ModelPicker({
       <p className="text-footnote text-label-secondary">
         {value === COMPARE_ALL
           ? `Each email or photo visit goes to ${
-              configured.length ? configured.map((p) => p.name).join(", ") : "every provider with an API key"
-            } at once (photos skip text-only models), so it costs one call per provider. Pick whose answer to use for each.`
+              configured.length
+                ? configured
+                    .map((p) => (p.compareModels.length > 1 ? `${p.name} (${p.compareModels.length} models)` : p.name))
+                    .join(", ")
+                : "every provider with an API key"
+            } at once (photos skip text-only models), so it costs one call per column. Fable is the priciest Claude model. Pick whose answer to use for each.`
           : value === DEFAULT_CHAIN
             ? "Tries each model in order and falls back when one fails or isn’t sure."
             : `Only ${picked?.name ?? provider} runs, with no fallback. Leave the model empty for its default${

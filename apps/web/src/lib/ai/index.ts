@@ -65,6 +65,8 @@ export type ProviderInfo = {
   configured: boolean;
   // Models the provider serves to this key, where it can list them.
   models: string[];
+  // Models compare mode runs as separate columns ([] = just the default).
+  compareModels: string[];
 };
 
 // For pickers in testing tools: every provider, whether it has a key, and
@@ -76,7 +78,7 @@ export async function listProviders(): Promise<ProviderInfo[]> {
       const [defaultModel, models] = configured
         ? await Promise.all([p.resolveDefault?.() ?? p.defaultModel, p.listModels?.() ?? []])
         : [p.defaultModel, []];
-      return { id: p.id, name: NAMES[p.id], defaultModel, images: p.images, configured, models };
+      return { id: p.id, name: NAMES[p.id], defaultModel, images: p.images, configured, models, compareModels: p.compareModels ?? [] };
     }),
   );
 }

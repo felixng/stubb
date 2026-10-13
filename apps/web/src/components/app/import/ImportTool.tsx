@@ -210,7 +210,10 @@ export function ImportTool() {
   // only those that read images) in compare mode, else the one picked.
   function targets(chosen: string, images: boolean): string[] {
     if (chosen !== COMPARE_ALL) return [chosen === DEFAULT_CHAIN ? "" : chosen];
-    const ids = (providers?.providers ?? []).filter((p) => p.configured && (!images || p.images)).map((p) => p.id);
+    // Providers with several compare models (Claude) get a column per model.
+    const ids = (providers?.providers ?? [])
+      .filter((p) => p.configured && (!images || p.images))
+      .flatMap((p) => (p.compareModels.length ? p.compareModels.map((m) => `${p.id}:${m}`) : [p.id]));
     // Provider list not loaded (or nothing configured): the server decides.
     return ids.length ? ids : [""];
   }

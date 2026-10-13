@@ -9,6 +9,14 @@ const CONFIDENCE = {
   low: "bg-fill text-label-secondary",
 } as const;
 
+// "claude-haiku-5-5" → "Claude Haiku 5.5", so several Claude columns are
+// told apart at a glance. Other ids fall back to the provider's name.
+function columnName(provider: string, modelId: string | null, names: Record<string, string>) {
+  const claude = modelId && /^claude-([a-z]+)-(\d+)(?:-(\d+))?$/.exec(modelId);
+  if (claude) return `Claude ${claude[1][0].toUpperCase()}${claude[1].slice(1)} ${claude[2]}${claude[3] ? `.${claude[3]}` : ""}`;
+  return names[provider] ?? provider;
+}
+
 const seconds = (ms: number | null) => (ms == null ? "" : `${(ms / 1000).toFixed(1)}s`);
 
 // What each AI model read from one source, side by side, with the one used
@@ -44,7 +52,7 @@ export function CompareGrid({
               : `${agreement.answered} answered · all agree`}
       </p>
       <div className="overflow-x-auto pb-1">
-        <div className="grid gap-2" style={{ gridTemplateColumns: `repeat(${attempts.length}, minmax(200px, 1fr))` }}>
+        <div className="grid gap-2" style={{ gridTemplateColumns: `repeat(${attempts.length}, minmax(180px, 1fr))` }}>
           {attempts.map((a) => {
             const provider = (a.readBy ?? a.model).split(":")[0];
             const modelId = a.readBy?.slice(a.readBy.indexOf(":") + 1) ?? (a.model.includes(":") ? a.model.slice(a.model.indexOf(":") + 1) : null);
@@ -52,12 +60,12 @@ export function CompareGrid({
             return (
               <section
                 key={a.model || "chain"}
-                aria-label={names[provider] ?? provider}
+                aria-label={columnName(provider, modelId, names)}
                 className={`flex min-w-0 flex-col gap-2 rounded-sm border bg-background p-3 ${isChosen ? "border-tint ring-1 ring-tint" : "border-separator"}`}
               >
                 <header className="flex items-start justify-between gap-2">
                   <div className="min-w-0">
-                    <p className="text-subheadline font-semibold text-label">{a.model ? (names[provider] ?? provider) : "Default chain"}</p>
+                    <p className="text-subheadline font-semibold text-label">{a.model ? columnName(provider, modelId, names) : "Default chain"}</p>
                     {modelId && (
                       <p className="truncate font-mono text-caption text-label-secondary" title={modelId}>
                         {modelId}
