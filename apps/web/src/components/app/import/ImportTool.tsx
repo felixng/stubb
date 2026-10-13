@@ -308,7 +308,7 @@ export function ImportTool() {
           body: JSON.stringify({ subject: email.subject, from: email.from, sent: email.sent, text: email.text, model: m || undefined }),
         });
         if (!res.ok) {
-          const { error: code } = (await res.json().catch(() => ({}))) as { error?: string };
+          const { error: code, detail } = (await res.json().catch(() => ({}))) as { error?: string; detail?: string | null };
           throw new Error(
             res.status === 503
               ? "Import isn’t set up yet (no API key)."
@@ -316,7 +316,7 @@ export function ImportTool() {
                 ? "Too many at once. Try again in a few minutes."
                 : code === "model_unavailable" || code === "invalid_model"
                   ? `Can’t use ${m}: no API key, or not a valid model.`
-                  : "Couldn’t read this email.",
+                  : `Couldn’t read this email.${detail ? ` ${detail}` : ""}`,
           );
         }
         const { result, model: readBy } = (await res.json()) as { result: EmailExtraction | null; model: string | null };
@@ -412,7 +412,7 @@ export function ImportTool() {
               ? "Show detection isn’t set up yet (no API key)."
               : outcome.error === "model_unavailable"
                 ? `Can’t use ${m} for photos: no API key, or it can’t read images.`
-                : "Couldn’t work out the show.",
+                : `Couldn’t work out the show.${outcome.detail ? ` ${outcome.detail}` : ""}`,
           );
         }
         const r = outcome.result;

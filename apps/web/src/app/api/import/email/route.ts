@@ -57,7 +57,10 @@ export async function POST(request: Request) {
     );
     return Response.json({ result: answer?.result ?? null, model: answer ? `${answer.model.provider}:${answer.model.model}` : null });
   } catch (error) {
-    console.error("Email extraction failed", error instanceof Error ? error.message : error);
-    return Response.json({ error: "extract_failed" }, { status: 502 });
+    const detail = error instanceof Error ? error.message.slice(0, 300) : null;
+    console.error("Email extraction failed", detail ?? error);
+    // `detail` is the provider's status and message (never the key), so the
+    // import tool can show why one model failed.
+    return Response.json({ error: "extract_failed", detail }, { status: 502 });
   }
 }

@@ -74,7 +74,7 @@ export function CompareGrid({
                 </header>
 
                 {a.state === "failed" ? (
-                  <p className="text-footnote text-destructive">{a.note ?? "Failed"}</p>
+                  <p className="text-footnote break-words text-destructive">{a.note ?? "Failed"}</p>
                 ) : a.state === "done" && !a.shows.length ? (
                   <p className="text-footnote text-label-secondary">{a.note ?? "Nothing found"}</p>
                 ) : (
