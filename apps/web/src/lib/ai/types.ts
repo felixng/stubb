@@ -4,7 +4,9 @@
 
 export type ProviderId = "groq" | "anthropic" | "gemini" | "cerebras";
 
-export type ModelRef = { provider: ProviderId; model: string };
+// `auto`: no model was named, so the provider picks its current default
+// (resolveDefault) when the call is made.
+export type ModelRef = { provider: ProviderId; model: string; auto?: boolean };
 
 export type Part = { type: "text"; text: string } | { type: "image"; base64: string; mediaType: "image/jpeg" };
 
@@ -27,6 +29,11 @@ export interface AiProvider {
   // Whether it accepts image parts. Requests with images skip it otherwise.
   images: boolean;
   configured(): boolean;
+  // The model to use when none is named. Providers retire models every few
+  // months, so those that can check what they currently serve do.
+  resolveDefault?(): Promise<string>;
+  // Model ids the provider serves to this key, for the import tool's picker.
+  listModels?(): Promise<string[]>;
   // The parsed JSON answer, or null when the model declined or said nothing.
   // Throws on transport or API errors; the chain moves on either way.
   generateJson(model: string, request: JsonRequest, signal: AbortSignal): Promise<unknown | null>;

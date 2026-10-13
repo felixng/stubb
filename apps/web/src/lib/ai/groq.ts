@@ -7,7 +7,8 @@ export const groq = openAiCompatible({
   name: "Groq",
   url: "https://api.groq.com/openai/v1/chat/completions",
   keyEnv: "GROQ_API_KEY",
-  // Llama 4 Scout: takes images and supports JSON Schema output.
-  defaultModel: "meta-llama/llama-4-scout-17b-16e-instruct",
+  // Groq's Qwen vision models, newest first; whichever the key can use wins.
+  // Llama 4 Scout, the earlier default, was shut down on 17 July 2026.
+  models: ["qwen/qwen3.8-27b", "qwen/qwen3.6-27b"],
   images: true,
 });

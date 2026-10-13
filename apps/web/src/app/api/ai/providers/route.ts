@@ -12,5 +12,5 @@ export async function GET() {
   await connection();
   if (!(await requireUserId())) return Response.json({ error: "unauthorized" }, { status: 401 });
   const label = (task: string, images?: boolean) => chainFor(task, { images }).map((m) => `${m.provider}:${m.model}`);
-  return Response.json({ providers: listProviders(), defaults: { email: label("email"), identify: label("identify", true) } });
+  return Response.json({ providers: await listProviders(), defaults: { email: label("email"), identify: label("identify", true) } });
 }
