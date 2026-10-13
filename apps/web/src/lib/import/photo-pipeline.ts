@@ -5,7 +5,7 @@
 import type { NearbyVenue, Venue } from "@/lib/entries";
 import type { Identification } from "@/lib/identify";
 import { IDENTIFY_PHOTO_EDGE, readPhotoMeta, reencodeJpeg, STORED_PHOTO_EDGE, type PhotoMeta } from "@/lib/photo";
-import type { NearbyPlaces } from "@/lib/places";
+import { distanceMeters, NEARBY_RADIUS_M, type NearbyPlaces } from "@/lib/places";
 import { createClient } from "@/lib/supabase/client";
 import type { Place } from "./drafts";
 
@@ -29,36 +29,53 @@ export async function preparePhoto(file: Blob): Promise<PreparedPhoto> {
   return { meta, stored, small };
 }
 
-// Theatres near a point, matched to venues already in the catalogue.
+// Saved venues within the nearby radius of a point: instant, and found even
+// when the OpenStreetMap lookups are down.
+async function savedVenuesNear(lat: number, lng: number): Promise<NearbyVenue[]> {
+  const dLat = NEARBY_RADIUS_M / 111_320;
+  const dLng = dLat / Math.max(0.2, Math.cos((lat * Math.PI) / 180));
+  const { data } = await createClient()
+    .from("venues")
+    .select("id, name, city, country, lat, lng, osm_id")
+    .gte("lat", lat - dLat)
+    .lte("lat", lat + dLat)
+    .gte("lng", lng - dLng)
+    .lte("lng", lng + dLng)
+    .limit(20);
+  return ((data as Venue[] | null) ?? [])
+    .map((v) => ({ ...v, distance_m: Math.round(distanceMeters(lat, lng, v.lat!, v.lng!)) }))
+    .filter((v) => v.distance_m <= NEARBY_RADIUS_M);
+}
+
+// Theatres near a point: the server's OpenStreetMap lookup and the saved
+// venues nearby, side by side, merged (a saved venue replaces its OSM twin).
 export async function lookupNearby(lat: number, lng: number): Promise<{ candidates: NearbyVenue[]; place: Place }> {
-  try {
-    const res = await fetch("/api/photo/nearby", {
+  const [found, saved] = await Promise.all([
+    fetch("/api/photo/nearby", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ lat, lng }),
-    });
-    if (!res.ok) return { candidates: [], place: { city: null, country: null } };
-    const found = (await res.json()) as NearbyPlaces;
-    const osmIds = found.candidates.map((c) => c.osm_id);
-    const { data: known } = osmIds.length
-      ? await createClient().from("venues").select("id, name, city, country, lat, lng, osm_id").in("osm_id", osmIds)
-      : { data: [] as Venue[] };
-    const candidates = found.candidates.map((c): NearbyVenue => {
-      const row = (known as Venue[] | null)?.find((v) => v.osm_id === c.osm_id);
-      return row
-        ? { ...row, distance_m: c.distance_m }
-        : { name: c.name, city: c.city, country: c.country, lat: c.lat, lng: c.lng, osm_id: c.osm_id, distance_m: c.distance_m };
-    });
-    return { candidates, place: { city: found.city, country: found.country } };
-  } catch {
-    // Offline or the lookup failed: carry on without nearby theatres.
-    return { candidates: [], place: { city: null, country: null } };
-  }
+    })
+      .then((res) => (res.ok ? (res.json() as Promise<NearbyPlaces>) : null))
+      // Offline or the lookup failed: carry on with saved venues only.
+      .catch(() => null),
+    savedVenuesNear(lat, lng).catch(() => [] as NearbyVenue[]),
+  ]);
+  const candidates: NearbyVenue[] = (found?.candidates ?? []).map((c) => {
+    const row = saved.find((v) => v.osm_id === c.osm_id);
+    return row
+      ? { ...row, distance_m: c.distance_m }
+      : { name: c.name, city: c.city, country: c.country, lat: c.lat, lng: c.lng, osm_id: c.osm_id, distance_m: c.distance_m };
+  });
+  for (const v of saved) if (!candidates.some((c) => c.id === v.id)) candidates.push(v);
+  candidates.sort((a, b) => a.distance_m - b.distance_m);
+  const fallback = saved[0];
+  return {
+    candidates: candidates.slice(0, 8),
+    place: { city: found?.city ?? fallback?.city ?? null, country: found?.country ?? fallback?.country ?? null },
+  };
 }
 
-// `error` is set when no answer came back; null `result` without an error
-// means Claude looked and couldn't tell.
-// `model` is which one answered ("groq:…"), when the server says.
 export type IdentifyOutcome = {
   result: Identification | null;
   model?: string | null;

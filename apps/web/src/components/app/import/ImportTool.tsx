@@ -38,6 +38,8 @@ type Job = {
   attempts?: Attempt[];
   // `model` of the attempt the drafts came from.
   chosen?: string | null;
+  // The visit's photos, so it's clear which photo the results are about.
+  thumbs?: string[];
 };
 
 type PhotoItem = PreparedPhoto & { ref: string; fileName: string; previewUrl: string };
@@ -51,10 +53,10 @@ const STATE_TEXT: Record<Job["state"], string> = {
   failed: "Failed",
 };
 
-// AI calls run a few at a time: quick enough, and gentle on rate limits.
-// Compare mode multiplies calls per source, so it runs fewer sources at once.
+// Sources run a few at a time: quick enough, and gentle on rate limits
+// (compare mode adds one call per compared model).
 const EMAIL_CONCURRENCY = 3;
-const PHOTO_CONCURRENCY = 2;
+const PHOTO_CONCURRENCY = 3;
 
 const isImage = (f: File) => f.type.startsWith("image/") || /\.(jpe?g|png|heic|heif|webp|gif)$/i.test(f.name);
 
@@ -293,7 +295,7 @@ export function ImportTool() {
     ]);
 
     const models = targets(chosen, false);
-    await runPool(batch.filter((p) => p.text), models.length > 1 ? 2 : EMAIL_CONCURRENCY, async (email) => {
+    await runPool(batch.filter((p) => p.text), EMAIL_CONCURRENCY, async (email) => {
       updateJob(email.ref, { state: "reading" });
       appliers.current.set(email.ref, async (attempt) => {
         const source = { kind: "email" as const, ref: email.ref, fileName: email.fileName, subject: email.subject, from: email.from, sent: email.sent, trimmed: email.trimmed, readBy: attempt.readBy };
@@ -370,11 +372,19 @@ export function ImportTool() {
     });
     setJobs((js) => [
       ...js,
-      ...groupJobs.map((j): Job => ({ ref: j.ref, kind: "photos", label: j.label, detail: null, state: "queued", found: 0 })),
+      ...groupJobs.map((j): Job => ({
+        ref: j.ref,
+        kind: "photos",
+        label: j.label,
+        detail: null,
+        state: "queued",
+        found: 0,
+        thumbs: j.group.map((p) => p.previewUrl),
+      })),
     ]);
 
     const models = targets(chosen, true);
-    await runPool(groupJobs, models.length > 1 ? 1 : PHOTO_CONCURRENCY, async ({ ref, group }) => {
+    await runPool(groupJobs, PHOTO_CONCURRENCY, async ({ ref, group }) => {
       const point = centroid(group);
       const dated = group.find((p) => p.date) ?? group[0];
       let nearby: Draft["nearby"] = [];
@@ -623,6 +633,24 @@ export function ImportTool() {
                   )}
                 </span>
                 <div className="flex min-w-0 flex-1 flex-col gap-2">
+                  {j.thumbs && j.thumbs.length > 0 && (
+                    <div className="flex flex-wrap gap-1.5">
+                      {j.thumbs.map((src, i) => (
+                        // Opens the full photo in a new tab to check details.
+                        <a
+                          key={src}
+                          href={src}
+                          target="_blank"
+                          rel="noopener"
+                          aria-label={`Open photo ${i + 1} of this visit`}
+                          className="overflow-hidden rounded-sm focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus"
+                        >
+                          {/* eslint-disable-next-line @next/next/no-img-element -- a local blob */}
+                          <img src={src} alt="" className="h-20 w-auto max-w-32 object-cover" />
+                        </a>
+                      ))}
+                    </div>
+                  )}
                   <div>
                     <p className="truncate text-body text-label">{j.label}</p>
                     <p className={`text-footnote ${j.state === "failed" ? "text-destructive" : "text-label-secondary"}`}>

@@ -98,3 +98,10 @@ Owner's call, to see how fast and accurate each Claude model is. In the import t
 
 ### 2026-10-13: Photo identify works from venue and date first; compare Opus and Haiku only
 Owner's call. The identify prompt now follows the owner's order: (1) take the venue and date (nearby theatres plus the photo's date), (2) search what was playing there that day for a short list of shows, (3) match the photo's set against that list, searching production photos when it helps. (4) A title, programme or Playbill readable in the photo always wins; the venue search then only picks the theatre. The reason starts with what settled it. Providers without web search are told to skip searching, as before. The import tool's compare mode now runs only Opus 5.5 against Haiku 5.5: Sonnet and Fable are dropped, and so are Groq, Gemini and Cerebras (still pickable one at a time, and still in the default chain where configured). Compare mode includes only providers that list `compareModels`.
+
+### 2026-10-13: Faster nearby-theatre lookup; three visits at a time; photo thumbnails
+Production logs showed every nearby lookup failing (public Overpass servers timing out or returning 504 from Vercel), costing about 14 seconds per photo visit before identify even started, and leaving Claude with no candidate theatres. Now:
+- The Overpass mirrors are asked at once and the first answer wins, with a 4-second limit. Nominatim's theatre search (no key needed, like Overpass) runs alongside as the fallback when every Overpass server fails. Nominatim calls are spaced about a second apart, as its usage policy asks. Results are cached per ~100 m square for the server instance.
+- The client checks saved venues near the photo at the same time, so a theatre already in the catalogue is found even when OpenStreetMap is down.
+- The import tool runs three photo visits (and three emails) at a time; with only two compared models, that's safe for rate limits.
+- Each photo visit in "What we read" shows its photos as thumbnails (tap to open full size), so it's clear which photo the results are about.
