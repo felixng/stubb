@@ -2,11 +2,11 @@
 
 import { useId, useRef, useState } from "react";
 
+import { AVATAR_BUCKET as BUCKET, avatarPath } from "@/lib/avatar";
 import { AVATAR_EDGE, reencodeJpeg } from "@/lib/photo";
 import { createClient } from "@/lib/supabase/client";
 import { Avatar } from "./Avatar";
 
-const BUCKET = "avatars";
 const linkClass =
   "text-subheadline font-medium text-tint-text hover:underline disabled:opacity-50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus";
 
@@ -62,8 +62,7 @@ export function AvatarPicker({
         return setStatus({ ok: false, text: "Couldn’t read that photo. Try another." });
       }
       const supabase = createClient();
-      // A new name per upload, so caches never serve the old photo.
-      const path = `${userId}/${Date.now()}.jpg`;
+      const path = avatarPath(userId);
       const { error: upload } = await supabase.storage
         .from(BUCKET)
         .upload(path, jpeg, { contentType: "image/jpeg", cacheControl: "31536000" });
