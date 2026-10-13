@@ -1,0 +1,85 @@
+"use client";
+
+import Link from "next/link";
+import { usePathname } from "next/navigation";
+
+import { TAB_ICONS } from "@/components/ui/TabBar";
+
+// Bottom tab bar for the owner app (#13): Diary, a big centre Log button, and
+// Trips. Same look as the `TabBar` UI component, but with links.
+function Icon({ id, size = 24 }: { id: string; size?: number }) {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      width={size}
+      height={size}
+      aria-hidden="true"
+      focusable="false"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth={1.5}
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      {TAB_ICONS[id].map((d) => (
+        <path key={d} d={d} />
+      ))}
+    </svg>
+  );
+}
+
+const tab =
+  "flex min-h-[49px] flex-1 flex-col items-center gap-0.5 pt-1.5 pb-1 text-[10px] leading-[13px] font-medium focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus";
+
+export function AppTabBar() {
+  const pathname = usePathname();
+  const diary = pathname === "/app";
+  const trips = pathname.startsWith("/app/trips");
+  const log = pathname.startsWith("/app/log");
+
+  return (
+    <nav
+      aria-label="Main"
+      className="flex items-end border-t border-separator bg-surface px-2 pb-[env(safe-area-inset-bottom)]"
+    >
+      <Link
+        href="/app"
+        aria-current={diary ? "page" : undefined}
+        className={`${tab} ${diary ? "text-tint-text" : "text-label-secondary"}`}
+      >
+        <Icon id="diary" />
+        <span>Diary</span>
+      </Link>
+      <div className="flex flex-1 justify-center">
+        <Link
+          href="/app/log"
+          aria-current={log ? "page" : undefined}
+          className="-mt-5 mb-1.5 inline-flex min-h-14 items-center gap-1.5 rounded-pill bg-tint px-5 text-headline text-on-tint shadow-btn hover:bg-tint-pressed focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus"
+        >
+          <svg
+            viewBox="0 0 24 24"
+            width={22}
+            height={22}
+            aria-hidden="true"
+            focusable="false"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth={2}
+            strokeLinecap="round"
+          >
+            <path d="M12 5v14M5 12h14" />
+          </svg>
+          Log
+        </Link>
+      </div>
+      <Link
+        href="/app/trips"
+        aria-current={trips ? "page" : undefined}
+        className={`${tab} ${trips ? "text-tint-text" : "text-label-secondary"}`}
+      >
+        <Icon id="trips" />
+        <span>Trips</span>
+      </Link>
+    </nav>
+  );
+}

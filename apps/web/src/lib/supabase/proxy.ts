@@ -3,7 +3,9 @@ import { NextResponse, type NextRequest } from "next/server";
 import { supabaseEnv } from "@/lib/env";
 
 // Refreshes the Supabase session cookie once per navigation, before any
-// Server Component reads it. Route protection for /app lands in #13.
+// Server Component reads it, and guards the owner app (#13): /app/* without a
+// session goes to /login, and /login with a session goes to /app. This is a
+// convenience, not the security boundary: RLS in Postgres is.
 export async function updateSession(request: NextRequest) {
   const { url, key } = supabaseEnv();
   let response = NextResponse.next({ request });
@@ -30,7 +32,28 @@ export async function updateSession(request: NextRequest) {
 
   // Don't run code between createServerClient and getClaims(): it would make
   // random sign-outs hard to debug.
-  await supabase.auth.getClaims();
+  const { data } = await supabase.auth.getClaims();
+  const signedIn = Boolean(data?.claims);
+  const { pathname, search } = request.nextUrl;
+
+  if (!signedIn && (pathname === "/app" || pathname.startsWith("/app/"))) {
+    const login = new URL("/login", request.url);
+    login.searchParams.set("next", pathname + search);
+    return redirectWithCookies(login, response);
+  }
+  if (signedIn && pathname === "/login") {
+    return redirectWithCookies(new URL("/app", request.url), response);
+  }
 
   return response;
+}
+
+// A redirect must carry any cookies the refresh just set or cleared, or the
+// browser and server drift out of sync.
+function redirectWithCookies(to: URL, from: NextResponse) {
+  const redirect = NextResponse.redirect(to);
+  for (const cookie of from.cookies.getAll()) {
+    redirect.cookies.set(cookie);
+  }
+  return redirect;
 }

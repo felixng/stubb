@@ -7,7 +7,6 @@ A short log of choices made and why. Newest at the bottom. See `CLAUDE.md` for t
 | # | Question | Needed by | Notes |
 |---|----------|-----------|-------|
 | 1 | Confirm architecture in `docs/ARCHITECTURE.md` (Next.js on Vercel Hobby + Supabase Free) | Now | Proposed 2026-10-12 |
-| 3 | Social logins | Now | Proposed: email code + Google now; add Apple before iOS ships (App Store rule 4.8) |
 | 4 | Email import method: paste-in vs. forwarding address vs. Gmail connect | Phase 2 | Brief suggests starting with paste-in |
 | 5 | Reactions / comments: include or defer | Phase 3 | |
 | 6 | Badges: app-defined only, or user/group-defined too? | When badges are scheduled | Idea; see `CLAUDE.md` "Ideas to explore" |
@@ -63,3 +62,6 @@ The owner moved Footlight from the lime tint to coral: "Footlight Coral" (https:
 
 ### 2026-10-12: Wordmark option B (lowercase)
 The owner picked option B from the wordmark options board: `stubbed` in lowercase, SF Pro Display heavy (800), tracking -0.045em, in `label`. It replaces the capitals wordmark in both Footlight systems (lime and Coral), the landing and app-screen designs, the web `Wordmark` and `FLWordmark`. The product name in running copy stays "Stubbed", and screen readers hear "Stubbed". No colour or other token changed.
+
+### 2026-10-12: Sign-in is Google + email and password; sign-ups stay off
+Owner's call (#13): no magic link or emailed code. The login page offers "Continue with Google" and an email + password form. Sign-ups remain off during NYC week, so both only sign in accounts created in the Supabase dashboard; Google signs into the account whose email matches. Not depending on login emails also sidesteps Supabase's built-in sender limit of a few emails an hour. Apple sign-in is still needed before the iOS app ships (App Store rule 4.8). Password reset by email comes with public sign-up.
