@@ -8,7 +8,7 @@ The source of truth is the design system artifact: https://claude.ai/artifact/2r
 - **One tint.** `tint` is coral in both appearances and fills the one primary action. Where the brand colour is read as text (links, ghost and secondary button labels, the selected tab) use `tint-text`: the same coral on dark, a deeper shade on light. Nothing else.
 - **Copy:** terse and confident, sentence case, no emoji, no exclamation marks. Button labels are verbs. Numbers are digits and tabular. Sample handle: `@sillyelphaba`; never a real person's name.
 - **Ratings** always show as the five `RatingStars`, never a bare number.
-- **Wordmark:** `STUBBED` in capitals (heavy, open tracking, `label`). "Stubbed" with a capital S in running text.
+- **Wordmark:** `stubbed`, always lowercase: SF Pro Display (system stack on web), weight 800, letter-spacing -0.045em (Swift `.tracking(-size * 0.045)`), line height 1, no text transform, in `label`, never `tint` or `tint-text`. 20pt in app navigation and headers, 26–32px in the web header (28 on the landing page), 16 minimum. Accessible label "Stubbed". "Stubbed" with a capital S in running text.
 
 ## Tokens → Tailwind
 
@@ -51,7 +51,7 @@ React mirrors of the SwiftUI components live in `apps/web/src/components/ui/`:
 | `ShowRow` | `FLShowRow` | `title`, `venue`, `date`, `rating`, `poster` | Inside a `surface` list with `separator` hairlines |
 | `ShowCard` | none (use `FLShowRow`) | same as `ShowRow` | 160px portrait card for web shelves |
 | `TabBar` | native `TabView` | `items`, `active`, `onSelect` | Phone-width web app only; sidebar on desktop |
-| `Wordmark` | `FLWordmark` | `size` px | Capitals via CSS |
+| `Wordmark` | `FLWordmark` | `size` px (min 16) | Lowercase text, `sr-only` "Stubbed" |
 | `Poster` | (inside `FLShowRow`) | `title`, `poster` | 2:3, initials in `outline` on `fill` when no image |
 
 ## Icons

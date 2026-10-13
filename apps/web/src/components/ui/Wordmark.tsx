@@ -1,5 +1,6 @@
-// The Stubbed wordmark; matches FLWordmark: capitals, heavy, open tracking,
-// in `label`, never `tint` or `tint-text`. Capitals come from CSS.
+// The Stubbed wordmark; matches FLWordmark: "stubbed" in lowercase, heavy,
+// tight tracking, in `label`, never `tint` or `tint-text`. Screen readers
+// hear "Stubbed".
 export function Wordmark({
   size = 28,
   className = "",
@@ -9,10 +10,11 @@ export function Wordmark({
 }) {
   return (
     <span
-      className={`inline-block font-display leading-none font-extrabold tracking-[0.06em] text-label uppercase ${className}`}
-      style={{ fontSize: size }}
+      className={`inline-block font-display leading-none font-extrabold tracking-[-0.045em] text-label ${className}`}
+      style={{ fontSize: Math.max(16, size) }}
     >
-      Stubbed
+      <span aria-hidden="true">stubbed</span>
+      <span className="sr-only">Stubbed</span>
     </span>
   );
 }
