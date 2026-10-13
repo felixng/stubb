@@ -1,20 +1,23 @@
-// Identify a show from a photo (#14, reused by #18's batch import).
+// Identify a show from a photo (#14), or from several photos of one visit
+// (#18's batch import).
 //
-// Claude gets a downscaled, re-encoded copy of the photo (no EXIF), the
+// The model gets downscaled, re-encoded copies of the photos (no EXIF), the
 // theatres near where it was taken, and the date and time, with web search
 // on. The photo often settles it (show curtain, Playbill, marquee); venue and
 // date plus a search cover generic stage shots and shows newer than the
 // model's training data. The result is only a suggestion: the log form shows
 // it for the user to confirm, and low confidence never fills a field.
-import Anthropic from "@anthropic-ai/sdk";
+import { aiConfigured, generateJson, type Generated, type ModelRef } from "@/lib/ai";
 
 export type IdentifyInput = {
-  photo: { base64: string; mediaType: "image/jpeg" };
+  // One or more photos from the same visit (up to MAX_IDENTIFY_PHOTOS in
+  // lib/import/drafts.ts).
+  photos: { base64: string; mediaType: "image/jpeg" }[];
   date: string | null; // "2026-10-10"
   time: string | null; // "19:42", local to where the photo was taken
   city: string | null;
   country: string | null; // ISO 3166-1 alpha-2 when known
-  // Rounded to ~100 m. Lets Claude search the area when OpenStreetMap
+  // Rounded to ~100 m. Lets the model search the area when OpenStreetMap
   // finds no theatre (or is down). Sent for this call only, never stored.
   point: { lat: number; lng: number } | null;
   candidates: { osm_id: string; name: string; distance_m: number }[];
@@ -31,7 +34,7 @@ export type Identification = {
   reason: string;
 };
 
-// Structured output. No nullable fields: the API rejects a "string or null"
+// Structured output. No nullable fields: Anthropic's API rejects a "string or null"
 // type combined with an enum, so "unknown" is an empty string instead.
 const SCHEMA = {
   type: "object",
@@ -60,19 +63,19 @@ const SCHEMA = {
   },
 } as const;
 
-const SYSTEM = `You help a theatregoer log a show they just saw. You get one photo they took at the theatre (often the set before curtain-up, a curtain call, a marquee, a Playbill or a ticket), plus when and roughly where it was taken. Work out which show it was and at which theatre.
+const SYSTEM = `You help a theatregoer log a show they saw. You get one or more photos they took at the theatre on one visit (often the set before curtain-up, a curtain call, a marquee, a programme, a Playbill or a ticket), plus when and roughly where they were taken, and the theatres near that spot. Work out which show it was and at which theatre.
 
 Work through it in this order:
-1. Read every bit of text in the photo: titles or logos projected or painted on the set, show curtains, marquees, Playbill covers, tickets, signs that are part of the set. Text in any language counts. If the photo names the show, that settles the show.
-2. Describe the set to yourself: distinctive scenery and props (e.g. a pile of suitcases under a "Baggage Claim" sign, a band on a platform, a turntable), the style of the theatre (a Broadway or West End house, a studio space).
-3. Search only for what the photo doesn't settle, and stop as soon as you're sure: speed matters, the user is waiting. If the photo names the show and one nearby theatre is listed, don't search at all. If it names the show but several theatres are listed, one search for where it's playing is enough. When nearby theatres are listed, search what was playing at the closest ones around that date and pick the one whose show matches the photo. When none are listed but a location is given, search for theatres near that point and what they were playing then. When the photo shows no title, search for the distinctive set (e.g. "Broadway musical set suitcases baggage claim sign") and check the result is running at a theatre near the photo on that date.
-4. Venue: GPS can be 20–50 m off and theatres can be under 100 m apart, so pick the theatre whose show matches, not simply the nearest. Give venue_name whenever you know the theatre, and venue_osm_id only when it's one of the listed theatres.
+1. Venue and date. Start from the nearby theatres listed and the date the photo was taken. GPS can be 20–50 m off and theatres can be under 100 m apart, so treat the closest few as candidates, not just the nearest. If none are listed but a location is given, search for theatres near that point.
+2. What was on. Search what was playing at those theatres on that date. Shows open and close, so check each run covers the date; times after about 17:00 are usually evening performances, earlier ones matinees. This gives a short list of possible shows.
+3. Match the photo. Describe the set to yourself (distinctive scenery and props, e.g. a pile of suitcases under a "Baggage Claim" sign, a band on a platform, a turntable; the size and style of the house) and compare it with the possible shows. Search for a production's set or production photos when that helps tell the candidates apart. Pick the show, and the theatre, that the photo matches.
+4. A title in the photo wins. Read every bit of text in the photos: a title or logo on the set or show curtain, a marquee, a programme or Playbill cover, a ticket. Text in any language counts. If the photos name the show, that is the show, whatever the search suggested; use steps 1–2 only to pick the theatre it was playing at. If the photos name the show and only one theatre is listed, don't search at all.
 
-Timing: an empty house with the lights up is before the show; times after about 17:00 are usually evening performances, earlier ones matinees. Shows open and close, so check the run covers the date.
+Be quick: the user may be waiting. Stop searching as soon as you're sure. Give venue_name whenever you know the theatre, and venue_osm_id only when it's one of the listed theatres. Start the reason with what settled it ("Programme reads…", "Only show at the Belasco that night…", "Set matches…").
 
 Rules:
 - Never identify performers by their face. Who is on stage doesn't matter here.
-- "high": the photo names the show, or a search ties the set and the theatre to that date beyond reasonable doubt. "medium": the most likely answer with a gap. "low": a guess; prefer this, or empty strings, over overclaiming.`;
+- "high": the photos name the show, or the venue, date and set together leave no reasonable doubt. "medium": the most likely of the shows on at that venue and date, with a gap. "low": a guess; prefer this, or empty strings, over overclaiming.`;
 
 function describe(input: IdentifyInput) {
   const when = input.date ? `${input.date}${input.time ? ` at ${input.time} local time` : ""}` : "unknown";
@@ -86,70 +89,45 @@ function describe(input: IdentifyInput) {
   return `Photo taken: ${when}\nArea: ${area}\nLocation (approx.): ${point}\nNearby theatres:\n${nearby}`;
 }
 
-export function identifyConfigured() {
-  return Boolean(process.env.ANTHROPIC_API_KEY);
+// `models`: a chain picked by the caller (the import tool's model picker);
+// otherwise the configured chain for "identify".
+export function identifyConfigured(models?: ModelRef[]) {
+  return aiConfigured("identify", { images: true }, models);
 }
 
-export async function identifyShow(input: IdentifyInput): Promise<Identification | null> {
-  const client = new Anthropic({ timeout: 80_000, maxRetries: 1 });
-  const web_search: Anthropic.Beta.BetaWebSearchTool20260209 = {
-    type: "web_search_20260209",
-    name: "web_search",
-    // Each search adds seconds; three covers venue + show + one check.
-    max_uses: 3,
-    // Localises results ("what's on near me") when we know the area.
-    ...(input.country && /^[A-Z]{2}$/.test(input.country)
-      ? { user_location: { type: "approximate", country: input.country, ...(input.city ? { city: input.city } : {}) } }
-      : {}),
-  };
-
-  const messages: Anthropic.Beta.BetaMessageParam[] = [
+export async function identifyShow(input: IdentifyInput, models?: ModelRef[]): Promise<Generated<Identification> | null> {
+  const answer = await generateJson(
     {
-      role: "user",
+      system: SYSTEM,
       content: [
-        { type: "image", source: { type: "base64", media_type: input.photo.mediaType, data: input.photo.base64 } },
+        ...input.photos.map((photo) => ({ type: "image" as const, base64: photo.base64, mediaType: photo.mediaType })),
         { type: "text", text: describe(input) },
       ],
-    },
-  ];
-
-  // A long web search can pause the turn; resume it a couple of times.
-  for (let attempt = 0; attempt < 3; attempt++) {
-    const response = await client.beta.messages.create({
-      model: "claude-opus-5-5",
-      max_tokens: 16000,
-      betas: ["server-side-fallback-2026-07-01"],
-      fallbacks: "default",
-      system: SYSTEM,
+      schema: { name: "identification", schema: SCHEMA },
+      webSearch: {
+        // Each search adds seconds; three covers what was on + a set check + one more.
+        maxUses: 3,
+        ...(input.country && /^[A-Z]{2}$/.test(input.country)
+          ? { location: { country: input.country, ...(input.city ? { city: input.city } : {}) } }
+          : {}),
+      },
       // Low effort: this runs while the user waits on the log form.
-      output_config: { effort: "low", format: { type: "json_schema", schema: SCHEMA } },
-      tools: [web_search],
-      messages,
-    });
-
-    if (response.stop_reason === "pause_turn") {
-      messages.push({ role: "assistant", content: response.content });
-      continue;
-    }
-    if (response.stop_reason === "refusal") {
-      console.error("Identify refused", response.stop_details?.category ?? null);
-      return null;
-    }
-
-    // With web search the answer can arrive split across several text
-    // blocks (citations); the JSON is everything after the last search.
-    const lastTool = response.content.findLastIndex((b) => b.type !== "text");
-    const json = response.content
-      .slice(lastTool + 1)
-      .map((b) => (b.type === "text" ? b.text : ""))
-      .join("")
-      .trim();
-    if (!json) return null;
-    const result = clean(JSON.parse(json) as Identification, input);
-    console.info("Identify", result.confidence, result.show_title, "|", result.reason);
-    return result;
-  }
-  return null;
+      effort: "low",
+    },
+    {
+      task: "identify",
+      models,
+      parse: (raw) => clean(raw as Identification, input),
+      // A model that can't name the show, or only guesses, hands over to the
+      // next one (by default Claude with web search).
+      accept: (result) => result.show_title !== null && result.confidence !== "low",
+      budgetMs: 80_000,
+    },
+  );
+  if (!answer) return null;
+  const { result, model } = answer;
+  console.info("Identify", model.provider, result.confidence, result.show_title, "|", result.reason);
+  return answer;
 }
 
 // Keep only what the form can trust: empty strings become null, and an

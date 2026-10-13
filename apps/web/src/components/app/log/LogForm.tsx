@@ -19,8 +19,7 @@ import {
   type Visibility,
 } from "@/lib/entries";
 import type { Identification } from "@/lib/identify";
-import { IDENTIFY_PHOTO_EDGE, readPhotoMeta, reencodeJpeg, STORED_PHOTO_EDGE, type PhotoMeta } from "@/lib/photo";
-import type { NearbyPlaces } from "@/lib/places";
+import { lookupNearby, preparePhoto, requestIdentify, type Place, type PreparedPhoto } from "@/lib/import/photo-pipeline";
 import { createClient } from "@/lib/supabase/client";
 import { DateField } from "../DateField";
 import { RatingInput } from "./RatingInput";
@@ -43,13 +42,19 @@ export type EntryDraft = {
 type Photo = { stored: Blob; previewUrl: string };
 
 // What the photo tells us, step by step. Each step fills only fields the
-// user hasn't touched, and only when it's confident.
+// user hasn't set, and only when it's confident; otherwise it offers a chip.
+// The form stays usable throughout. Removing or replacing the photo clears
+// what it filled.
 type Detect =
   | { step: "idle" }
   | { step: "reading" | "nearby" | "identifying" }
   | { step: "done"; result: Identification | null; note?: string };
 
 const label = "text-subheadline font-medium text-label";
+
+// Show detection can take a while with a web search; after this the pill
+// gives up quietly and the late answer is ignored.
+const IDENTIFY_TIMEOUT_MS = 20_000;
 
 // The device's date, read on the client only (null while prerendering), so
 // "today" is where the phone is, not where the server is.
@@ -59,8 +64,9 @@ function useToday() {
 }
 
 // Log or edit an entry (#14). New entries start photo first: the photo's
-// date fills the date, its location finds nearby theatres, and Claude
-// suggests the show and venue. Anything it can't work out stays blank.
+// date fills the date at once, its location finds nearby theatres within
+// about a second, and the AI's show suggestion arrives when it's ready.
+// Nothing waits on it: every field can be used, and Save works, throughout.
 export function LogForm({ initial }: { initial?: EntryDraft }) {
   const id = useId();
   const router = useRouter();
@@ -75,6 +81,8 @@ export function LogForm({ initial }: { initial?: EntryDraft }) {
   const [nearby, setNearby] = useState<NearbyVenue[]>([]);
   const [place, setPlace] = useState<{ city: string | null; country: string | null }>({ city: null, country: null });
   const [suggestion, setSuggestion] = useState<Identification | null>(null);
+  // A venue the AI matched that differs from the one already picked.
+  const [venueSuggestion, setVenueSuggestion] = useState<VenueChoice | null>(null);
 
   const [show, setShow] = useState<Show | NewShow | null>(initial?.show ?? null);
   const [venue, setVenue] = useState<VenueChoice | null>(initial?.venue ?? null);
@@ -92,14 +100,55 @@ export function LogForm({ initial }: { initial?: EntryDraft }) {
   const [recent, setRecent] = useState<{ show_id: string; venue: Venue }[]>([]);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const working = detect.step === "reading" || detect.step === "nearby" || detect.step === "identifying";
+  const identifying = detect.step === "identifying";
 
   // Fields the user set themselves; detection never overwrites these.
   const touched = useRef({ show: editing, venue: editing, date: editing, collections: editing, visibility: editing });
   // Latest values for async detection steps, and a token so a newer photo
   // cancels the older one's late results.
   const live = useRef({ show, venue });
-  live.current = { show, venue };
+  useEffect(() => {
+    live.current = { show, venue };
+  }, [show, venue]);
   const run = useRef(0);
+  // Fields whose current value came from the photo. Removing or replacing
+  // the photo clears these (and only these), so a new photo can fill them.
+  const fromPhoto = useRef({ show: false, venue: false, date: false });
+
+  // Detection sets fields through these, so they can be cleared later.
+  const autoShow = (v: Show | NewShow) => {
+    fromPhoto.current.show = true;
+    live.current.show = v;
+    setShow(v);
+  };
+  const autoVenue = (v: VenueChoice) => {
+    fromPhoto.current.venue = true;
+    live.current.venue = v;
+    setVenue(v);
+  };
+
+  // Forget everything the previous photo filled in or found.
+  function clearPhotoResults() {
+    run.current++;
+    const f = fromPhoto.current;
+    if (f.show) {
+      live.current.show = null;
+      setShow(null);
+    }
+    if (f.venue) {
+      live.current.venue = null;
+      setVenue(null);
+    }
+    if (f.date) setDate("");
+    fromPhoto.current = { show: false, venue: false, date: false };
+    setSuggestion(null);
+    setVenueSuggestion(null);
+    setNearby([]);
+    setPlace({ city: null, country: null });
+    setPhotoError(null);
+    setDetect({ step: "idle" });
+  }
 
   // The owner's default visibility, trips and labels, and recent venues.
   useEffect(() => {
@@ -141,23 +190,15 @@ export function LogForm({ initial }: { initial?: EntryDraft }) {
   }, [photo]);
 
   async function onPhoto(file: File) {
-    const token = ++run.current;
+    clearPhotoResults();
+    const token = run.current;
     const current = () => token === run.current;
     setStarted(true);
-    setPhotoError(null);
-    setSuggestion(null);
-    setNearby([]);
     setDetect({ step: "reading" });
 
-    let meta: PhotoMeta;
-    let stored: Blob;
-    let small: Blob;
+    let prepared: PreparedPhoto;
     try {
-      [meta, stored, small] = await Promise.all([
-        readPhotoMeta(file),
-        reencodeJpeg(file, STORED_PHOTO_EDGE),
-        reencodeJpeg(file, IDENTIFY_PHOTO_EDGE, 0.8),
-      ]);
+      prepared = await preparePhoto(file);
     } catch {
       if (!current()) return;
       setPhotoError("Couldn’t read that photo. Try another, or fill in the details below.");
@@ -165,79 +206,55 @@ export function LogForm({ initial }: { initial?: EntryDraft }) {
       return;
     }
     if (!current()) return;
+    const { meta, stored, small } = prepared;
     setPhoto({ stored, previewUrl: URL.createObjectURL(stored) });
     setExistingPhoto(null);
-    if (meta.date && !touched.current.date) setDate(meta.date);
+    if (meta.date && !touched.current.date) {
+      fromPhoto.current.date = true;
+      setDate(meta.date);
+    }
 
     // Nearby theatres, matched to venues already in the catalogue.
     let candidates: NearbyVenue[] = [];
-    let where = { city: null as string | null, country: null as string | null };
-    if (meta.lat != null && meta.lng != null) {
+    let where: Place = { city: null, country: null };
+    const point = meta.lat != null && meta.lng != null ? { lat: meta.lat, lng: meta.lng } : null;
+    if (point) {
       setDetect({ step: "nearby" });
-      try {
-        const res = await fetch("/api/photo/nearby", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ lat: meta.lat, lng: meta.lng }),
-        });
-        if (res.ok) {
-          const found = (await res.json()) as NearbyPlaces;
-          where = { city: found.city, country: found.country };
-          const osmIds = found.candidates.map((c) => c.osm_id);
-          const { data: known } = osmIds.length
-            ? await createClient().from("venues").select("id, name, city, country, lat, lng, osm_id").in("osm_id", osmIds)
-            : { data: [] as Venue[] };
-          candidates = found.candidates.map((c) => {
-            const row = (known as Venue[] | null)?.find((v) => v.osm_id === c.osm_id);
-            return row
-              ? { ...row, distance_m: c.distance_m }
-              : { name: c.name, city: c.city, country: c.country, lat: c.lat, lng: c.lng, osm_id: c.osm_id, distance_m: c.distance_m };
-          });
-        }
-      } catch {
-        // Offline or the lookup failed: carry on without nearby theatres.
-      }
+      ({ candidates, place: where } = await lookupNearby(point.lat, point.lng));
       if (!current()) return;
       setNearby(candidates);
       setPlace(where);
       // One theatre in range is as good as an answer.
-      if (candidates.length === 1 && !touched.current.venue && !live.current.venue) setVenue(candidates[0]);
+      if (candidates.length === 1 && !touched.current.venue && !live.current.venue) autoVenue(candidates[0]);
     }
 
-    // Ask Claude for the show (and to choose between neighbouring theatres).
+    // Ask the AI for the show (and to choose between neighbouring theatres).
+    // The form stays usable meanwhile; the answer fills only what's untouched.
     setDetect({ step: "identifying" });
-    let result: Identification | null = null;
-    let note: string | undefined;
-    try {
-      const body = new FormData();
-      body.set("photo", small, "photo.jpg");
-      if (meta.date) body.set("date", meta.date);
-      if (meta.time) body.set("time", meta.time);
-      if (where.city) body.set("city", where.city);
-      if (where.country) body.set("country", where.country);
-      // ~100 m precision: enough to search the area if no theatre was found.
-      if (meta.lat != null && meta.lng != null) {
-        body.set("lat", meta.lat.toFixed(3));
-        body.set("lng", meta.lng.toFixed(3));
-      }
-      body.set(
-        "candidates",
-        JSON.stringify(candidates.map((c) => ({ osm_id: c.osm_id, name: c.name, distance_m: c.distance_m }))),
-      );
-      const res = await fetch("/api/photo/identify", { method: "POST", body });
-      if (res.ok) result = ((await res.json()) as { result: Identification | null }).result;
-      else if (res.status === 503) note = "Show detection isn’t set up yet.";
-      else note = "Couldn’t work out the show. Fill it in below.";
-    } catch {
-      note = "Couldn’t work out the show. Fill it in below.";
-    }
+    const outcome = await requestIdentify({
+      photos: [small],
+      meta,
+      point,
+      place: where,
+      candidates,
+      timeoutMs: IDENTIFY_TIMEOUT_MS,
+    });
+    const result = outcome.result;
+    const note =
+      outcome.error === "not_configured"
+        ? "Show detection isn’t set up yet."
+        : outcome.error
+          ? "Couldn’t work out the show."
+          : undefined;
     if (!current()) return;
     setDetect({ step: "done", result, note });
     if (!result) return;
 
-    if (result.confidence === "low") {
+    // A guess, or a different show from the one already picked: a chip.
+    const differs = (s: Show | NewShow | null) => s && result.show_title && s.title.toLowerCase() !== result.show_title.toLowerCase();
+    if (result.confidence === "low" || (touched.current.show && differs(live.current.show))) {
       if (result.show_title) setSuggestion(result);
-      return;
+      if (result.confidence === "low") return;
     }
     await applyIdentification(result, candidates, where);
   }
@@ -252,16 +269,37 @@ export function LogForm({ initial }: { initial?: EntryDraft }) {
     if (result.show_title && !touched.current.show && !live.current.show) {
       const { data } = await supabase.rpc("search_shows", { q: result.show_title });
       const same = (data as Show[] | null)?.find((s) => s.title.toLowerCase() === result.show_title!.toLowerCase());
-      setShow(same ?? { title: result.show_title, type: result.show_type ?? "musical" });
+      autoShow(same ?? { title: result.show_title, type: result.show_type ?? "musical" });
     }
-    if (touched.current.venue) return;
     const picked = candidates.find((c) => c.osm_id === result.venue_osm_id);
+    // A venue picked by hand is never swapped: a different match is offered.
+    if (touched.current.venue) {
+      const current = live.current.venue;
+      if (picked && current && (current.osm_id ?? current.name) !== (picked.osm_id ?? picked.name)) setVenueSuggestion(picked);
+      return;
+    }
     if (picked) {
-      setVenue(picked);
+      autoVenue(picked);
     } else if (result.venue_name && !live.current.venue) {
       const { data } = await supabase.rpc("search_venues", { q: result.venue_name });
       const same = (data as Venue[] | null)?.find((v) => v.name.toLowerCase() === result.venue_name!.toLowerCase());
-      setVenue(same ?? { name: result.venue_name, city: where.city, country: where.country });
+      autoVenue(same ?? { name: result.venue_name, city: where.city, country: where.country });
+    }
+  }
+
+  // Tapping a "Maybe…" chip is the user's choice, replacing any show set.
+  async function takeSuggestion(s: Identification) {
+    setSuggestion(null);
+    if (!s.show_title) return;
+    const { data } = await createClient().rpc("search_shows", { q: s.show_title });
+    const same = (data as Show[] | null)?.find((x) => x.title.toLowerCase() === s.show_title!.toLowerCase());
+    touched.current.show = true;
+    fromPhoto.current.show = false;
+    setShow(same ?? { title: s.show_title, type: s.show_type ?? "musical" });
+    // The venue it went with, unless one was picked by hand.
+    if (!touched.current.venue) {
+      const picked = nearby.find((c) => c.osm_id === s.venue_osm_id);
+      if (picked) autoVenue(picked);
     }
   }
 
@@ -280,7 +318,7 @@ export function LogForm({ initial }: { initial?: EntryDraft }) {
   async function save(e: React.FormEvent) {
     e.preventDefault();
     setError(null);
-    if (!show) return setError("Pick a show.");
+    if (!show) return setError(identifying ? "Pick a show, or wait for the suggestion from your photo." : "Pick a show.");
     if (!venue) return setError("Pick a venue.");
     if (!venue.id && !venue.osm_id && (!venue.city?.trim() || !venue.country?.trim())) {
       return setError("Add the venue’s city and country.");
@@ -288,6 +326,8 @@ export function LogForm({ initial }: { initial?: EntryDraft }) {
     if (!date) return setError("Pick a date.");
     if (!userId) return setError("You’re signed out. Sign in again to save.");
 
+    // Saving wins over a suggestion still on its way: ignore it from here.
+    run.current++;
     setSaving(true);
     const supabase = createClient();
     const entryId = initial?.id ?? crypto.randomUUID();
@@ -411,7 +451,6 @@ export function LogForm({ initial }: { initial?: EntryDraft }) {
   }
 
   const previewUrl = photo?.previewUrl ?? existingPhoto;
-  const busy = detect.step === "reading" || detect.step === "nearby" || detect.step === "identifying";
   const status =
     detect.step === "reading"
       ? "Reading the photo…"
@@ -420,6 +459,9 @@ export function LogForm({ initial }: { initial?: EntryDraft }) {
         : detect.step === "identifying"
           ? "Working out the show…"
           : null;
+  const showDiffers = Boolean(
+    suggestion?.show_title && show && show.title.toLowerCase() !== suggestion.show_title.toLowerCase(),
+  );
   const result = detect.step === "done" ? detect.result : null;
 
   return (
@@ -450,10 +492,9 @@ export function LogForm({ initial }: { initial?: EntryDraft }) {
               <button
                 type="button"
                 onClick={() => {
-                  run.current++;
+                  clearPhotoResults();
                   setPhoto(null);
                   setExistingPhoto(null);
-                  setDetect({ step: "idle" });
                 }}
                 className="min-h-11 rounded-pill px-3 text-subheadline font-semibold text-destructive hover:bg-fill focus-visible:outline-2 focus-visible:outline-focus"
               >
@@ -464,12 +505,12 @@ export function LogForm({ initial }: { initial?: EntryDraft }) {
           <p role="status" aria-live="polite" className="px-3 text-footnote text-label-secondary">
             {photoError ? (
               <span className="text-destructive">{photoError}</span>
-            ) : status ? (
+            ) : working ? (
               <span className="inline-flex items-center gap-2">
                 <span aria-hidden="true" className="size-3 animate-spin rounded-full border-2 border-outline border-t-transparent" />
                 {status}
               </span>
-            ) : result && result.confidence !== "low" ? (
+            ) : result && result.confidence !== "low" && !showDiffers ? (
               `${result.confidence === "high" ? "Matched" : "Probably"}: ${result.reason}`
             ) : detect.step === "done" ? (
               (detect.note ?? (result ? null : "Couldn’t tell the show from this photo."))
@@ -478,184 +519,226 @@ export function LogForm({ initial }: { initial?: EntryDraft }) {
         </div>
       </div>
 
-      {/* Show */}
-      <div className="flex flex-col gap-2">
-        <span id={`${id}-show`} className={label}>
-          Show
-        </span>
-        <div aria-busy={busy && !show}>
-          <ShowField
-            labelledBy={`${id}-show`}
-            value={show}
-            onChange={(s) => {
-              touched.current.show = true;
-              setSuggestion(null);
-              setShow(s);
-            }}
-          />
-        </div>
-        {suggestion && !show && (
-          <div className="flex flex-wrap items-center gap-2">
-            <Chip
-              onClick={() => {
-                const s = suggestion;
-                setSuggestion(null);
-                touched.current.show = false;
-                void applyIdentification(s, nearby, place);
-              }}
-            >
-              Maybe {suggestion.show_title}?
-            </Chip>
-            <span className="text-footnote text-label-secondary">{suggestion.reason}</span>
-          </div>
-        )}
-      </div>
-
-      {/* Venue */}
-      <div className="flex flex-col gap-2">
-        <span id={`${id}-venue`} className={label}>
-          Venue
-        </span>
-        <VenueField
-          labelledBy={`${id}-venue`}
-          value={venue}
-          onChange={(v) => {
-            touched.current.venue = true;
-            setVenue(v);
-          }}
-          nearby={nearby}
-          suggestions={venueSuggestions}
-          place={venuePlace}
-        />
-      </div>
-
-      {/* Date */}
-      <div className="flex flex-col gap-2">
-        <label htmlFor={`${id}-date`} className={label}>
-          Date
-        </label>
-        <DateField
-          id={`${id}-date`}
-          value={date}
-          onChange={(v) => {
-            touched.current.date = true;
-            setDate(v);
-          }}
-        />
-        <div className="flex flex-wrap items-center gap-2">
-          {(today
-            ? [
-                ["Today", today],
-                ["Yesterday", localToday(-1)],
-              ]
-            : []
-          ).map(([text, value]) => (
-            <Chip
-              key={text}
-              selected={date === value}
-              onClick={() => {
-                touched.current.date = true;
-                setDate(value);
-              }}
-            >
-              {text}
-            </Chip>
-          ))}
-        </div>
-      </div>
-
-      {/* Rating */}
-      <div className="flex flex-col gap-1">
-        <span id={`${id}-rating`} className={label}>
-          Rating
-        </span>
-        <RatingInput labelledBy={`${id}-rating`} value={rating} onChange={setRating} />
-      </div>
-
-      {/* Note */}
-      <div className="flex flex-col gap-2">
-        <label htmlFor={`${id}-note`} className={label}>
-          Note <span className="font-normal text-label-secondary">(optional)</span>
-        </label>
-        <textarea
-          id={`${id}-note`}
-          rows={note ? 5 : 2}
-          maxLength={10000}
-          value={note}
-          onChange={(e) => setNote(e.target.value)}
-          onFocus={(e) => (e.currentTarget.rows = 5)}
-          placeholder="What stayed with you?"
-          className="block w-full rounded-md border border-separator bg-surface px-4 py-3 text-body text-label shadow-sm placeholder:text-label-secondary focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus"
-        />
-      </div>
-
-      {/* Trips and labels */}
-      <div className="flex flex-col gap-2">
-        <span id={`${id}-trips`} className={label}>
-          Trips and labels
-        </span>
-        {collections.length ? (
-          <div role="group" aria-labelledby={`${id}-trips`} className="flex flex-wrap gap-2">
-            {collections.map((c) => (
-              <Chip
-                key={c.id}
-                selected={collectionIds.includes(c.id)}
-                onClick={() => {
-                  touched.current.collections = true;
-                  setCollectionIds((ids) => (ids.includes(c.id) ? ids.filter((x) => x !== c.id) : [...ids, c.id]));
+      {/* Every field stays usable while the photo is checked; results fill
+          only what's untouched, and offer chips for the rest. */}
+      <div className="relative">
+        <div className="flex flex-col gap-6">
+          {/* Show */}
+          <div className="flex flex-col gap-2">
+            <span id={`${id}-show`} className={label}>
+              Show
+            </span>
+            <div>
+              <ShowField
+                labelledBy={`${id}-show`}
+                value={show}
+                onChange={(s) => {
+                  // Clearing with "Change" isn't a choice; a new photo may refill it.
+                  touched.current.show = s !== null;
+                  fromPhoto.current.show = false;
+                  setSuggestion(null);
+                  setShow(s);
                 }}
-              >
-                {c.name}
-              </Chip>
-            ))}
+              />
+            </div>
+            {identifying && !show && (
+              <p role="status" className="inline-flex items-center gap-2 self-start rounded-pill bg-fill px-3 py-1.5 text-footnote text-label-secondary">
+                <span aria-hidden="true" className="size-3 animate-spin rounded-full border-2 border-outline border-t-transparent" />
+                Working out the show from your photo…
+              </p>
+            )}
+            {suggestion && (!show || showDiffers) && (
+              <div className="flex flex-wrap items-center gap-2">
+                <Chip onClick={() => void takeSuggestion(suggestion)}>
+                  {showDiffers ? `Photo suggests ${suggestion.show_title}` : `Maybe ${suggestion.show_title}?`}
+                </Chip>
+                <span className="text-footnote text-label-secondary">{suggestion.reason}</span>
+              </div>
+            )}
           </div>
-        ) : (
-          <p className="text-footnote text-label-secondary">
-            None yet. Create one under Trips, like “NYC Oct 2026”.
-          </p>
-        )}
-      </div>
 
-      {/* Visibility */}
-      <div className="flex flex-col gap-2">
-        <span id={`${id}-visibility`} className={label}>
-          Who can see this
-        </span>
-        <div role="radiogroup" aria-labelledby={`${id}-visibility`} className="flex gap-2">
-          {(["public", "private"] as const).map((v) => (
-            <button
-              key={v}
-              type="button"
-              role="radio"
-              aria-checked={visibility === v}
-              onClick={() => {
-                touched.current.visibility = true;
-                setVisibility(v);
+          {/* Venue */}
+          <div className="flex flex-col gap-2">
+            <span id={`${id}-venue`} className={label}>
+              Venue
+            </span>
+            <VenueField
+              labelledBy={`${id}-venue`}
+              value={venue}
+              onChange={(v) => {
+                touched.current.venue = v !== null;
+                fromPhoto.current.venue = false;
+                setVenueSuggestion(null);
+                setVenue(v);
               }}
-              className={`min-h-11 flex-1 rounded-pill px-4 text-subheadline font-semibold focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus ${
-                visibility === v ? "bg-label text-background" : "bg-fill text-label"
-              }`}
-            >
-              {v === "public" ? "Public" : "Private"}
-            </button>
-          ))}
+              nearby={nearby}
+              suggestions={venueSuggestions}
+              place={venuePlace}
+            />
+            {/* Several theatres close by: one tap instead of a search. */}
+            {!venue && nearby.length > 1 && (
+              <div role="group" aria-label="Theatres near the photo" className="flex flex-wrap gap-2">
+                {nearby.slice(0, 3).map((v) => (
+                  <Chip
+                    key={v.id ?? v.osm_id ?? v.name}
+                    onClick={() => {
+                      touched.current.venue = true;
+                      fromPhoto.current.venue = false;
+                      setVenue(v);
+                    }}
+                  >
+                    {v.name} · {v.distance_m} m
+                  </Chip>
+                ))}
+              </div>
+            )}
+            {venueSuggestion && venue && (
+              <div>
+                <Chip
+                  onClick={() => {
+                    touched.current.venue = true;
+                    setVenue(venueSuggestion);
+                    setVenueSuggestion(null);
+                  }}
+                >
+                  Photo suggests {venueSuggestion.name}
+                </Chip>
+              </div>
+            )}
+          </div>
+
+          {/* Date */}
+          <div className="flex flex-col gap-2">
+            <label htmlFor={`${id}-date`} className={label}>
+              Date
+            </label>
+            <DateField
+              id={`${id}-date`}
+              value={date}
+              onChange={(v) => {
+                touched.current.date = true;
+                fromPhoto.current.date = false;
+                setDate(v);
+              }}
+            />
+            <div className="flex flex-wrap items-center gap-2">
+              {(today
+                ? [
+                    ["Today", today],
+                    ["Yesterday", localToday(-1)],
+                  ]
+                : []
+              ).map(([text, value]) => (
+                <Chip
+                  key={text}
+                  selected={date === value}
+                  onClick={() => {
+                    touched.current.date = true;
+                    fromPhoto.current.date = false;
+                    setDate(value);
+                  }}
+                >
+                  {text}
+                </Chip>
+              ))}
+            </div>
+          </div>
+
+          {/* Rating */}
+          <div className="flex flex-col gap-1">
+            <span id={`${id}-rating`} className={label}>
+              Rating
+            </span>
+            <RatingInput labelledBy={`${id}-rating`} value={rating} onChange={setRating} />
+          </div>
+
+          {/* Note */}
+          <div className="flex flex-col gap-2">
+            <label htmlFor={`${id}-note`} className={label}>
+              Note <span className="font-normal text-label-secondary">(optional)</span>
+            </label>
+            <textarea
+              id={`${id}-note`}
+              rows={note ? 5 : 2}
+              maxLength={10000}
+              value={note}
+              onChange={(e) => setNote(e.target.value)}
+              onFocus={(e) => (e.currentTarget.rows = 5)}
+              placeholder="What stayed with you?"
+              className="block w-full rounded-md border border-separator bg-surface px-4 py-3 text-body text-label shadow-sm placeholder:text-label-secondary focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus"
+            />
+          </div>
+
+          {/* Trips and labels */}
+          <div className="flex flex-col gap-2">
+            <span id={`${id}-trips`} className={label}>
+              Trips and labels
+            </span>
+            {collections.length ? (
+              <div role="group" aria-labelledby={`${id}-trips`} className="flex flex-wrap gap-2">
+                {collections.map((c) => (
+                  <Chip
+                    key={c.id}
+                    selected={collectionIds.includes(c.id)}
+                    onClick={() => {
+                      touched.current.collections = true;
+                      setCollectionIds((ids) => (ids.includes(c.id) ? ids.filter((x) => x !== c.id) : [...ids, c.id]));
+                    }}
+                  >
+                    {c.name}
+                  </Chip>
+                ))}
+              </div>
+            ) : (
+              <p className="text-footnote text-label-secondary">
+                None yet. Create one under Trips, like “NYC Oct 2026”.
+              </p>
+            )}
+          </div>
+
+          {/* Visibility */}
+          <div className="flex flex-col gap-2">
+            <span id={`${id}-visibility`} className={label}>
+              Who can see this
+            </span>
+            <div role="radiogroup" aria-labelledby={`${id}-visibility`} className="flex gap-2">
+              {(["public", "private"] as const).map((v) => (
+                <button
+                  key={v}
+                  type="button"
+                  role="radio"
+                  aria-checked={visibility === v}
+                  onClick={() => {
+                    touched.current.visibility = true;
+                    setVisibility(v);
+                  }}
+                  className={`min-h-11 flex-1 rounded-pill px-4 text-subheadline font-semibold focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus ${
+                    visibility === v ? "bg-label text-background" : "bg-fill text-label"
+                  }`}
+                >
+                  {v === "public" ? "Public" : "Private"}
+                </button>
+              ))}
+            </div>
+            <p className="text-footnote text-label-secondary">
+              {visibility === "public" ? "Anyone with the link can see this entry." : "Only you can see this entry."}
+            </p>
+          </div>
+
+          {error && (
+            <p role="alert" className="text-footnote text-destructive">
+              {error}
+            </p>
+          )}
+
+          {/* Sits on the tab bar (49px); the bottom padding clears its raised Log button. */}
+          <div className="sticky bottom-[calc(env(safe-area-inset-bottom)+49px)] z-10 -mx-4 bg-background/90 px-4 pt-3 pb-7 backdrop-blur">
+            <Button type="submit" className="w-full" disabled={saving}>
+              {saving ? "Saving…" : editing ? "Save changes" : "Save"}
+            </Button>
+          </div>
         </div>
-        <p className="text-footnote text-label-secondary">
-          {visibility === "public" ? "Anyone with the link can see this entry." : "Only you can see this entry."}
-        </p>
-      </div>
 
-      {error && (
-        <p role="alert" className="text-footnote text-destructive">
-          {error}
-        </p>
-      )}
-
-      {/* Sits on the tab bar (49px); the bottom padding clears its raised Log button. */}
-      <div className="sticky bottom-[calc(env(safe-area-inset-bottom)+49px)] z-10 -mx-4 bg-background/90 px-4 pt-3 pb-7 backdrop-blur">
-        <Button type="submit" className="w-full" disabled={saving}>
-          {saving ? "Saving…" : editing ? "Save changes" : "Save"}
-        </Button>
       </div>
     </form>
   );
