@@ -42,14 +42,19 @@ export type EntryDraft = {
 type Photo = { stored: Blob; previewUrl: string };
 
 // What the photo tells us, step by step. Each step fills only fields the
-// user hasn't set, and only when it's confident. Removing or replacing the
-// photo clears what it filled.
+// user hasn't set, and only when it's confident; otherwise it offers a chip.
+// The form stays usable throughout. Removing or replacing the photo clears
+// what it filled.
 type Detect =
   | { step: "idle" }
   | { step: "reading" | "nearby" | "identifying" }
   | { step: "done"; result: Identification | null; note?: string };
 
 const label = "text-subheadline font-medium text-label";
+
+// Show detection can take a while with a web search; after this the pill
+// gives up quietly and the late answer is ignored.
+const IDENTIFY_TIMEOUT_MS = 20_000;
 
 // The device's date, read on the client only (null while prerendering), so
 // "today" is where the phone is, not where the server is.
@@ -59,8 +64,9 @@ function useToday() {
 }
 
 // Log or edit an entry (#14). New entries start photo first: the photo's
-// date fills the date, its location finds nearby theatres, and Claude
-// suggests the show and venue. Anything it can't work out stays blank.
+// date fills the date at once, its location finds nearby theatres within
+// about a second, and the AI's show suggestion arrives when it's ready.
+// Nothing waits on it: every field can be used, and Save works, throughout.
 export function LogForm({ initial }: { initial?: EntryDraft }) {
   const id = useId();
   const router = useRouter();
@@ -75,6 +81,8 @@ export function LogForm({ initial }: { initial?: EntryDraft }) {
   const [nearby, setNearby] = useState<NearbyVenue[]>([]);
   const [place, setPlace] = useState<{ city: string | null; country: string | null }>({ city: null, country: null });
   const [suggestion, setSuggestion] = useState<Identification | null>(null);
+  // A venue the AI matched that differs from the one already picked.
+  const [venueSuggestion, setVenueSuggestion] = useState<VenueChoice | null>(null);
 
   const [show, setShow] = useState<Show | NewShow | null>(initial?.show ?? null);
   const [venue, setVenue] = useState<VenueChoice | null>(initial?.venue ?? null);
@@ -92,13 +100,17 @@ export function LogForm({ initial }: { initial?: EntryDraft }) {
   const [recent, setRecent] = useState<{ show_id: string; venue: Venue }[]>([]);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const working = detect.step === "reading" || detect.step === "nearby" || detect.step === "identifying";
+  const identifying = detect.step === "identifying";
 
   // Fields the user set themselves; detection never overwrites these.
   const touched = useRef({ show: editing, venue: editing, date: editing, collections: editing, visibility: editing });
   // Latest values for async detection steps, and a token so a newer photo
   // cancels the older one's late results.
   const live = useRef({ show, venue });
-  live.current = { show, venue };
+  useEffect(() => {
+    live.current = { show, venue };
+  }, [show, venue]);
   const run = useRef(0);
   // Fields whose current value came from the photo. Removing or replacing
   // the photo clears these (and only these), so a new photo can fill them.
@@ -116,12 +128,6 @@ export function LogForm({ initial }: { initial?: EntryDraft }) {
     setVenue(v);
   };
 
-  // Stop waiting on detection; keep what's already filled (e.g. the date).
-  function skipDetection() {
-    run.current++;
-    setDetect({ step: "done", result: null, note: "Skipped. Fill in the rest below." });
-  }
-
   // Forget everything the previous photo filled in or found.
   function clearPhotoResults() {
     run.current++;
@@ -137,6 +143,7 @@ export function LogForm({ initial }: { initial?: EntryDraft }) {
     if (f.date) setDate("");
     fromPhoto.current = { show: false, venue: false, date: false };
     setSuggestion(null);
+    setVenueSuggestion(null);
     setNearby([]);
     setPlace({ city: null, country: null });
     setPhotoError(null);
@@ -222,22 +229,32 @@ export function LogForm({ initial }: { initial?: EntryDraft }) {
     }
 
     // Ask the AI for the show (and to choose between neighbouring theatres).
+    // The form stays usable meanwhile; the answer fills only what's untouched.
     setDetect({ step: "identifying" });
-    const outcome = await requestIdentify({ photos: [small], meta, point, place: where, candidates });
+    const outcome = await requestIdentify({
+      photos: [small],
+      meta,
+      point,
+      place: where,
+      candidates,
+      timeoutMs: IDENTIFY_TIMEOUT_MS,
+    });
     const result = outcome.result;
     const note =
       outcome.error === "not_configured"
         ? "Show detection isn’t set up yet."
         : outcome.error
-          ? "Couldn’t work out the show. Fill it in below."
+          ? "Couldn’t work out the show."
           : undefined;
     if (!current()) return;
     setDetect({ step: "done", result, note });
     if (!result) return;
 
-    if (result.confidence === "low") {
+    // A guess, or a different show from the one already picked: a chip.
+    const differs = (s: Show | NewShow | null) => s && result.show_title && s.title.toLowerCase() !== result.show_title.toLowerCase();
+    if (result.confidence === "low" || (touched.current.show && differs(live.current.show))) {
       if (result.show_title) setSuggestion(result);
-      return;
+      if (result.confidence === "low") return;
     }
     await applyIdentification(result, candidates, where);
   }
@@ -254,14 +271,35 @@ export function LogForm({ initial }: { initial?: EntryDraft }) {
       const same = (data as Show[] | null)?.find((s) => s.title.toLowerCase() === result.show_title!.toLowerCase());
       autoShow(same ?? { title: result.show_title, type: result.show_type ?? "musical" });
     }
-    if (touched.current.venue) return;
     const picked = candidates.find((c) => c.osm_id === result.venue_osm_id);
+    // A venue picked by hand is never swapped: a different match is offered.
+    if (touched.current.venue) {
+      const current = live.current.venue;
+      if (picked && current && (current.osm_id ?? current.name) !== (picked.osm_id ?? picked.name)) setVenueSuggestion(picked);
+      return;
+    }
     if (picked) {
       autoVenue(picked);
     } else if (result.venue_name && !live.current.venue) {
       const { data } = await supabase.rpc("search_venues", { q: result.venue_name });
       const same = (data as Venue[] | null)?.find((v) => v.name.toLowerCase() === result.venue_name!.toLowerCase());
       autoVenue(same ?? { name: result.venue_name, city: where.city, country: where.country });
+    }
+  }
+
+  // Tapping a "Maybe…" chip is the user's choice, replacing any show set.
+  async function takeSuggestion(s: Identification) {
+    setSuggestion(null);
+    if (!s.show_title) return;
+    const { data } = await createClient().rpc("search_shows", { q: s.show_title });
+    const same = (data as Show[] | null)?.find((x) => x.title.toLowerCase() === s.show_title!.toLowerCase());
+    touched.current.show = true;
+    fromPhoto.current.show = false;
+    setShow(same ?? { title: s.show_title, type: s.show_type ?? "musical" });
+    // The venue it went with, unless one was picked by hand.
+    if (!touched.current.venue) {
+      const picked = nearby.find((c) => c.osm_id === s.venue_osm_id);
+      if (picked) autoVenue(picked);
     }
   }
 
@@ -280,7 +318,7 @@ export function LogForm({ initial }: { initial?: EntryDraft }) {
   async function save(e: React.FormEvent) {
     e.preventDefault();
     setError(null);
-    if (!show) return setError("Pick a show.");
+    if (!show) return setError(identifying ? "Pick a show, or wait for the suggestion from your photo." : "Pick a show.");
     if (!venue) return setError("Pick a venue.");
     if (!venue.id && !venue.osm_id && (!venue.city?.trim() || !venue.country?.trim())) {
       return setError("Add the venue’s city and country.");
@@ -288,6 +326,8 @@ export function LogForm({ initial }: { initial?: EntryDraft }) {
     if (!date) return setError("Pick a date.");
     if (!userId) return setError("You’re signed out. Sign in again to save.");
 
+    // Saving wins over a suggestion still on its way: ignore it from here.
+    run.current++;
     setSaving(true);
     const supabase = createClient();
     const entryId = initial?.id ?? crypto.randomUUID();
@@ -411,7 +451,6 @@ export function LogForm({ initial }: { initial?: EntryDraft }) {
   }
 
   const previewUrl = photo?.previewUrl ?? existingPhoto;
-  const busy = detect.step === "reading" || detect.step === "nearby" || detect.step === "identifying";
   const status =
     detect.step === "reading"
       ? "Reading the photo…"
@@ -420,6 +459,9 @@ export function LogForm({ initial }: { initial?: EntryDraft }) {
         : detect.step === "identifying"
           ? "Working out the show…"
           : null;
+  const showDiffers = Boolean(
+    suggestion?.show_title && show && show.title.toLowerCase() !== suggestion.show_title.toLowerCase(),
+  );
   const result = detect.step === "done" ? detect.result : null;
 
   return (
@@ -463,7 +505,12 @@ export function LogForm({ initial }: { initial?: EntryDraft }) {
           <p role="status" aria-live="polite" className="px-3 text-footnote text-label-secondary">
             {photoError ? (
               <span className="text-destructive">{photoError}</span>
-            ) : busy ? null : result && result.confidence !== "low" ? (
+            ) : working ? (
+              <span className="inline-flex items-center gap-2">
+                <span aria-hidden="true" className="size-3 animate-spin rounded-full border-2 border-outline border-t-transparent" />
+                {status}
+              </span>
+            ) : result && result.confidence !== "low" && !showDiffers ? (
               `${result.confidence === "high" ? "Matched" : "Probably"}: ${result.reason}`
             ) : detect.step === "done" ? (
               (detect.note ?? (result ? null : "Couldn’t tell the show from this photo."))
@@ -472,15 +519,10 @@ export function LogForm({ initial }: { initial?: EntryDraft }) {
         </div>
       </div>
 
-      {/* While the photo is checked, the fields are locked and greyed out
-          (inert: no taps, no focus) under one spinner. The photo row above
-          stays live so the photo can still be changed or removed. */}
+      {/* Every field stays usable while the photo is checked; results fill
+          only what's untouched, and offer chips for the rest. */}
       <div className="relative">
-        <div
-          inert={busy}
-          aria-busy={busy}
-          className={`flex flex-col gap-6 transition-opacity duration-200 ${busy ? "opacity-35 select-none" : ""}`}
-        >
+        <div className="flex flex-col gap-6">
           {/* Show */}
           <div className="flex flex-col gap-2">
             <span id={`${id}-show`} className={label}>
@@ -499,17 +541,16 @@ export function LogForm({ initial }: { initial?: EntryDraft }) {
                 }}
               />
             </div>
-            {suggestion && !show && (
+            {identifying && !show && (
+              <p role="status" className="inline-flex items-center gap-2 self-start rounded-pill bg-fill px-3 py-1.5 text-footnote text-label-secondary">
+                <span aria-hidden="true" className="size-3 animate-spin rounded-full border-2 border-outline border-t-transparent" />
+                Working out the show from your photo…
+              </p>
+            )}
+            {suggestion && (!show || showDiffers) && (
               <div className="flex flex-wrap items-center gap-2">
-                <Chip
-                  onClick={() => {
-                    const s = suggestion;
-                    setSuggestion(null);
-                    touched.current.show = false;
-                    void applyIdentification(s, nearby, place);
-                  }}
-                >
-                  Maybe {suggestion.show_title}?
+                <Chip onClick={() => void takeSuggestion(suggestion)}>
+                  {showDiffers ? `Photo suggests ${suggestion.show_title}` : `Maybe ${suggestion.show_title}?`}
                 </Chip>
                 <span className="text-footnote text-label-secondary">{suggestion.reason}</span>
               </div>
@@ -527,12 +568,43 @@ export function LogForm({ initial }: { initial?: EntryDraft }) {
               onChange={(v) => {
                 touched.current.venue = v !== null;
                 fromPhoto.current.venue = false;
+                setVenueSuggestion(null);
                 setVenue(v);
               }}
               nearby={nearby}
               suggestions={venueSuggestions}
               place={venuePlace}
             />
+            {/* Several theatres close by: one tap instead of a search. */}
+            {!venue && nearby.length > 1 && (
+              <div role="group" aria-label="Theatres near the photo" className="flex flex-wrap gap-2">
+                {nearby.slice(0, 3).map((v) => (
+                  <Chip
+                    key={v.id ?? v.osm_id ?? v.name}
+                    onClick={() => {
+                      touched.current.venue = true;
+                      fromPhoto.current.venue = false;
+                      setVenue(v);
+                    }}
+                  >
+                    {v.name} · {v.distance_m} m
+                  </Chip>
+                ))}
+              </div>
+            )}
+            {venueSuggestion && venue && (
+              <div>
+                <Chip
+                  onClick={() => {
+                    touched.current.venue = true;
+                    setVenue(venueSuggestion);
+                    setVenueSuggestion(null);
+                  }}
+                >
+                  Photo suggests {venueSuggestion.name}
+                </Chip>
+              </div>
+            )}
           </div>
 
           {/* Date */}
@@ -667,27 +739,6 @@ export function LogForm({ initial }: { initial?: EntryDraft }) {
           </div>
         </div>
 
-        {busy && (
-          <div className="pointer-events-none absolute inset-0 z-20">
-            <div className="sticky top-[35vh] flex justify-center pt-6">
-              <div className="pointer-events-auto flex w-full max-w-[300px] flex-col items-center gap-3 rounded-lg border border-separator bg-surface px-6 py-5 text-center shadow-lg">
-                <span
-                  aria-hidden="true"
-                  className="size-8 animate-spin rounded-full border-[3px] border-fill border-t-tint"
-                />
-                <p role="status" aria-live="polite" className="text-headline text-label">
-                  {status}
-                </p>
-                <p className="text-footnote text-label-secondary">
-                  {detect.step === "identifying" ? "This can take a little while." : "Just a moment."}
-                </p>
-                <Button variant="ghost" size="sm" onClick={skipDetection}>
-                  Fill in myself
-                </Button>
-              </div>
-            </div>
-          </div>
-        )}
       </div>
     </form>
   );

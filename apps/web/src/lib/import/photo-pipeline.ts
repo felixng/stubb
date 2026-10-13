@@ -93,6 +93,7 @@ export async function requestIdentify({
   place,
   candidates,
   model,
+  timeoutMs,
 }: {
   photos: Blob[];
   meta: Pick<PhotoMeta, "date" | "time">;
@@ -101,6 +102,8 @@ export async function requestIdentify({
   candidates: NearbyVenue[];
   // "provider" or "provider:model" to run only that model (import tool).
   model?: string;
+  // Give up after this long; the outcome is then a "failed" error.
+  timeoutMs?: number;
 }): Promise<IdentifyOutcome> {
   try {
     const body = new FormData();
@@ -119,7 +122,11 @@ export async function requestIdentify({
       "candidates",
       JSON.stringify(candidates.map((c) => ({ osm_id: c.osm_id, name: c.name, distance_m: c.distance_m }))),
     );
-    const res = await fetch("/api/photo/identify", { method: "POST", body });
+    const res = await fetch("/api/photo/identify", {
+      method: "POST",
+      body,
+      ...(timeoutMs ? { signal: AbortSignal.timeout(timeoutMs) } : {}),
+    });
     if (res.ok) return (await res.json()) as { result: Identification | null; model: string | null };
     if (res.status === 503) return { result: null, error: "not_configured" };
     const { error, detail } = (await res.json().catch(() => ({}))) as { error?: string; detail?: string | null };
