@@ -4,30 +4,39 @@ import { useEffect, useRef, useState } from "react";
 
 import { CARD_DESIGNS, renderCard, type CardData } from "@/lib/share-card";
 
-type Rendered = { id: string; name: string; file: File; url: string };
+type Rendered = { file: File; url: string };
+type Variants = { photo: Rendered; clear: Rendered };
 
-// Hevy-style share screen: swipe between card designs, then send the one in
-// view to an Instagram story, the share sheet, or the camera roll. Cards are
-// drawn on the device as PNGs before any button is tapped, so the share
-// sheet opens straight from the tap (iOS needs that).
+// Hevy-style share screen: swipe between card designs, optionally drop the
+// background, then send the card in view to an Instagram story, the share
+// sheet or the camera roll. Every card is drawn on the device, with and
+// without its background, before any button is tapped, so the share sheet
+// opens straight from the tap (iOS needs that).
 export function ShareSheet({ data, photoUrl, slug }: { data: CardData; photoUrl: string | null; slug: string }) {
-  const [cards, setCards] = useState<Rendered[] | null>(null);
+  const [cards, setCards] = useState<Variants[] | null>(null);
   const [failed, setFailed] = useState(false);
   const [active, setActive] = useState(0);
+  const [transparent, setTransparent] = useState(false);
   const [notice, setNotice] = useState<string | null>(null);
   const scroller = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     let cancelled = false;
     const urls: string[] = [];
+    const make = (blob: Blob, name: string): Rendered => {
+      const url = URL.createObjectURL(blob);
+      urls.push(url);
+      return { url, file: new File([blob], name, { type: "image/png" }) };
+    };
     (async () => {
       const photo = photoUrl ? await loadPhoto(photoUrl) : null;
-      const out: Rendered[] = [];
+      const out: Variants[] = [];
       for (const design of CARD_DESIGNS) {
-        const blob = await renderCard(design.id, data, photo);
-        const url = URL.createObjectURL(blob);
-        urls.push(url);
-        out.push({ ...design, url, file: new File([blob], `stubbed-${slug}-${design.id}.png`, { type: "image/png" }) });
+        const name = `stubbed-${slug}-${design.id}`;
+        out.push({
+          photo: make(await renderCard(design.id, data, photo), `${name}.png`),
+          clear: make(await renderCard(design.id, data, null, { transparent: true }), `${name}-clear.png`),
+        });
       }
       if (photo) URL.revokeObjectURL(photo.src);
       if (!cancelled) setCards(out);
@@ -41,19 +50,22 @@ export function ShareSheet({ data, photoUrl, slug }: { data: CardData; photoUrl:
     };
   }, [data, photoUrl, slug]);
 
-  const card = cards?.[active];
+  const variants = cards?.[active];
+  const card = variants && (transparent ? variants.clear : variants.photo);
   const canShareFiles =
     typeof navigator !== "undefined" && card ? Boolean(navigator.canShare?.({ files: [card.file] })) : false;
+  const text = `${data.title} at ${data.venue}. Logged on Stubbed.`;
 
   function goTo(i: number) {
     const el = scroller.current?.children[i] as HTMLElement | undefined;
     el?.scrollIntoView({ behavior: "smooth", inline: "center", block: "nearest" });
   }
 
+  // One full-width card per page, so the page index is the card index.
   function onScroll() {
     const el = scroller.current;
     if (!el) return;
-    const i = Math.round(el.scrollLeft / (el.scrollWidth / CARD_DESIGNS.length));
+    const i = Math.round(el.scrollLeft / el.clientWidth);
     setActive(Math.max(0, Math.min(CARD_DESIGNS.length - 1, i)));
   }
 
@@ -75,13 +87,21 @@ export function ShareSheet({ data, photoUrl, slug }: { data: CardData; photoUrl:
     }
     // Image only for stories: Instagram's share sheet entry drops the
     // image when text comes with it.
-    const text = `${data.title} at ${data.venue}. Logged on Stubbed.`;
     try {
       await navigator.share(withText ? { files: [card.file], text } : { files: [card.file] });
     } catch (err) {
       if (err instanceof DOMException && err.name === "AbortError") return;
       console.error("Sharing failed", err);
       setNotice("Couldn’t open sharing. Download the image instead.");
+    }
+  }
+
+  async function copyText() {
+    try {
+      await navigator.clipboard.writeText(text);
+      setNotice("Text copied.");
+    } catch {
+      setNotice("Couldn’t copy the text.");
     }
   }
 
@@ -94,27 +114,28 @@ export function ShareSheet({ data, photoUrl, slug }: { data: CardData; photoUrl:
         role="region"
         aria-roledescription="carousel"
         aria-label="Card designs"
-        className="-mx-4 flex snap-x snap-mandatory gap-3 overflow-x-auto px-[8%] pb-1 [scrollbar-width:none] focus-visible:outline-2 focus-visible:outline-focus [&::-webkit-scrollbar]:hidden"
+        className="flex snap-x snap-mandatory gap-4 overflow-x-auto [scrollbar-width:none] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus [&::-webkit-scrollbar]:hidden"
       >
         {CARD_DESIGNS.map((design, i) => {
           const rendered = cards?.[i];
+          const shown = rendered && (transparent ? rendered.clear : rendered.photo);
           return (
             <div
               key={design.id}
               role="group"
               aria-roledescription="slide"
               aria-label={`${i + 1} of ${CARD_DESIGNS.length}: ${design.name}`}
-              className="aspect-square w-[84%] shrink-0 snap-center"
+              className={`aspect-square w-full shrink-0 snap-center overflow-hidden rounded-[6%] ${transparent ? "bg-[repeating-conic-gradient(#5b5b5f_0%_25%,#47474a_0%_50%)] bg-[length:28px_28px]" : ""}`}
             >
-              {rendered ? (
+              {shown ? (
                 // eslint-disable-next-line @next/next/no-img-element -- local PNG drawn on the device
                 <img
-                  src={rendered.url}
-                  alt={`Share card, ${design.name.toLowerCase()}: ${data.title}`}
-                  className="size-full drop-shadow-md"
+                  src={shown.url}
+                  alt={`Share card, ${design.name.toLowerCase()}${transparent ? ", no background" : ""}: ${data.title}`}
+                  className="size-full"
                 />
               ) : (
-                <div className="flex size-full items-center justify-center rounded-lg bg-fill text-subheadline text-label-secondary">
+                <div className="flex size-full items-center justify-center bg-fill text-subheadline text-label-secondary">
                   {failed ? "Couldn’t draw this card." : "Drawing…"}
                 </div>
               )}
@@ -138,7 +159,25 @@ export function ShareSheet({ data, photoUrl, slug }: { data: CardData; photoUrl:
         ))}
       </div>
 
-      <div className="flex justify-center gap-6 pt-1">
+      <p className="text-center text-callout text-label">Share your show</p>
+
+      {/* Scrolls sideways on narrow phones, like Hevy's row. */}
+      <div className="-mx-4 flex items-start gap-3 overflow-x-auto px-4 pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+        <Action
+          label="Background"
+          onClick={() => setTransparent((t) => !t)}
+          disabled={!cards}
+          pressed={!transparent}
+        >
+          <span
+            className={`flex size-14 items-center justify-center rounded-pill text-white ${transparent ? "bg-[repeating-conic-gradient(#6b6b70_0%_25%,#48484c_0%_50%)] bg-[length:14px_14px]" : "bg-label"}`}
+          >
+            <svg viewBox="0 0 24 24" width="26" height="26" aria-hidden="true" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round">
+              <path d="M5 13 13 5M5 19 19 5M11 19l8-8" />
+            </svg>
+          </span>
+        </Action>
+        <span aria-hidden="true" className="mt-1 h-12 w-px shrink-0 bg-separator" />
         <Action label="Stories" onClick={() => share(false)} disabled={!card}>
           <span className="flex size-14 items-center justify-center rounded-pill bg-[radial-gradient(circle_at_30%_107%,#fdf497_0%,#fdf497_5%,#fd5949_45%,#d6249f_60%,#285aeb_90%)] text-white">
             <svg viewBox="0 0 24 24" width="28" height="28" aria-hidden="true" fill="none" stroke="currentColor" strokeWidth="1.8">
@@ -158,6 +197,12 @@ export function ShareSheet({ data, photoUrl, slug }: { data: CardData; photoUrl:
             <path d="M12 3.5V15M7.5 10.5 12 15l4.5-4.5M5 19.5h14" />
           </Circle>
         </Action>
+        <Action label="Copy text" onClick={copyText} disabled={false}>
+          <Circle>
+            <rect x="8.5" y="8.5" width="11" height="11" rx="2.5" />
+            <path d="M15.5 8.5V6a1.5 1.5 0 0 0-1.5-1.5H6A1.5 1.5 0 0 0 4.5 6v8A1.5 1.5 0 0 0 6 15.5h2.5" />
+          </Circle>
+        </Action>
       </div>
 
       <p role="status" className="min-h-5 text-center text-footnote text-label-secondary">
@@ -171,11 +216,13 @@ function Action({
   label,
   onClick,
   disabled,
+  pressed,
   children,
 }: {
   label: string;
   onClick: () => void;
   disabled: boolean;
+  pressed?: boolean;
   children: React.ReactNode;
 }) {
   return (
@@ -183,7 +230,8 @@ function Action({
       type="button"
       onClick={onClick}
       disabled={disabled}
-      className="flex min-w-16 cursor-pointer flex-col items-center gap-1.5 rounded-md text-footnote text-label focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus disabled:cursor-wait disabled:opacity-40"
+      aria-pressed={pressed}
+      className="flex w-[72px] shrink-0 cursor-pointer flex-col items-center gap-1.5 rounded-md text-footnote text-label focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus disabled:cursor-wait disabled:opacity-40"
     >
       {children}
       {label}

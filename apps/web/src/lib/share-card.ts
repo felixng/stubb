@@ -47,29 +47,41 @@ export function ordinal(n: number) {
   return `${n}${({ 1: "st", 2: "nd", 3: "rd" } as Record<number, string>)[n % 10] ?? "th"}`;
 }
 
-export async function renderCard(design: CardDesign["id"], data: CardData, photo: HTMLImageElement | null) {
+// `transparent`: no photo and no shading, just the text, like Hevy's
+// "Background" toggle. It goes on top of the person's own story photo, so
+// every line gets a shadow to stay readable on any picture.
+export async function renderCard(
+  design: CardDesign["id"],
+  data: CardData,
+  photo: HTMLImageElement | null,
+  { transparent = false } = {},
+) {
   const canvas = document.createElement("canvas");
   canvas.width = canvas.height = CARD_SIZE;
   const ctx = canvas.getContext("2d");
   if (!ctx) throw new Error("Canvas isn’t available");
   ctx.scale(SCALE, SCALE);
-  if (design === "square") drawSquare(ctx, data, photo);
-  else drawHevy(ctx, data, photo, design === "hevy-seen" ? "seen" : "venue");
+  const bg: Background = transparent ? null : { photo };
+  if (transparent) textShadow(ctx);
+  if (design === "square") drawSquare(ctx, data, bg);
+  else drawHevy(ctx, data, bg, design === "hevy-seen" ? "seen" : "venue");
   return new Promise<Blob>((resolve, reject) =>
     canvas.toBlob((b) => (b ? resolve(b) : reject(new Error("Couldn’t make the image"))), "image/png"),
   );
 }
 
 // "Square · single, full photo"
-function drawSquare(ctx: Ctx, d: CardData, photo: HTMLImageElement | null) {
+function drawSquare(ctx: Ctx, d: CardData, bg: Background) {
   const pad = 28;
-  clipRounded(ctx, 20);
-  drawPhoto(ctx, photo, 0.5);
-  verticalGradient(ctx, 150, U, [
-    [0, "rgba(0, 0, 0, 0)"],
-    [0.5, "rgba(0, 0, 0, 0.78)"],
-    [1, "#000000"],
-  ]);
+  if (bg) {
+    clipRounded(ctx, 20);
+    drawPhoto(ctx, bg.photo, 0.5);
+    verticalGradient(ctx, 150, U, [
+      [0, "rgba(0, 0, 0, 0)"],
+      [0.5, "rgba(0, 0, 0, 0.78)"],
+      [1, "#000000"],
+    ]);
+  }
 
   // Laid out bottom up, as the design is bottom aligned.
   const footerTop = U - pad - 18;
@@ -115,22 +127,21 @@ function drawSquare(ctx: Ctx, d: CardData, photo: HTMLImageElement | null) {
 }
 
 // "Hevy-style · photo" (venue visits) and "· photo, seen before" (times seen)
-function drawHevy(ctx: Ctx, d: CardData, photo: HTMLImageElement | null, middle: "venue" | "seen") {
+function drawHevy(ctx: Ctx, d: CardData, bg: Background, middle: "venue" | "seen") {
   const side = 24;
-  clipRounded(ctx, 32);
-  drawPhoto(ctx, photo, middle === "seen" ? 0.4 : 0.35);
-  verticalGradient(ctx, 0, 170, [
-    [0, "rgba(0, 0, 0, 0.6)"],
-    [1, "rgba(0, 0, 0, 0)"],
-  ]);
-  verticalGradient(ctx, 270, U, [
-    [0, "rgba(0, 0, 0, 0)"],
-    [1, "rgba(0, 0, 0, 0.82)"],
-  ]);
-
-  ctx.shadowColor = "rgba(0, 0, 0, 0.55)";
-  ctx.shadowBlur = 8 * SCALE;
-  ctx.shadowOffsetY = 1 * SCALE;
+  if (bg) {
+    clipRounded(ctx, 32);
+    drawPhoto(ctx, bg.photo, middle === "seen" ? 0.4 : 0.35);
+    verticalGradient(ctx, 0, 170, [
+      [0, "rgba(0, 0, 0, 0.6)"],
+      [1, "rgba(0, 0, 0, 0)"],
+    ]);
+    verticalGradient(ctx, 270, U, [
+      [0, "rgba(0, 0, 0, 0)"],
+      [1, "rgba(0, 0, 0, 0.82)"],
+    ]);
+  }
+  textShadow(ctx);
 
   // Stats row: two or three equal columns (no rating, no rating column).
   const stats: { label: string; value: string | number; color?: string }[] = [
@@ -181,6 +192,15 @@ function drawHevy(ctx: Ctx, d: CardData, photo: HTMLImageElement | null, middle:
 }
 
 // --- helpers ---------------------------------------------------------------
+
+type Background = { photo: HTMLImageElement | null } | null;
+
+// Shadow offsets and blur are in canvas pixels, not the scaled units.
+function textShadow(ctx: Ctx) {
+  ctx.shadowColor = "rgba(0, 0, 0, 0.55)";
+  ctx.shadowBlur = 8 * SCALE;
+  ctx.shadowOffsetY = 1 * SCALE;
+}
 
 function setFont(ctx: Ctx, weight: number, size: number, family: string, tracking: number) {
   ctx.font = `${weight} ${size}px ${family}`;
