@@ -1,6 +1,8 @@
 import type { Metadata, Viewport } from "next";
 
+import { About } from "@/components/landing/About";
 import { Container } from "@/components/landing/Container";
+import { Faq, FAQS } from "@/components/landing/Faq";
 import { Features } from "@/components/landing/Features";
 import { Footer } from "@/components/landing/Footer";
 import { Hero } from "@/components/landing/Hero";
@@ -22,13 +24,44 @@ export const metadata: Metadata = {
   },
 };
 
-// Structured data so search engines show "Stubbed" as the site name.
+// Structured data: the site name for search results, what the product is,
+// and the FAQ, built from the same list the page shows. No offers or prices:
+// sign-ups aren't open yet.
 const JSON_LD = {
   "@context": "https://schema.org",
-  "@type": "WebSite",
-  name: SITE_NAME,
-  url: SITE_URL.href,
-  description: SITE_DESCRIPTION,
+  "@graph": [
+    {
+      "@type": "WebSite",
+      "@id": new URL("/#website", SITE_URL).href,
+      name: SITE_NAME,
+      url: SITE_URL.href,
+      description: SITE_DESCRIPTION,
+      publisher: { "@id": new URL("/#organization", SITE_URL).href },
+    },
+    {
+      "@type": "Organization",
+      "@id": new URL("/#organization", SITE_URL).href,
+      name: SITE_NAME,
+      url: SITE_URL.href,
+    },
+    {
+      "@type": "WebApplication",
+      name: SITE_NAME,
+      url: SITE_URL.href,
+      description: SITE_DESCRIPTION,
+      applicationCategory: "LifestyleApplication",
+      operatingSystem: "Any (web browser)",
+      publisher: { "@id": new URL("/#organization", SITE_URL).href },
+    },
+    {
+      "@type": "FAQPage",
+      mainEntity: FAQS.map((faq) => ({
+        "@type": "Question",
+        name: faq.question,
+        acceptedAnswer: { "@type": "Answer", text: faq.answer },
+      })),
+    },
+  ],
 };
 
 // The landing page is always light, whatever the visitor's appearance.
@@ -64,7 +97,9 @@ export default function Home() {
       </header>
       <main className="flex-auto">
         <Hero />
+        <About />
         <Features />
+        <Faq />
       </main>
       <Footer />
     </div>

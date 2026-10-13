@@ -143,3 +143,11 @@ Modelled on Hevy's profile (owner's screenshots). `/@handle` (rewritten to `app/
 - **Public entries only, for everyone**, including the owner looking at their own page. The page reads with the publishable key and no session (`createPublicClient`), so RLS can't return private rows. Stats come from `public_profile_stats(profile_id)` in Postgres, so iOS gets the same numbers.
 - **Month calendar** (owner's go-ahead for this slice of the "theatregoing calendar" idea): one month at a time, Monday first, show days filled in coral and linked to their entry. It opens on the month of the latest show, since most months have none. Granularity toggles and heatmap shading are still undecided.
 - Rendered per request, not cached, so an entry made private disappears straight away. Its own `og:image` waits for the server-rendered card (share cards above are drawn on the phone); until then it inherits the site's.
+
+### 2026-10-13: Landing page content for search and AI answers (GEO)
+The landing page was too thin for search engines or AI assistants to describe (171 words, one heading level). Added, all worded for the private beta (no open sign-up, no prices, no dates):
+- A "What is Stubbed?" section in plain, quotable sentences, a visible "What you can do" heading over the feature cards (now h3, plus "Bring your history" and "Public or private"), and a "Questions" FAQ. The FAQ list (`components/landing/Faq.tsx`) also feeds `FAQPage` structured data and `/llms.txt`, so they can't drift.
+- Structured data is now a graph: `WebSite`, `Organization`, `WebApplication` (no offers, since sign-ups aren't open) and `FAQPage`. Add `sameAs` links to `Organization` once there are social accounts.
+- Title 56 characters, description 158, the hero phone image has alt text.
+- The page is ~650 words. An audit tool asked for 800; padding a landing page reads worse to people and AI, so it stops there.
+- FAQ commitments to check: "logging your shows and getting your own data out will always be free" (from the ground rules in `docs/MONETISATION.md`), CSV export ("you'll be able to"), and "a native iPhone app is planned".
