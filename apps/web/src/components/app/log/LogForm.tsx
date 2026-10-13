@@ -81,6 +81,10 @@ export function LogForm({ initial }: { initial?: EntryDraft }) {
   const [nearby, setNearby] = useState<NearbyVenue[]>([]);
   const [place, setPlace] = useState<{ city: string | null; country: string | null }>({ city: null, country: null });
   const [suggestion, setSuggestion] = useState<Identification | null>(null);
+  // A photo is being dragged over a drop area (desktop).
+  const [dragging, setDragging] = useState(false);
+  // Several photos were dropped: one entry takes one photo.
+  const [dropNote, setDropNote] = useState<string | null>(null);
   // A venue the AI matched that differs from the one already picked.
   const [venueSuggestion, setVenueSuggestion] = useState<VenueChoice | null>(null);
 
@@ -405,6 +409,35 @@ export function LogForm({ initial }: { initial?: EntryDraft }) {
     }
   }
 
+  // Dropping a photo works like choosing one: on the start screen, or on the
+  // photo row to replace it. An entry has a single photo, so with several
+  // dropped the first image is used and the rest are pointed at Import.
+  const dropProps = {
+    onDragOver: (e: React.DragEvent) => {
+      if (!e.dataTransfer.types.includes("Files")) return;
+      e.preventDefault();
+      e.dataTransfer.dropEffect = "copy";
+      setDragging(true);
+    },
+    onDragLeave: (e: React.DragEvent) => {
+      if (!e.currentTarget.contains(e.relatedTarget as Node | null)) setDragging(false);
+    },
+    onDrop: (e: React.DragEvent) => {
+      if (!e.dataTransfer.types.includes("Files")) return;
+      e.preventDefault();
+      setDragging(false);
+      const images = [...e.dataTransfer.files].filter(
+        (f) => f.type.startsWith("image/") || /\.(jpe?g|png|heic|heif|webp|gif)$/i.test(f.name),
+      );
+      setDropNote(images.length > 1 ? "One photo per entry, so the first is used. To log several shows at once, use Import." : null);
+      if (images[0]) void onPhoto(images[0]);
+      else {
+        setStarted(true);
+        setPhotoError("That isn’t a photo. Drop a JPEG, PNG or HEIC.");
+      }
+    },
+  };
+
   const picker = (
     <input
       id={`${id}-photo`}
@@ -414,6 +447,7 @@ export function LogForm({ initial }: { initial?: EntryDraft }) {
       onChange={(e) => {
         const file = e.target.files?.[0];
         e.target.value = "";
+        setDropNote(null);
         if (file) void onPhoto(file);
       }}
     />
@@ -425,7 +459,10 @@ export function LogForm({ initial }: { initial?: EntryDraft }) {
         {picker}
         <label
           htmlFor={`${id}-photo`}
-          className="flex min-h-72 cursor-pointer flex-col items-center justify-center gap-3 rounded-md border border-dashed border-outline bg-surface px-6 text-center shadow-sm focus-within:outline-2 focus-within:outline-offset-2 focus-within:outline-focus hover:bg-fill"
+          {...dropProps}
+          className={`flex min-h-72 cursor-pointer flex-col items-center justify-center gap-3 rounded-md border border-dashed px-6 text-center shadow-sm focus-within:outline-2 focus-within:outline-offset-2 focus-within:outline-focus ${
+            dragging ? "border-tint bg-tint-fill" : "border-outline bg-surface hover:bg-fill"
+          }`}
         >
           <svg viewBox="0 0 24 24" width={40} height={40} aria-hidden="true" fill="none" stroke="currentColor" strokeWidth={1.5} strokeLinecap="round" strokeLinejoin="round" className="text-label-secondary">
             <path d="M3 8.5A2.5 2.5 0 0 1 5.5 6h1.8l1.2-2h7l1.2 2h1.8A2.5 2.5 0 0 1 21 8.5v9a2.5 2.5 0 0 1-2.5 2.5h-13A2.5 2.5 0 0 1 3 17.5z" />
@@ -437,6 +474,10 @@ export function LogForm({ initial }: { initial?: EntryDraft }) {
           </span>
           <span className="mt-2 inline-flex min-h-[50px] items-center rounded-pill bg-tint px-6 text-headline text-on-tint shadow-btn">
             Choose photo
+          </span>
+          {/* Only where there's a mouse; phones can't drag files in. */}
+          <span className="hidden text-footnote text-label-secondary [@media(pointer:fine)]:block">
+            {dragging ? "Drop it here" : "or drag a photo here"}
           </span>
         </label>
         <button
@@ -466,8 +507,11 @@ export function LogForm({ initial }: { initial?: EntryDraft }) {
 
   return (
     <form onSubmit={save} className="flex flex-col gap-6" noValidate>
-      {/* Photo */}
-      <div className="flex items-start gap-4">
+      {/* Photo (drop another here to replace it) */}
+      <div
+        {...dropProps}
+        className={`-m-2 flex items-start gap-4 rounded-md border border-dashed p-2 ${dragging ? "border-tint bg-tint-fill" : "border-transparent"}`}
+      >
         {picker}
         {previewUrl ? (
           // eslint-disable-next-line @next/next/no-img-element -- a local blob or signed URL
@@ -516,6 +560,7 @@ export function LogForm({ initial }: { initial?: EntryDraft }) {
               (detect.note ?? (result ? null : "Couldn’t tell the show from this photo."))
             ) : null}
           </p>
+          {dropNote && <p className="px-3 text-footnote text-label-secondary">{dropNote}</p>}
         </div>
       </div>
 
