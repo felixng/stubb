@@ -220,7 +220,7 @@ export function LogForm({ initial }: { initial?: EntryDraft }) {
     const point = meta.lat != null && meta.lng != null ? { lat: meta.lat, lng: meta.lng } : null;
     if (point) {
       setDetect({ step: "nearby" });
-      ({ candidates, place: where } = await lookupNearby(point.lat, point.lng));
+      ({ candidates, place: where } = await lookupNearby(point.lat, point.lng, meta.accuracy_m));
       if (!current()) return;
       setNearby(candidates);
       setPlace(where);

@@ -87,3 +87,22 @@ test("the first Overpass mirror to answer wins", async () => {
   assert.equal(out.candidates[0].city, "London");
   assert.ok(Date.now() - started < 3_500, "didn't wait for the hanging mirror");
 });
+
+test("nearbyRadius: tighter with a precise fix, 150 m when unknown or poor", async () => {
+  const { nearbyRadius } = await import("@/lib/places");
+  assert.equal(nearbyRadius(null), 150);
+  assert.equal(nearbyRadius(undefined), 150);
+  assert.equal(nearbyRadius(0), 150);
+  assert.equal(nearbyRadius(5), 60); // floor
+  assert.equal(nearbyRadius(30), 75);
+  assert.equal(nearbyRadius(48), 120);
+  assert.equal(nearbyRadius(65), 150); // cap
+  assert.equal(nearbyRadius(500), 150);
+});
+
+test("parseNominatimSearch honours a tighter radius", () => {
+  // ~55 m north of the theatre: inside 150 m, outside 40 m.
+  const lat = HUDSON.lat + 0.0005;
+  assert.equal(parseNominatimSearch([nominatimTheatre], lat, HUDSON.lng).length, 1);
+  assert.equal(parseNominatimSearch([nominatimTheatre], lat, HUDSON.lng, 40).length, 0);
+});
