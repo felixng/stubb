@@ -24,6 +24,12 @@ export function AccountMenu() {
         >
           Profile
         </Link>
+        <Link
+          href="/app/import"
+          className="flex min-h-11 w-full items-center px-4 text-body text-label hover:bg-fill focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-focus"
+        >
+          Import shows
+        </Link>
         <form action={signOut} className="border-t border-separator">
           <button
             type="submit"

@@ -2,16 +2,12 @@
 
 import { useEffect, useId, useState } from "react";
 
-import type { NewVenue, Venue } from "@/lib/entries";
+import type { NearbyVenue, VenueChoice, Venue } from "@/lib/entries";
 import { createClient } from "@/lib/supabase/client";
 import { SelectedValue } from "./SelectedValue";
 import { fieldClass, Typeahead, type TypeaheadOption } from "./Typeahead";
 
-export type VenueChoice = Venue | NewVenue;
-
-// A theatre near where the photo was taken; `id` is set when it's already in
-// the catalogue.
-export type NearbyVenue = VenueChoice & { distance_m: number };
+export type { NearbyVenue, VenueChoice };
 
 const where = (v: { city?: string | null; country?: string | null }) =>
   [v.city, v.country].filter(Boolean).join(", ") || null;
