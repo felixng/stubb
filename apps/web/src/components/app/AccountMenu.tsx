@@ -1,3 +1,5 @@
+import Link from "next/link";
+
 import { signOut } from "@/app/login/actions";
 
 // Small menu in the app header. <details> gives keyboard and screen-reader
@@ -16,7 +18,13 @@ export function AccountMenu() {
         </svg>
       </summary>
       <div className="absolute right-0 z-10 mt-1 min-w-44 overflow-hidden rounded-md border border-separator bg-surface shadow-lg">
-        <form action={signOut}>
+        <Link
+          href="/app/import"
+          className="flex min-h-11 w-full items-center px-4 text-body text-label hover:bg-fill focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-focus"
+        >
+          Import shows
+        </Link>
+        <form action={signOut} className="border-t border-separator">
           <button
             type="submit"
             className="block min-h-11 w-full px-4 text-left text-body text-destructive hover:bg-fill focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-focus"

@@ -73,3 +73,11 @@ Owner's call. The log form starts with a photo and fills in what it can: the dat
 
 ### 2026-10-13: App and sign-in are always light; landing menu links to sign-in
 Owner's call: `/app` and `/login` now stay light whatever the device setting, like the landing page (`data-theme="light"`). Dark mode can come back later; the tokens are unchanged. The landing page gets a hamburger menu next to the beta pill whose only item is "Sign in", so the login page is no longer unlinked. Sign-ups stay off, so the link reveals nothing.
+
+### 2026-10-13: Bulk import tool, testing version (#17, #18)
+Owner's call: one import screen (`/app/import`) for both sources, built for desktop testing first, on shared logic that a mobile-first import can reuse.
+- **Emails:** upload exported files (.eml, .mbox, saved .html, .txt) or paste one. MIME is decoded on the device (`lib/import/email-parse.ts`); only the readable text goes to `/api/import/email`, one email per call, a few at a time. Attachments are never sent. The email text isn't stored or logged (token counts only). Same Claude setup as photo detection (low effort, refusal fallback), without web search.
+- **Photos:** several at once. Each runs through the #14 pipeline, now shared in `lib/import/photo-pipeline.ts`. Photos from the same visit (same date, within 5 hours, within 250 m) become one draft and one identify call with up to 4 photos (`/api/photo/identify` now accepts several).
+- **Review:** every source is listed with what was read from it. Each show becomes a draft with the read values, confidence and reason, and editable show, venue, date, rating and note. Same rule as the log form: low confidence never fills a field, it offers "Maybe X?". A booking and its reminder merge into one draft. Drafts matching an entry already in the diary are flagged. Nothing is saved until "Save"; entries take the profile's default visibility, and can be added to trips and labels in one go.
+- Drafts live in page state for now; `import_drafts` comes with the mobile flow if needed.
+- Unit tests use Node's built-in test runner (`pnpm test`, also in CI), so no new dependency. They cover email parsing, photo grouping, draft merging and the extraction mapping, with synthetic fixtures. Redacted real confirmation emails can be added under `apps/web/test/fixtures/emails/`.
