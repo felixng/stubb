@@ -23,7 +23,7 @@ cp apps/web/.env.example apps/web/.env.local   # add Supabase URL + publishable 
 pnpm dev                                       # http://localhost:3000
 ```
 
-Other scripts (run from the root): `pnpm lint`, `pnpm typecheck`, `pnpm build`.
+Other scripts (run from the root): `pnpm lint`, `pnpm typecheck`, `pnpm test`, `pnpm build`.
 
 ## Deploy
 
