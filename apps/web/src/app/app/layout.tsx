@@ -21,8 +21,8 @@ export default function AppLayout({ children }: LayoutProps<"/app">) {
   return (
     <div data-theme="light" className="flex min-h-dvh flex-col bg-background">
       <header className="sticky top-0 z-20 border-b border-separator bg-background/90 pt-[env(safe-area-inset-top)] backdrop-blur">
-        <div className="mx-auto flex h-14 w-full max-w-[640px] items-center justify-between px-4">
-          <Wordmark size={18} href="/app" />
+        <div className="mx-auto flex h-16 w-full max-w-[640px] items-center justify-between px-4">
+          <Wordmark size={30} href="/app" />
           <AccountMenu />
         </div>
       </header>
