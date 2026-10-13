@@ -8,16 +8,20 @@
 //   4. DEFAULT_CHAIN: Groq first, Claude as the fallback.
 // Each is a comma-separated list of "provider" or "provider:model", e.g.
 //   AI_MODELS="groq:meta-llama/llama-4-maverick-17b-128e-instruct,anthropic"
-// Models whose provider has no API key are skipped, so a chain degrades to
-// whatever is configured. A model that throws, declines, or gives an answer
-// the caller's `accept` rejects hands over to the next one.
+// Providers: groq, anthropic, gemini, cerebras. Models whose provider has no
+// API key are skipped, so a chain degrades to whatever is configured, and
+// requests with images skip text-only providers (Cerebras). A model that
+// throws, declines, or gives an answer the caller's `accept` rejects hands
+// over to the next one.
 import { anthropic } from "./anthropic";
+import { cerebras } from "./cerebras";
+import { gemini } from "./gemini";
 import { groq } from "./groq";
 import type { AiProvider, JsonRequest, ModelRef, ProviderId } from "./types";
 
 export type { JsonRequest, ModelRef, Part } from "./types";
 
-const PROVIDERS: Record<ProviderId, AiProvider> = { groq, anthropic };
+const PROVIDERS: Record<ProviderId, AiProvider> = { groq, anthropic, gemini, cerebras };
 
 const DEFAULT_CHAIN = "groq,anthropic";
 
@@ -35,14 +39,17 @@ export function parseChain(spec: string): ModelRef[] {
     });
 }
 
-export function resolveChain(task?: string, models?: ModelRef[]): ModelRef[] {
+export function resolveChain(task?: string, models?: ModelRef[], needs?: { images?: boolean }): ModelRef[] {
   const spec =
     (task && process.env[`AI_MODELS_${task.toUpperCase()}`]) || process.env.AI_MODELS || DEFAULT_CHAIN;
-  return (models ?? parseChain(spec)).filter((m) => PROVIDERS[m.provider].configured());
+  return (models ?? parseChain(spec)).filter((m) => {
+    const provider = PROVIDERS[m.provider];
+    return provider.configured() && (!needs?.images || provider.images);
+  });
 }
 
-export function aiConfigured(task?: string) {
-  return resolveChain(task).length > 0;
+export function aiConfigured(task?: string, needs?: { images?: boolean }) {
+  return resolveChain(task, undefined, needs).length > 0;
 }
 
 export type GenerateOptions<T> = {
@@ -61,7 +68,8 @@ export type GenerateOptions<T> = {
 export type Generated<T> = { result: T; model: ModelRef };
 
 export async function generateJson<T>(request: JsonRequest, options: GenerateOptions<T>): Promise<Generated<T> | null> {
-  const chain = resolveChain(options.task, options.models);
+  const images = request.content.some((part) => part.type === "image");
+  const chain = resolveChain(options.task, options.models, { images });
   const deadline = Date.now() + (options.budgetMs ?? 80_000);
   let fallback: Generated<T> | null = null;
   let lastError: unknown = null;

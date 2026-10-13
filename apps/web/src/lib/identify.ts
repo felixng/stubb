@@ -87,7 +87,7 @@ function describe(input: IdentifyInput) {
 }
 
 export function identifyConfigured() {
-  return aiConfigured("identify");
+  return aiConfigured("identify", { images: true });
 }
 
 export async function identifyShow(input: IdentifyInput): Promise<Identification | null> {

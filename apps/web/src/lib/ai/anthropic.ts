@@ -6,6 +6,7 @@ import type { AiProvider } from "./types";
 export const anthropic: AiProvider = {
   id: "anthropic",
   defaultModel: "claude-opus-5-5",
+  images: true,
   configured: () => Boolean(process.env.ANTHROPIC_API_KEY),
 
   async generateJson(model, request, signal) {

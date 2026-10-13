@@ -2,7 +2,7 @@
 // import) describe what they want here; each provider in this folder turns
 // it into its own API call. Nothing outside lib/ai imports a provider SDK.
 
-export type ProviderId = "groq" | "anthropic";
+export type ProviderId = "groq" | "anthropic" | "gemini" | "cerebras";
 
 export type ModelRef = { provider: ProviderId; model: string };
 
@@ -24,6 +24,8 @@ export type JsonRequest = {
 export interface AiProvider {
   id: ProviderId;
   defaultModel: string;
+  // Whether it accepts image parts. Requests with images skip it otherwise.
+  images: boolean;
   configured(): boolean;
   // The parsed JSON answer, or null when the model declined or said nothing.
   // Throws on transport or API errors; the chain moves on either way.
