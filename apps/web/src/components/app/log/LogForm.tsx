@@ -43,7 +43,8 @@ export type EntryDraft = {
 type Photo = { stored: Blob; previewUrl: string };
 
 // What the photo tells us, step by step. Each step fills only fields the
-// user hasn't touched, and only when it's confident.
+// user hasn't set, and only when it's confident. Removing or replacing the
+// photo clears what it filled.
 type Detect =
   | { step: "idle" }
   | { step: "reading" | "nearby" | "identifying" }
@@ -100,6 +101,42 @@ export function LogForm({ initial }: { initial?: EntryDraft }) {
   const live = useRef({ show, venue });
   live.current = { show, venue };
   const run = useRef(0);
+  // Fields whose current value came from the photo. Removing or replacing
+  // the photo clears these (and only these), so a new photo can fill them.
+  const fromPhoto = useRef({ show: false, venue: false, date: false });
+
+  // Detection sets fields through these, so they can be cleared later.
+  const autoShow = (v: Show | NewShow) => {
+    fromPhoto.current.show = true;
+    live.current.show = v;
+    setShow(v);
+  };
+  const autoVenue = (v: VenueChoice) => {
+    fromPhoto.current.venue = true;
+    live.current.venue = v;
+    setVenue(v);
+  };
+
+  // Forget everything the previous photo filled in or found.
+  function clearPhotoResults() {
+    run.current++;
+    const f = fromPhoto.current;
+    if (f.show) {
+      live.current.show = null;
+      setShow(null);
+    }
+    if (f.venue) {
+      live.current.venue = null;
+      setVenue(null);
+    }
+    if (f.date) setDate("");
+    fromPhoto.current = { show: false, venue: false, date: false };
+    setSuggestion(null);
+    setNearby([]);
+    setPlace({ city: null, country: null });
+    setPhotoError(null);
+    setDetect({ step: "idle" });
+  }
 
   // The owner's default visibility, trips and labels, and recent venues.
   useEffect(() => {
@@ -141,12 +178,10 @@ export function LogForm({ initial }: { initial?: EntryDraft }) {
   }, [photo]);
 
   async function onPhoto(file: File) {
-    const token = ++run.current;
+    clearPhotoResults();
+    const token = run.current;
     const current = () => token === run.current;
     setStarted(true);
-    setPhotoError(null);
-    setSuggestion(null);
-    setNearby([]);
     setDetect({ step: "reading" });
 
     let meta: PhotoMeta;
@@ -167,7 +202,10 @@ export function LogForm({ initial }: { initial?: EntryDraft }) {
     if (!current()) return;
     setPhoto({ stored, previewUrl: URL.createObjectURL(stored) });
     setExistingPhoto(null);
-    if (meta.date && !touched.current.date) setDate(meta.date);
+    if (meta.date && !touched.current.date) {
+      fromPhoto.current.date = true;
+      setDate(meta.date);
+    }
 
     // Nearby theatres, matched to venues already in the catalogue.
     let candidates: NearbyVenue[] = [];
@@ -201,7 +239,7 @@ export function LogForm({ initial }: { initial?: EntryDraft }) {
       setNearby(candidates);
       setPlace(where);
       // One theatre in range is as good as an answer.
-      if (candidates.length === 1 && !touched.current.venue && !live.current.venue) setVenue(candidates[0]);
+      if (candidates.length === 1 && !touched.current.venue && !live.current.venue) autoVenue(candidates[0]);
     }
 
     // Ask Claude for the show (and to choose between neighbouring theatres).
@@ -252,16 +290,16 @@ export function LogForm({ initial }: { initial?: EntryDraft }) {
     if (result.show_title && !touched.current.show && !live.current.show) {
       const { data } = await supabase.rpc("search_shows", { q: result.show_title });
       const same = (data as Show[] | null)?.find((s) => s.title.toLowerCase() === result.show_title!.toLowerCase());
-      setShow(same ?? { title: result.show_title, type: result.show_type ?? "musical" });
+      autoShow(same ?? { title: result.show_title, type: result.show_type ?? "musical" });
     }
     if (touched.current.venue) return;
     const picked = candidates.find((c) => c.osm_id === result.venue_osm_id);
     if (picked) {
-      setVenue(picked);
+      autoVenue(picked);
     } else if (result.venue_name && !live.current.venue) {
       const { data } = await supabase.rpc("search_venues", { q: result.venue_name });
       const same = (data as Venue[] | null)?.find((v) => v.name.toLowerCase() === result.venue_name!.toLowerCase());
-      setVenue(same ?? { name: result.venue_name, city: where.city, country: where.country });
+      autoVenue(same ?? { name: result.venue_name, city: where.city, country: where.country });
     }
   }
 
@@ -450,10 +488,9 @@ export function LogForm({ initial }: { initial?: EntryDraft }) {
               <button
                 type="button"
                 onClick={() => {
-                  run.current++;
+                  clearPhotoResults();
                   setPhoto(null);
                   setExistingPhoto(null);
-                  setDetect({ step: "idle" });
                 }}
                 className="min-h-11 rounded-pill px-3 text-subheadline font-semibold text-destructive hover:bg-fill focus-visible:outline-2 focus-visible:outline-focus"
               >
@@ -488,7 +525,9 @@ export function LogForm({ initial }: { initial?: EntryDraft }) {
             labelledBy={`${id}-show`}
             value={show}
             onChange={(s) => {
-              touched.current.show = true;
+              // Clearing with "Change" isn't a choice; a new photo may refill it.
+              touched.current.show = s !== null;
+              fromPhoto.current.show = false;
               setSuggestion(null);
               setShow(s);
             }}
@@ -520,7 +559,8 @@ export function LogForm({ initial }: { initial?: EntryDraft }) {
           labelledBy={`${id}-venue`}
           value={venue}
           onChange={(v) => {
-            touched.current.venue = true;
+            touched.current.venue = v !== null;
+            fromPhoto.current.venue = false;
             setVenue(v);
           }}
           nearby={nearby}
@@ -539,6 +579,7 @@ export function LogForm({ initial }: { initial?: EntryDraft }) {
           value={date}
           onChange={(v) => {
             touched.current.date = true;
+            fromPhoto.current.date = false;
             setDate(v);
           }}
         />
@@ -555,6 +596,7 @@ export function LogForm({ initial }: { initial?: EntryDraft }) {
               selected={date === value}
               onClick={() => {
                 touched.current.date = true;
+                fromPhoto.current.date = false;
                 setDate(value);
               }}
             >
