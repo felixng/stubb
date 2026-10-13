@@ -4,7 +4,7 @@ The source of truth is the design system artifact: https://claude.ai/artifact/2r
 
 ## Principles
 
-- **Follows the system appearance.** Light and dark are equals; the web follows `prefers-color-scheme` and never picks for the visitor. **Exception:** the landing page is always light (owner's call). It sets `data-theme="light"` on its root, which switches the whole document to the light tokens (`globals.css`).
+- **Follows the system appearance.** Light and dark are equals; the web follows `prefers-color-scheme` and never picks for the visitor. **Exception:** the landing page, `/login` and the owner app (`/app`) are always light for now (owner's call). Each sets `data-theme="light"` on its root, which switches the whole document to the light tokens (`globals.css`).
 - **One tint.** `tint` is coral in both appearances and fills the one primary action. Where the brand colour is read as text (links, ghost and secondary button labels, the selected tab) use `tint-text`: the same coral on dark, a deeper shade on light. Nothing else.
 - **Copy:** terse and confident, sentence case, no emoji, no exclamation marks. Button labels are verbs. Numbers are digits and tabular. Sample handle: `@sillyelphaba`; never a real person's name.
 - **Ratings** always show as the five `RatingStars`, never a bare number.
@@ -45,7 +45,7 @@ React mirrors of the SwiftUI components live in `apps/web/src/components/ui/`:
 
 | Component | SwiftUI | Props | Notes |
 |---|---|---|---|
-| `Button` | `FLButtonStyle` | `variant` primary \| secondary \| ghost, `size` md \| sm | Capsule, 50px tall; one `primary` per screen, with `shadow-btn` |
+| `Button` | `FLButtonStyle` | `variant` primary \| secondary \| ghost \| neutral, `size` md \| sm | Capsule, 50px tall; one `primary` per screen, with `shadow-btn`; `neutral` (surface, hairline border) for third-party sign-in such as Google |
 | `Chip` | `FLChip` | `selected`, `onClick`, children | Capsule; selected inverts, never `tint` |
 | `RatingStars` | `FLRatingStars` | `value` 0–5 (halves), `size` px | |
 | `ShowRow` | `FLShowRow` | `title`, `venue`, `date`, `rating`, `poster` | Inside a `surface` list with `separator` hairlines |

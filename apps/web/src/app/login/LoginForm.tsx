@@ -32,7 +32,7 @@ export function LoginForm() {
     <div className="flex flex-col gap-6">
       <form action={signInWithGoogle}>
         <input type="hidden" name="next" value={next} />
-        <Button type="submit" variant="secondary" className="w-full">
+        <Button type="submit" variant="neutral" className="w-full">
           <GoogleIcon />
           Continue with Google
         </Button>
