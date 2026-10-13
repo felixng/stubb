@@ -5,7 +5,7 @@
 //   1. `models` passed by the caller (tests, experiments),
 //   2. AI_MODELS_<TASK>, e.g. AI_MODELS_IDENTIFY,
 //   3. AI_MODELS,
-//   4. DEFAULT_CHAIN: Groq first, Claude as the fallback.
+//   4. DEFAULT_CHAIN: Claude Opus 5.5, then Claude Haiku 5.5 (owner's pick).
 // Each is a comma-separated list of "provider" or "provider:model", e.g.
 //   AI_MODELS="groq:qwen/qwen3.6-27b,anthropic"
 // A bare "provider" uses that provider's current default: Groq and Cerebras
@@ -25,7 +25,7 @@ export type { JsonRequest, ModelRef, Part } from "./types";
 
 const PROVIDERS: Record<ProviderId, AiProvider> = { groq, anthropic, gemini, cerebras };
 
-const DEFAULT_CHAIN = "groq,anthropic";
+const DEFAULT_CHAIN = "anthropic:claude-opus-5-5,anthropic:claude-haiku-5-5";
 
 const NAMES: Record<ProviderId, string> = { groq: "Groq", anthropic: "Claude", gemini: "Gemini", cerebras: "Cerebras" };
 

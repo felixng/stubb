@@ -35,3 +35,22 @@ test("Claude runs several models side by side in compare mode", async () => {
   assert.deepEqual(claude?.compareModels, ["claude-opus-5-5", "claude-haiku-5-5"]);
   for (const m of claude?.compareModels ?? []) assert.deepEqual(parseModelChoice(`anthropic:${m}`), [{ provider: "anthropic", model: m }]);
 });
+
+test("the default chain is Claude Opus 5.5, then Claude Haiku 5.5", async () => {
+  const { chainFor } = await import("@/lib/ai");
+  const saved = { key: process.env.ANTHROPIC_API_KEY, all: process.env.AI_MODELS, identify: process.env.AI_MODELS_IDENTIFY };
+  process.env.ANTHROPIC_API_KEY = "test";
+  delete process.env.AI_MODELS;
+  delete process.env.AI_MODELS_IDENTIFY;
+  try {
+    assert.deepEqual(chainFor("identify", { images: true }), [
+      { provider: "anthropic", model: "claude-opus-5-5" },
+      { provider: "anthropic", model: "claude-haiku-5-5" },
+    ]);
+  } finally {
+    for (const [k, v] of [["ANTHROPIC_API_KEY", saved.key], ["AI_MODELS", saved.all], ["AI_MODELS_IDENTIFY", saved.identify]] as const) {
+      if (v === undefined) delete process.env[k];
+      else process.env[k] = v;
+    }
+  }
+});
