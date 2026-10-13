@@ -65,7 +65,7 @@ export type ProviderInfo = {
   configured: boolean;
   // Models the provider serves to this key, where it can list them.
   models: string[];
-  // Models compare mode runs as separate columns ([] = just the default).
+  // Models compare mode runs as separate columns ([] = not compared).
   compareModels: string[];
 };
 
