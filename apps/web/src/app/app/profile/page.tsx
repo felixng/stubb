@@ -12,7 +12,7 @@ async function Form() {
   return (
     <ProfileForm
       userId={userId}
-      initial={profile ?? { handle: null, display_name: null, bio: null, link: null, is_private: false }}
+      initial={profile ?? { handle: null, display_name: null, bio: null, link: null, avatar_url: null, is_private: false }}
     />
   );
 }

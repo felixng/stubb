@@ -3,6 +3,7 @@
 import { useActionState, useEffect, useId, useState } from "react";
 
 import { fieldClass } from "@/components/app/log/Typeahead";
+import { AvatarPicker } from "@/components/profile/AvatarPicker";
 import { Button } from "@/components/ui/Button";
 import { BIO_MAX, NAME_MAX, handleProblem, normalizeHandle } from "@/lib/profile-handle";
 import { createClient } from "@/lib/supabase/client";
@@ -13,9 +14,20 @@ const optional = <span className="font-normal text-label-secondary">(optional)</
 
 type Availability = "checking" | "available" | "taken" | null;
 
-// Name, handle, bio and one link. The handle is checked as it's typed; the
+// Photo, name, handle, bio and one link. The photo (optional) saves on its
+// own as soon as it's picked; the rest saves on Continue. The handle is checked as it's typed; the
 // save still catches a handle taken in the meantime.
-export function WelcomeForm({ next, initial }: { next: string; initial: ProfileFields }) {
+export function WelcomeForm({
+  userId,
+  avatarUrl,
+  next,
+  initial,
+}: {
+  userId: string | null;
+  avatarUrl: string | null;
+  next: string;
+  initial: ProfileFields;
+}) {
   const id = useId();
   const [state, dispatch, pending] = useActionState<WelcomeState, FormData>(completeProfile, {});
   const values = state.values ?? initial;
@@ -66,6 +78,7 @@ export function WelcomeForm({ next, initial }: { next: string; initial: ProfileF
   return (
     <form action={dispatch} className="flex flex-col gap-5" noValidate>
       <input type="hidden" name="next" value={next} />
+      {userId && <AvatarPicker userId={userId} name={values.name || handle} initialUrl={avatarUrl} />}
 
       <Field id={`${id}-name`} label="Name" error={errors.name}>
         <input

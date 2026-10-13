@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useId, useState } from "react";
 
+import { AvatarPicker } from "@/components/profile/AvatarPicker";
 import { Button } from "@/components/ui/Button";
 import { BIO_MAX, NAME_MAX, handleProblem, normalizeHandle, normalizeLink } from "@/lib/profile-handle";
 import type { OwnProfile } from "@/lib/supabase/data";
@@ -13,7 +14,8 @@ import { fieldClass } from "./log/Typeahead";
 const label = "text-subheadline font-medium text-label";
 const optional = <span className="font-normal text-label-secondary">(optional)</span>;
 
-// Handle, name, bio, link and the private switch. Everyone has a handle (set
+// Photo, handle, name, bio, link and the private switch. The photo saves on
+// its own, as soon as it's picked. Everyone has a handle (set
 // at /welcome), so the public profile (/@handle) always exists; going private
 // hides its shows, trips and stats from everyone else. RLS limits the write
 // to the signed-in user's own row and enforces the privacy.
@@ -64,6 +66,7 @@ export function ProfileForm({ userId, initial }: { userId: string; initial: OwnP
 
   return (
     <form onSubmit={save} className="flex flex-col gap-4" noValidate>
+      <AvatarPicker userId={userId} name={displayName || handle} initialUrl={initial.avatar_url} />
       <div className="flex flex-col gap-2">
         <label htmlFor={`${id}-handle`} className={label}>
           Handle

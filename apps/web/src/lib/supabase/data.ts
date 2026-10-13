@@ -73,6 +73,7 @@ export type OwnProfile = {
   display_name: string | null;
   bio: string | null;
   link: string | null;
+  avatar_url: string | null;
   is_private: boolean;
 };
 
@@ -81,7 +82,7 @@ export async function getOwnProfile() {
   if (!userId) return null;
   const { data } = await supabase
     .from("profiles")
-    .select("handle, display_name, bio, link, is_private")
+    .select("handle, display_name, bio, link, avatar_url, is_private")
     .eq("id", userId)
     .maybeSingle<OwnProfile>();
   return data;

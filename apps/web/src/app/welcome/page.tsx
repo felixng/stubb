@@ -24,13 +24,15 @@ async function Form({ searchParams }: { searchParams: Promise<{ next?: string | 
   const { data: claims } = await supabase.auth.getClaims();
   const userId = typeof claims?.claims?.sub === "string" ? claims.claims.sub : null;
   const { data: profile } = userId
-    ? await supabase.from("profiles").select("display_name, bio, link").eq("id", userId).maybeSingle()
+    ? await supabase.from("profiles").select("display_name, bio, link, avatar_url").eq("id", userId).maybeSingle()
     : { data: null };
   const meta = (claims?.claims?.user_metadata ?? {}) as Record<string, unknown>;
   const googleName = typeof meta.full_name === "string" ? meta.full_name : typeof meta.name === "string" ? meta.name : "";
 
   return (
     <WelcomeForm
+      userId={userId}
+      avatarUrl={profile?.avatar_url ?? null}
       next={typeof next === "string" ? next : ""}
       initial={{
         name: (profile?.display_name ?? googleName).slice(0, 50),

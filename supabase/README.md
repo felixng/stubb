@@ -41,6 +41,7 @@ Check what's applied with `npx supabase migration list`.
 | `entry_collections` | Everyone if both ends are public; owner always | Owner, linking own entries to own collections |
 
 | Storage `entry-photos` | Owner always; everyone else only while the entry using the file is public | Owner, into `{user_id}/` only. JPEG ≤ 5 MB, re-encoded on the device so it carries no EXIF/GPS |
+| Storage `avatars` | Everyone, by public URL (bucket is public; only the owner can list) | Owner, into `{user_id}/` only. JPEG ≤ 2 MB, cropped square to 512 px and re-encoded on the device (no EXIF/GPS) |
 
 New entries and collections take `visibility` from `profiles.default_visibility` (default `public`) unless given.
 
