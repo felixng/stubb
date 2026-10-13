@@ -32,6 +32,12 @@ export type Venue = {
 export type NewShow = { id?: undefined; title: string; type: ShowType };
 export type NewVenue = Omit<Venue, "id"> & { id?: undefined };
 
+export type VenueChoice = Venue | NewVenue;
+
+// A theatre near where a photo was taken; `id` is set when it's already in
+// the catalogue.
+export type NearbyVenue = VenueChoice & { distance_m: number };
+
 export type Collection = {
   id: string;
   name: string;

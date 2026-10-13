@@ -1,6 +1,7 @@
-// Identify a show from a photo (#14, reused by #18's batch import).
+// Identify a show from a photo (#14), or from several photos of one visit
+// (#18's batch import).
 //
-// Claude gets a downscaled, re-encoded copy of the photo (no EXIF), the
+// Claude gets downscaled, re-encoded copies of the photos (no EXIF), the
 // theatres near where it was taken, and the date and time, with web search
 // on. The photo often settles it (show curtain, Playbill, marquee); venue and
 // date plus a search cover generic stage shots and shows newer than the
@@ -9,7 +10,9 @@
 import Anthropic from "@anthropic-ai/sdk";
 
 export type IdentifyInput = {
-  photo: { base64: string; mediaType: "image/jpeg" };
+  // One or more photos from the same visit (up to MAX_IDENTIFY_PHOTOS in
+  // lib/import/drafts.ts).
+  photos: { base64: string; mediaType: "image/jpeg" }[];
   date: string | null; // "2026-10-10"
   time: string | null; // "19:42", local to where the photo was taken
   city: string | null;
@@ -60,10 +63,10 @@ const SCHEMA = {
   },
 } as const;
 
-const SYSTEM = `You help a theatregoer log a show they just saw. You get one photo they took at the theatre (often the set before curtain-up, a curtain call, a marquee, a Playbill or a ticket), plus when and roughly where it was taken. Work out which show it was and at which theatre.
+const SYSTEM = `You help a theatregoer log a show they just saw. You get one or more photos they took at the theatre on one visit (often the set before curtain-up, a curtain call, a marquee, a Playbill or a ticket), plus when and roughly where they were taken. Work out which show it was and at which theatre.
 
 Work through it in this order:
-1. Read every bit of text in the photo: titles or logos projected or painted on the set, show curtains, marquees, Playbill covers, tickets, signs that are part of the set. Text in any language counts. If the photo names the show, that settles the show.
+1. Read every bit of text in the photos: titles or logos projected or painted on the set, show curtains, marquees, Playbill covers, tickets, signs that are part of the set. Text in any language counts. If the photo names the show, that settles the show.
 2. Describe the set to yourself: distinctive scenery and props (e.g. a pile of suitcases under a "Baggage Claim" sign, a band on a platform, a turntable), the style of the theatre (a Broadway or West End house, a studio space).
 3. Search only for what the photo doesn't settle, and stop as soon as you're sure: speed matters, the user is waiting. If the photo names the show and one nearby theatre is listed, don't search at all. If it names the show but several theatres are listed, one search for where it's playing is enough. When nearby theatres are listed, search what was playing at the closest ones around that date and pick the one whose show matches the photo. When none are listed but a location is given, search for theatres near that point and what they were playing then. When the photo shows no title, search for the distinctive set (e.g. "Broadway musical set suitcases baggage claim sign") and check the result is running at a theatre near the photo on that date.
 4. Venue: GPS can be 20–50 m off and theatres can be under 100 m apart, so pick the theatre whose show matches, not simply the nearest. Give venue_name whenever you know the theatre, and venue_osm_id only when it's one of the listed theatres.
@@ -107,7 +110,12 @@ export async function identifyShow(input: IdentifyInput): Promise<Identification
     {
       role: "user",
       content: [
-        { type: "image", source: { type: "base64", media_type: input.photo.mediaType, data: input.photo.base64 } },
+        ...input.photos.map(
+          (photo): Anthropic.Beta.BetaImageBlockParam => ({
+            type: "image",
+            source: { type: "base64", media_type: photo.mediaType, data: photo.base64 },
+          }),
+        ),
         { type: "text", text: describe(input) },
       ],
     },
