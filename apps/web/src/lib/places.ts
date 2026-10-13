@@ -22,14 +22,18 @@ export type NearbyPlaces = {
 };
 
 const USER_AGENT = "Stubbed/0.1 (theatre diary; https://github.com/felixng/stubbed)";
-// The main public Overpass server is often overloaded (504s); mirrors run
-// the same API. Tried in order until one answers.
+// The main public Overpass server is often overloaded (504s and timeouts
+// from Vercel); mirrors run the same API. All are asked at once and the
+// first answer wins, so one slow server can't hold the lookup up.
 const OVERPASS_URLS = [
   "https://overpass-api.de/api/interpreter",
   "https://overpass.private.coffee/api/interpreter",
   "https://maps.mail.ru/osm/tools/overpass/api/interpreter",
 ];
-const NOMINATIM_URL = "https://nominatim.openstreetmap.org/reverse";
+const NOMINATIM_URL = "https://nominatim.openstreetmap.org";
+// Short waits: a lookup that hasn't answered in a few seconds rarely will,
+// and the identify step can still search near the point without it.
+const LOOKUP_TIMEOUT_MS = 4_000;
 
 // Broadway houses can be under 100 m apart and phone GPS in Midtown can be
 // 20–50 m off, so look a little wider and let distance order the list.
@@ -99,61 +103,140 @@ export function parseNominatim(json: unknown): { city: string | null; country: s
   return { city, country: a.country_code ? a.country_code.toUpperCase() : null };
 }
 
-async function getJson(url: string, init?: RequestInit, timeoutMs = 8000) {
+async function getJson(url: string, init?: RequestInit, timeoutMs = LOOKUP_TIMEOUT_MS) {
+  const timeout = AbortSignal.timeout(timeoutMs);
   const res = await fetch(url, {
     ...init,
     headers: { "User-Agent": USER_AGENT, Accept: "application/json", ...init?.headers },
-    signal: AbortSignal.timeout(timeoutMs),
+    signal: init?.signal ? AbortSignal.any([init.signal, timeout]) : timeout,
     cache: "no-store",
   });
   if (!res.ok) throw new Error(`${new URL(url).host} ${res.status}`);
   return res.json();
 }
 
+// Every mirror at once; the first good answer wins and the rest are
+// cancelled. Fails only when all of them do.
 async function queryOverpass(query: string) {
-  let lastError: unknown;
-  for (const url of OVERPASS_URLS) {
-    try {
-      return await getJson(url, { method: "POST", body: new URLSearchParams({ data: query }) }, 6000);
-    } catch (error) {
-      lastError = error;
-    }
+  const done = new AbortController();
+  try {
+    return await Promise.any(
+      OVERPASS_URLS.map((url) =>
+        getJson(url, { method: "POST", body: new URLSearchParams({ data: query }), signal: done.signal }),
+      ),
+    );
+  } catch (error) {
+    throw error instanceof AggregateError ? new Error(error.errors.map(String).join("; ")) : error;
+  } finally {
+    done.abort();
   }
-  throw lastError;
 }
 
+// Nominatim's usage policy allows about one request a second, so calls from
+// this server instance are spaced out.
+let nominatimTurn: Promise<unknown> = Promise.resolve();
+function nominatim(path: string, params: Record<string, string>) {
+  const url = `${NOMINATIM_URL}/${path}?${new URLSearchParams({ format: "jsonv2", "accept-language": "en", ...params })}`;
+  const run = nominatimTurn.then(() => getJson(url));
+  nominatimTurn = run.catch(() => {}).then(() => new Promise((r) => setTimeout(r, 1_100)));
+  return run;
+}
+
+type NominatimPlace = {
+  osm_type?: string;
+  osm_id?: number;
+  lat?: string;
+  lon?: string;
+  name?: string;
+  address?: NominatimReverse["address"] & { road?: string; house_number?: string };
+};
+
+// Nominatim's search for theatres in a small box around the point: the
+// fallback when every Overpass server is down.
+export function parseNominatimSearch(json: unknown, lat: number, lng: number): PlaceCandidate[] {
+  const items = Array.isArray(json) ? (json as NominatimPlace[]) : [];
+  const out: PlaceCandidate[] = [];
+  for (const item of items) {
+    const pLat = Number(item.lat);
+    const pLng = Number(item.lon);
+    const name = item.name?.trim();
+    if (!name || !item.osm_type || !item.osm_id || !Number.isFinite(pLat) || !Number.isFinite(pLng)) continue;
+    const distance_m = Math.round(distanceMeters(lat, lng, pLat, pLng));
+    if (distance_m > NEARBY_RADIUS_M) continue;
+    const place = parseNominatim({ address: item.address });
+    const street = [item.address?.house_number, item.address?.road].filter(Boolean).join(" ");
+    out.push({ osm_id: `${item.osm_type}/${item.osm_id}`, name, address: street || null, ...place, lat: pLat, lng: pLng, distance_m });
+  }
+  return out.sort((a, b) => a.distance_m - b.distance_m).slice(0, MAX_CANDIDATES);
+}
+
+function searchNominatim(lat: number, lng: number) {
+  // A box a little larger than the radius; results outside it are dropped.
+  const dLat = (NEARBY_RADIUS_M * 1.2) / 111_320;
+  const dLng = dLat / Math.max(0.2, Math.cos((lat * Math.PI) / 180));
+  return nominatim("search", {
+    amenity: "theatre",
+    viewbox: [lng - dLng, lat + dLat, lng + dLng, lat - dLat].map((n) => n.toFixed(5)).join(","),
+    bounded: "1",
+    limit: "20",
+    addressdetails: "1",
+  }).then((json) => parseNominatimSearch(json, lat, lng));
+}
+
+// Results per ~100 m square for this server instance: theatres don't move,
+// and several photo visits often share a venue.
+const nearbyCache = new Map<string, NearbyPlaces>();
+const MAX_CACHED = 500;
+
 export async function findNearbyTheatres(lat: number, lng: number): Promise<NearbyPlaces> {
+  const key = `${lat.toFixed(3)},${lng.toFixed(3)}`;
+  const cached = nearbyCache.get(key);
+  if (cached) return cached;
+
   const query =
-    `[out:json][timeout:8];` +
+    `[out:json][timeout:4];` +
     `nwr(around:${NEARBY_RADIUS_M},${lat},${lng})["amenity"="theatre"];` +
     `out center tags;`;
 
-  // Both lookups are best effort: a failed one leaves its part blank.
-  const [overpass, reverse] = await Promise.allSettled([
-    queryOverpass(query),
-    getJson(
-      `${NOMINATIM_URL}?${new URLSearchParams({
-        format: "jsonv2",
-        lat: String(lat),
-        lon: String(lng),
-        zoom: "10",
-        "accept-language": "en",
-      })}`,
-    ),
-  ]);
+  // Overpass and Nominatim's theatre search run side by side; Overpass wins
+  // when it answers, Nominatim covers it when every Overpass server is down.
+  // Both are best effort: if neither answers, the list is empty.
+  const nominatimSearch = searchNominatim(lat, lng);
+  nominatimSearch.catch(() => {}); // not awaited when Overpass answers
+  let candidates: PlaceCandidate[] | null = await queryOverpass(query)
+    .then((json) => parseOverpass(json, lat, lng))
+    .catch((error) => {
+      console.error("Overpass lookup failed", String(error));
+      return null;
+    });
+  if (!candidates) {
+    candidates = await nominatimSearch.catch((error) => {
+      console.error("Nominatim theatre search failed", String(error));
+      return null;
+    });
+  }
 
-  const place = reverse.status === "fulfilled" ? parseNominatim(reverse.value) : { city: null, country: null };
-  const candidates =
-    overpass.status === "fulfilled"
-      ? parseOverpass(overpass.value, lat, lng).map((c) => ({
-          ...c,
-          // Most theatres don't carry addr:city; the point's city is close enough.
-          city: c.city ?? place.city,
-          country: c.country ?? place.country,
-        }))
-      : [];
-  if (overpass.status === "rejected") console.error("Overpass lookup failed", String(overpass.reason));
-  if (reverse.status === "rejected") console.error("Nominatim lookup failed", String(reverse.reason));
+  // City and country: from a theatre's address when there is one, else a
+  // reverse lookup of the point.
+  const addressed = candidates?.find((c) => c.city && c.country);
+  const place: { city: string | null; country: string | null } = addressed
+    ? { city: addressed.city, country: addressed.country }
+    : await nominatim("reverse", { lat: String(lat), lon: String(lng), zoom: "10" })
+        .then(parseNominatim)
+        .catch((error) => {
+          console.error("Nominatim lookup failed", String(error));
+          return { city: null, country: null };
+        });
 
-  return { candidates, ...place };
+  const result: NearbyPlaces = {
+    // Most theatres don't carry addr:city; the point's city is close enough.
+    candidates: (candidates ?? []).map((c) => ({ ...c, city: c.city ?? place.city, country: c.country ?? place.country })),
+    ...place,
+  };
+  // Cache only real answers, not "everything failed".
+  if (candidates) {
+    if (nearbyCache.size >= MAX_CACHED) nearbyCache.delete(nearbyCache.keys().next().value!);
+    nearbyCache.set(key, result);
+  }
+  return result;
 }
