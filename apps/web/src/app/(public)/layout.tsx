@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { Suspense } from "react";
+import { cache, Suspense } from "react";
 
 import { Wordmark } from "@/components/ui/Wordmark";
 import { viewerContext } from "@/lib/follows";
@@ -8,8 +8,8 @@ import { viewerContext } from "@/lib/follows";
 // trips (/t/[id]), and their not-found pages.
 // Always light, like the landing page (data-theme switches the whole
 // document). Visitors here are mostly logged out and arrive from a shared
-// card or an Instagram bio, so the header button and the join card (signed-out
-// visitors only) both lead to the waitlist; sign-ups are still off.
+// card or an Instagram bio, so the header button and the join card both lead
+// to the waitlist (signed-out visitors only); sign-ups are still off.
 const JOIN_HREF = "/#waitlist";
 const JOIN_BUTTON =
   "inline-flex min-h-11 items-center justify-center rounded-pill bg-tint font-sans font-semibold text-on-tint shadow-btn transition-colors hover:bg-tint-pressed focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus";
@@ -22,14 +22,18 @@ export default function PublicLayout({ children }: { children: React.ReactNode }
           <Link href="/" className="rounded-sm focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus">
             <Wordmark size={26} />
           </Link>
-          <Link href={JOIN_HREF} className={`${JOIN_BUTTON} px-4 text-[15px] leading-5`}>
-            Join the waitlist
-          </Link>
+          <Suspense fallback={<HeaderJoinButton />}>
+            <SignedOut>
+              <HeaderJoinButton />
+            </SignedOut>
+          </Suspense>
         </div>
       </header>
       <main className="mx-auto flex w-full max-w-[1040px] flex-1 flex-col gap-5 px-4 py-5 sm:px-8">
         <Suspense fallback={<JoinCard />}>
-          <SignedOutJoinCard />
+          <SignedOut>
+            <JoinCard />
+          </SignedOut>
         </Suspense>
         {children}
       </main>
@@ -37,12 +41,21 @@ export default function PublicLayout({ children }: { children: React.ReactNode }
   );
 }
 
-// Only signed-out visitors see the card, above the page. It is also the
-// fallback, so they (most visitors) get no layout shift while the session is
-// checked.
-async function SignedOutJoinCard() {
-  const { userId } = await viewerContext();
-  return userId ? null : <JoinCard />;
+// Only signed-out visitors see the waitlist links. Each is also its own
+// Suspense fallback, so they (most visitors) get no layout shift while the
+// session is checked.
+async function SignedOut({ children }: { children: React.ReactNode }) {
+  return (await isSignedIn()) ? null : children;
+}
+
+const isSignedIn = cache(async () => (await viewerContext()).userId !== null);
+
+function HeaderJoinButton() {
+  return (
+    <Link href={JOIN_HREF} className={`${JOIN_BUTTON} px-4 text-[15px] leading-5`}>
+      Join the waitlist
+    </Link>
+  );
 }
 
 function JoinCard() {
