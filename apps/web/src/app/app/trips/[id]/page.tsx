@@ -27,7 +27,7 @@ async function Trip({ params, searchParams }: PageProps<"/app/trips/[id]">) {
   if (!userId || !/^[0-9a-f-]{36}$/i.test(id)) notFound();
   const [{ data }, { data: profile }] = await Promise.all([
     supabase.from("collections").select(TRIP_SELECT).eq("id", id).eq("user_id", userId).eq("kind", "trip").maybeSingle(),
-    supabase.from("profiles").select("handle").eq("id", userId).maybeSingle(),
+    supabase.from("profiles").select("handle, is_private").eq("id", userId).maybeSingle(),
   ]);
   if (!data) notFound();
   const trip = data as Collection;
@@ -60,6 +60,9 @@ async function Trip({ params, searchParams }: PageProps<"/app/trips/[id]">) {
     average: rated.length ? rated.reduce((a, b) => a + b, 0) / rated.length : null,
   };
   const photoUrls = seen.map((e) => (e.photo_path ? (photos.get(e.photo_path) ?? null) : null));
+  // /t/[id] shows the trip once one of its shows is public (lib/public-pages).
+  const publicHref =
+    profile?.is_private === false && seen.some((e) => e.visibility === "public") ? `/t/${trip.id}` : null;
   const slug = trip.name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "") || "trip";
 
   return (
@@ -78,7 +81,7 @@ async function Trip({ params, searchParams }: PageProps<"/app/trips/[id]">) {
         <Stat value={venues} label={venues === 1 ? "venue" : "venues"} />
         <Stat value={nights} label={nights === 1 ? "night" : "nights"} />
       </div>
-      {seen.length > 0 && <ShareSheet subject={{ kind: "trip", data: card, photoUrls }} slug={slug} />}
+      {seen.length > 0 && <ShareSheet subject={{ kind: "trip", data: card, photoUrls }} slug={slug} publicHref={publicHref} />}
       <TripEntries tripId={trip.id} inTrip={entries} others={others} photos={Object.fromEntries(photos)} />
       <details className="rounded-md border border-separator bg-surface shadow-sm">
         <summary className="flex min-h-[50px] cursor-pointer list-none items-center px-4 text-headline text-tint-text focus-visible:outline-2 focus-visible:outline-focus [&::-webkit-details-marker]:hidden">

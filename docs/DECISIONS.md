@@ -229,3 +229,12 @@ Nobody can claim a handle like `stubbed`, `admin`, `support` or `login` (#1). Th
 - A trigger, not a check constraint: a handle someone already holds stays valid if the list grows, and only claiming a new one is refused.
 - The check applies to app users (`anon`, `authenticated`), not to the SQL editor or the service role, so the owner can still give `@stubbed` to the official account.
 - Share cards stay square only: the story (1080×1920) and 4:5 post sizes are dropped for now (owner's call, #15).
+
+### 2026-10-14: Public entry and trip pages, with server-drawn link previews
+Owner's go-ahead (#15, #16). `/e/[id]` shows one public show as a post; `/t/[id]` shows a trip's name, dates, who went, its numbers (shows, theatres, nights, average rating) and each public show in date order. Both share the public profile's light shell and waitlist prompt (the layout moved into the `app/(public)` route group, so URLs are unchanged).
+- **Privacy is RLS's call.** Reads use the publishable key with no session (`lib/public-pages.ts`), like `/@handle`, so a private or planned entry, a trip with no public show, or anything on a private profile is "not public" (noindex), even for the owner. Private shows inside a public trip are left out, and so are their counts.
+- **Link previews are drawn on the server** with `next/og` at `/api/og/entry/[id]` and `/api/og/trip/[id]` (1200×630, the share cards' dark ground, coral glow and stars, with the `stubbed` wordmark and @handle; Geist, since next/og can't use the system font). The pages link them with `?v=` from the entry's `updated_at` (a trip: a hash of its name, dates and shows), so edits get a fresh image. The CDN keeps an image for an hour, which bounds how long a preview survives after an entry is made private. `robots.txt` allows `/api/og/`, since some unfurlers honour it.
+- **Link** on the share screen copies the public page's address, shown only when the page would be public. Recorded as `card_shared` with `action: copy_link`.
+- Public entry cards now link to their page, their trip chips to the trip page, and the avatar and handle to the profile. On a trip page the cards drop the repeated header and the trip's own chip.
+- Square only: the trip recap stays square like the entry cards (owner's call); the issue's Stories format and carousel aren't planned.
+- Not-found pages answer with status 200 and a noindex tag, as `/@handle` already does: the pages stream, so the status is sent before the read finishes.

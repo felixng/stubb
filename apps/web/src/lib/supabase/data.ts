@@ -66,11 +66,13 @@ export async function getShareCard(id: string) {
     supabase
       .rpc("entry_card_stats", { entry_id: id })
       .maybeSingle<{ show_of_year: number; venue_visit: number; times_seen: number }>(),
-    supabase.from("profiles").select("handle").eq("id", userId!).maybeSingle(),
+    supabase.from("profiles").select("handle, is_private").eq("id", userId!).maybeSingle(),
   ]);
   return {
     ...found,
     handle: (profile?.handle as string | null) ?? null,
+    // Whether /e/[id] shows this entry to everyone (see lib/public-pages).
+    isPublic: found.entry.visibility === "public" && found.entry.status === "logged" && profile?.is_private === false,
     showOfYear: stats?.show_of_year ?? 0,
     venueVisit: stats?.venue_visit ?? 0,
     timesSeen: stats?.times_seen ?? 0,

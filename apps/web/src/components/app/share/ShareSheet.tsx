@@ -25,8 +25,20 @@ export type ShareSubject =
 // background (entry cards), then send the card in view to an Instagram story, the share
 // sheet or the camera roll. Every card is drawn on the device, with and
 // without its background, before any button is tapped, so the share sheet
-// opens straight from the tap (iOS needs that).
-export function ShareSheet({ subject, slug, editHref }: { subject: ShareSubject; slug: string; editHref?: string }) {
+// opens straight from the tap (iOS needs that). `publicHref` is the public
+// page (/e/[id] or /t/[id]) when there is one, for the Link button; null when
+// the entry or trip is private.
+export function ShareSheet({
+  subject,
+  slug,
+  editHref,
+  publicHref = null,
+}: {
+  subject: ShareSubject;
+  slug: string;
+  editHref?: string;
+  publicHref?: string | null;
+}) {
   const designs = subject.kind === "entry" ? CARD_DESIGNS : TRIP_CARD_DESIGNS;
   const [cards, setCards] = useState<Variants[] | null>(null);
   const [failed, setFailed] = useState(false);
@@ -103,7 +115,7 @@ export function ShareSheet({ subject, slug, editHref }: { subject: ShareSubject;
   }
 
   // Which button was used, on which design: the share loop's main signal.
-  function record(action: "stories" | "more" | "download" | "copy_text") {
+  function record(action: "stories" | "more" | "download" | "copy_text" | "copy_link") {
     void track(createClient(), "card_shared", { action, design: designs[active].id, transparent: transparent && subject.kind === "entry" });
   }
 
@@ -148,6 +160,18 @@ export function ShareSheet({ subject, slug, editHref }: { subject: ShareSubject;
       setNotice("Text copied.");
     } catch {
       setNotice("Couldn’t copy the text.");
+    }
+  }
+
+  // Like Hevy's "Workout link": the public page, whose preview is the card.
+  async function copyLink() {
+    if (!publicHref) return;
+    try {
+      await navigator.clipboard.writeText(new URL(publicHref, window.location.origin).href);
+      record("copy_link");
+      setNotice("Link copied.");
+    } catch {
+      setNotice("Couldn’t copy the link.");
     }
   }
 
@@ -256,6 +280,13 @@ export function ShareSheet({ subject, slug, editHref }: { subject: ShareSubject;
             <path d="M15.5 8.5V6a1.5 1.5 0 0 0-1.5-1.5H6A1.5 1.5 0 0 0 4.5 6v8A1.5 1.5 0 0 0 6 15.5h2.5" />
           </Circle>
         </Action>
+        {publicHref && (
+          <Action label="Link" onClick={copyLink} disabled={false}>
+            <Circle>
+              <path d="M10 14a4 4 0 0 0 5.7 0l3-3a4 4 0 0 0-5.7-5.7l-1 1M14 10a4 4 0 0 0-5.7 0l-3 3a4 4 0 0 0 5.7 5.7l1-1" />
+            </Circle>
+          </Action>
+        )}
         {editHref && (
           <Link href={editHref} className={ACTION}>
             <Circle>

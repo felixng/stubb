@@ -62,7 +62,12 @@ async function Entry({ params, searchParams }: PageProps<"/app/entries/[id]">) {
           </Link>
         </div>
       ) : (
-        <ShareSheet subject={{ kind: "entry", data, photoUrl }} slug={slug} editHref={`/app/entries/${entry.id}/edit`} />
+        <ShareSheet
+          subject={{ kind: "entry", data, photoUrl }}
+          slug={slug}
+          editHref={`/app/entries/${entry.id}/edit`}
+          publicHref={found.isPublic ? `/e/${entry.id}` : null}
+        />
       )}
       <section className="flex flex-col gap-3 border-t border-separator pt-5">
         <header className="flex flex-col gap-1">

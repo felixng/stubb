@@ -2,7 +2,8 @@ import Link from "next/link";
 
 import { Wordmark } from "@/components/ui/Wordmark";
 
-// Shell for public profiles (/@handle), shared with their not-found page.
+// Shell for the public pages: profiles (/@handle), entries (/e/[id]) and
+// trips (/t/[id]), and their not-found pages.
 // Always light, like the landing page (data-theme switches the whole
 // document). Visitors here are mostly logged out and arrive from a shared
 // card or an Instagram bio, so the header button and the card under the page
@@ -11,7 +12,7 @@ const JOIN_HREF = "/#waitlist";
 const JOIN_BUTTON =
   "inline-flex min-h-11 items-center justify-center rounded-pill bg-tint font-sans font-semibold text-on-tint shadow-btn transition-colors hover:bg-tint-pressed focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus";
 
-export default function PublicProfileLayout({ children }: LayoutProps<"/u">) {
+export default function PublicLayout({ children }: { children: React.ReactNode }) {
   return (
     <div data-theme="light" className="flex min-h-dvh flex-col bg-background">
       <header className="sticky top-0 z-20 border-b border-separator bg-background/90 pt-[env(safe-area-inset-top)] backdrop-blur">

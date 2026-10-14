@@ -1,23 +1,34 @@
+import Link from "next/link";
+
 import { RatingStars } from "@/components/ui/RatingStars";
 import { formatDate, SHOW_TYPE_LABELS, type EntryRow } from "@/lib/entries";
 import { Avatar } from "./Avatar";
 
-// One public entry on a profile, as a post: who and when, the show, where,
-// stars, the note and the photo. Only public trips appear as chips (RLS
-// hides links to private ones).
+// One public entry, as a post: who and when, the show, where, stars, the note
+// and the photo. Used on profiles, trip pages and the entry's own page
+// (`page`: the title is the page's h1 and doesn't link to itself). Only public
+// trips appear as chips (RLS hides links to private ones), each linking to its
+// trip page. On a trip page (`inTrip`), the header and that trip's chip are
+// left out, since the page already says whose trip it is; the date stays.
 export function PublicEntryCard({
   entry,
   photoUrl,
   handle,
   name,
   avatarUrl,
+  page = false,
+  inTrip,
 }: {
   entry: EntryRow;
   photoUrl?: string;
   handle: string;
   name: string;
   avatarUrl: string | null;
+  page?: boolean;
+  inTrip?: string;
 }) {
+  const Title = page ? "h1" : "h3";
+  const trips = entry.collections.filter((c) => c.id !== inTrip);
   const where = [entry.venue?.name, entry.venue?.city].filter(Boolean).join(", ");
   return (
     <article
@@ -25,19 +36,38 @@ export function PublicEntryCard({
       aria-labelledby={`entry-${entry.id}-title`}
       className="flex scroll-mt-20 flex-col gap-3 rounded-md border border-separator bg-surface p-4 shadow-sm target:outline-2 target:outline-offset-2 target:outline-focus"
     >
-      <header className="flex items-center gap-3">
-        <Avatar name={name} url={avatarUrl} size={40} />
-        <div className="min-w-0">
-          <p className="truncate text-subheadline font-semibold text-label">@{handle}</p>
-          <p className="text-footnote text-label-secondary">
-            <time dateTime={entry.date}>{formatDate(entry.date, { weekday: "short", day: "numeric", month: "short", year: "numeric" })}</time>
-          </p>
-        </div>
-      </header>
+      {inTrip ? (
+        <p className="text-footnote text-label-secondary">
+          <time dateTime={entry.date}>{formatDate(entry.date, { weekday: "short", day: "numeric", month: "short", year: "numeric" })}</time>
+        </p>
+      ) : (
+        <header className="flex items-center gap-3">
+          <Link href={`/@${handle}`} className="shrink-0 rounded-pill focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus">
+            <Avatar name={name} url={avatarUrl} size={40} />
+            <span className="sr-only">@{handle}’s profile</span>
+          </Link>
+          <div className="min-w-0">
+            <p className="truncate text-subheadline font-semibold text-label">
+              <Link href={`/@${handle}`} className="underline-offset-2 hover:underline">
+                @{handle}
+              </Link>
+            </p>
+            <p className="text-footnote text-label-secondary">
+              <time dateTime={entry.date}>{formatDate(entry.date, { weekday: "short", day: "numeric", month: "short", year: "numeric" })}</time>
+            </p>
+          </div>
+        </header>
+      )}
       <div className="flex flex-col gap-1">
-        <h3 id={`entry-${entry.id}-title`} className="text-title-2 font-display text-label">
-          {entry.show.title}
-        </h3>
+        <Title id={`entry-${entry.id}-title`} className={`${page ? "text-title" : "text-title-2"} font-display text-label`}>
+          {page ? (
+            entry.show.title
+          ) : (
+            <Link href={`/e/${entry.id}`} className="underline-offset-2 hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus">
+              {entry.show.title}
+            </Link>
+          )}
+        </Title>
         <p className="text-subheadline text-label-secondary">
           {SHOW_TYPE_LABELS[entry.show.type]} · {where}
         </p>
@@ -53,11 +83,16 @@ export function PublicEntryCard({
           className="aspect-4/5 max-h-[480px] w-full rounded-md bg-fill object-cover"
         />
       )}
-      {entry.collections.length > 0 && (
+      {trips.length > 0 && (
         <ul className="flex flex-wrap gap-2" aria-label="Trips and labels">
-          {entry.collections.map((c) => (
-            <li key={c.id} className="rounded-pill bg-fill px-3 text-footnote leading-7 font-medium text-label">
-              {c.name}
+          {trips.map((c) => (
+            <li key={c.id}>
+              <Link
+                href={`/t/${c.id}`}
+                className="inline-flex min-h-7 items-center rounded-pill bg-fill px-3 text-footnote font-medium text-label hover:bg-tint-fill focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus"
+              >
+                {c.name}
+              </Link>
             </li>
           ))}
         </ul>
