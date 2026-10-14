@@ -5,9 +5,11 @@ import { Suspense } from "react";
 import { DeleteTripButton } from "@/components/app/DeleteTripButton";
 import { EmptyState } from "@/components/app/EmptyState";
 import { EntryList } from "@/components/app/EntryList";
+import { ShareSheet } from "@/components/app/share/ShareSheet";
 import { TripEntries } from "@/components/app/TripEntries";
 import { TripForm } from "@/components/app/TripForm";
-import { formatTripDates, TRIP_SELECT, tripCovers, type Collection } from "@/lib/entries";
+import { formatDate, formatTripDates, TRIP_SELECT, tripCovers, type Collection } from "@/lib/entries";
+import type { TripCardData } from "@/lib/share-card-trip";
 import { listOwnEntries, ownerContext } from "@/lib/supabase/data";
 
 export const metadata: Metadata = { title: "Trip" };
@@ -25,13 +27,10 @@ async function Trip({ params, searchParams }: PageProps<"/app/trips/[id]">) {
   const [{ id }, query] = await Promise.all([params, searchParams]);
   const { supabase, userId } = await ownerContext();
   if (!userId || !/^[0-9a-f-]{36}$/i.test(id)) notFound();
-  const { data } = await supabase
-    .from("collections")
-    .select(TRIP_SELECT)
-    .eq("id", id)
-    .eq("user_id", userId)
-    .eq("kind", "trip")
-    .maybeSingle();
+  const [{ data }, { data: profile }] = await Promise.all([
+    supabase.from("collections").select(TRIP_SELECT).eq("id", id).eq("user_id", userId).eq("kind", "trip").maybeSingle(),
+    supabase.from("profiles").select("handle").eq("id", userId).maybeSingle(),
+  ]);
   if (!data) notFound();
   const trip = data as Collection;
 
@@ -44,6 +43,26 @@ async function Trip({ params, searchParams }: PageProps<"/app/trips/[id]">) {
   const seen = entries.filter((e) => e.status === "logged");
   const venues = new Set(seen.flatMap((e) => (e.venue ? [e.venue.id] : []))).size;
   const nights = new Set(seen.map((e) => e.date)).size;
+  const cities = new Set(seen.flatMap((e) => (e.venue?.city?.trim() ? [e.venue.city.trim()] : [])));
+  const rated = seen.flatMap((e) => (e.rating != null ? [e.rating] : []));
+  // The recap card (#16) covers the shows seen, in date order.
+  const card: TripCardData = {
+    name: trip.name,
+    dates: formatTripDates(trip),
+    place: cities.size === 1 ? [...cities][0] : cities.size > 1 ? `${cities.size} cities` : null,
+    cities: cities.size,
+    handle: (profile?.handle as string | null) ?? null,
+    shows: seen.map((e) => ({
+      title: e.show.title,
+      venue: e.venue?.name ?? null,
+      day: formatDate(e.date, { weekday: "short", day: "numeric", month: "short" }).replace(",", ""),
+      rating: e.rating,
+    })),
+    venues,
+    average: rated.length ? rated.reduce((a, b) => a + b, 0) / rated.length : null,
+  };
+  const photoUrls = seen.map((e) => (e.photo_path ? (photos.get(e.photo_path) ?? null) : null));
+  const slug = trip.name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "") || "trip";
   const pickable = (list: typeof all) =>
     list.map((e) => ({ id: e.id, title: e.show.title, venue: e.venue?.name ?? null, date: e.date }));
 
@@ -63,6 +82,7 @@ async function Trip({ params, searchParams }: PageProps<"/app/trips/[id]">) {
         <Stat value={venues} label={venues === 1 ? "venue" : "venues"} />
         <Stat value={nights} label={nights === 1 ? "night" : "nights"} />
       </div>
+      {seen.length > 0 && <ShareSheet subject={{ kind: "trip", data: card, photoUrls }} slug={slug} />}
       {entries.length ? (
         <EntryList entries={entries} photos={photos} />
       ) : (

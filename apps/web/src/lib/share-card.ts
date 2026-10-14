@@ -30,16 +30,16 @@ export const CARD_SIZE = 1080;
 const U = 540; // design units
 const SCALE = CARD_SIZE / U;
 
-const DISPLAY = "-apple-system, 'SF Pro Display', BlinkMacSystemFont, system-ui, 'Segoe UI', Roboto, sans-serif";
-const TEXT = "-apple-system, 'SF Pro Text', BlinkMacSystemFont, system-ui, 'Segoe UI', Roboto, sans-serif";
-const CORAL = "#FF6B4A";
+export const DISPLAY = "-apple-system, 'SF Pro Display', BlinkMacSystemFont, system-ui, 'Segoe UI', Roboto, sans-serif";
+export const TEXT = "-apple-system, 'SF Pro Text', BlinkMacSystemFont, system-ui, 'Segoe UI', Roboto, sans-serif";
+export const CORAL = "#FF6B4A";
 const STAR = "#FFD60A";
-const SECONDARY = "#AEAEB2";
+export const SECONDARY = "#AEAEB2";
 const SOFT_WHITE = "rgba(255, 255, 255, 0.85)";
 // Same star as the designs (24px viewBox).
 const STAR_PATH = "M12 2.5l2.9 6.1 6.6.8-4.9 4.6 1.3 6.6L12 17.3 6.1 20.6l1.3-6.6L2.5 9.4l6.6-.8z";
 
-type Ctx = CanvasRenderingContext2D;
+export type Ctx = CanvasRenderingContext2D;
 
 export function ordinal(n: number) {
   const rem100 = n % 100;
@@ -202,7 +202,7 @@ function textShadow(ctx: Ctx) {
   ctx.shadowOffsetY = 1 * SCALE;
 }
 
-function setFont(ctx: Ctx, weight: number, size: number, family: string, tracking: number) {
+export function setFont(ctx: Ctx, weight: number, size: number, family: string, tracking: number) {
   ctx.font = `${weight} ${size}px ${family}`;
   // Safari 17+, Chrome 99+; older browsers just skip the tracking.
   if ("letterSpacing" in ctx) ctx.letterSpacing = `${tracking}px`;
@@ -248,7 +248,7 @@ function verticalGradient(ctx: Ctx, top: number, bottom: number, stops: [number,
 }
 
 // Half-star rating: outline stars, then filled ones clipped to the value.
-function drawStars(ctx: Ctx, value: number, x: number, y: number, size: number, gap: number, outline: string) {
+export function drawStars(ctx: Ctx, value: number, x: number, y: number, size: number, gap: number, outline: string) {
   const path = new Path2D(STAR_PATH);
   const k = size / 24;
   for (let i = 0; i < 5; i++) {
@@ -293,7 +293,7 @@ function drawTitle(ctx: Ctx, title: string, x: number, bottom: number, maxWidth:
   });
 }
 
-function wrap(ctx: Ctx, text: string, maxWidth: number) {
+export function wrap(ctx: Ctx, text: string, maxWidth: number) {
   const lines: string[] = [];
   let line = "";
   for (const word of text.trim().split(/\s+/)) {
@@ -307,7 +307,7 @@ function wrap(ctx: Ctx, text: string, maxWidth: number) {
   return lines;
 }
 
-function fit(ctx: Ctx, text: string, maxWidth: number) {
+export function fit(ctx: Ctx, text: string, maxWidth: number) {
   if (ctx.measureText(text).width <= maxWidth) return text;
   let t = text;
   while (t.length > 1 && ctx.measureText(`${t}…`).width > maxWidth) t = t.slice(0, -1);
