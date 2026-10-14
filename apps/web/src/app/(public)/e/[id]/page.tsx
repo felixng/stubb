@@ -3,22 +3,28 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Suspense } from "react";
 
+import { CommentThread } from "@/components/profile/CommentThread";
 import { PublicEntryCard } from "@/components/profile/PublicEntryCard";
 import { formatDate } from "@/lib/entries";
-import { getPublicEntry } from "@/lib/public-pages";
+import { getEntryForViewer } from "@/lib/public-pages";
+import { getReactions, listComments, listLikers, NO_REACTIONS } from "@/lib/reactions";
 
-// Public entry page, the link behind a shared card: the show as a post, with
-// a link to the rest of @handle's diary. Only public, logged entries on
-// public profiles (RLS, via the publishable key); anything else is a 404,
-// even for the owner. Its preview image is /api/og/entry/[id].
+// Public entry page, the link behind a shared card: the show as a post, its
+// likes and comments, and a link to the rest of @handle's diary. Public,
+// logged entries on public profiles (RLS, via the publishable key), plus, for
+// a signed-in viewer, what their session may see: a private profile's public
+// entries, to its approved followers and owner. Those aren't indexed and have
+// no preview image. Anything else is a 404. Its preview image is
+// /api/og/entry/[id].
 
 export async function generateMetadata({ params }: PageProps<"/e/[id]">): Promise<Metadata> {
   const { id } = await params;
-  const found = await getPublicEntry(id);
+  const found = await getEntryForViewer(id);
   if (!found) return { title: "Not found — Stubbed", robots: { index: false } };
   const { entry, owner, version } = found;
   const at = entry.venue ? `${entry.show.title} at ${entry.venue.name}` : entry.show.title;
   const title = `${at} — @${owner.handle} on Stubbed`;
+  if (!found.listed) return { title, robots: { index: false } };
   const description = [
     `@${owner.handle} saw ${entry.show.title}${entry.venue?.city ? ` in ${entry.venue.city}` : ""} on ${formatDate(entry.date, { day: "numeric", month: "long", year: "numeric" })}`,
     entry.rating != null ? `and rated it ${entry.rating} out of 5` : null,
@@ -38,10 +44,17 @@ export async function generateMetadata({ params }: PageProps<"/e/[id]">): Promis
 
 async function Entry({ params }: PageProps<"/e/[id]">) {
   const { id } = await params;
-  const found = await getPublicEntry(id);
+  const found = await getEntryForViewer(id);
   if (!found) notFound();
-  const { entry, owner, photoUrl } = found;
+  const { entry, owner, photoUrl, supabase, viewerId } = found;
+  const [reactions, comments, likers] = await Promise.all([
+    getReactions(supabase, [entry.id]),
+    listComments(supabase, entry.id),
+    listLikers(supabase, entry.id),
+  ]);
+  const social = reactions.get(entry.id) ?? NO_REACTIONS;
   const name = owner.display_name || `@${owner.handle}`;
+  const loginHref = `/login?next=${encodeURIComponent(`/e/${entry.id}`)}`;
   return (
     <>
       <PublicEntryCard
@@ -51,6 +64,16 @@ async function Entry({ params }: PageProps<"/e/[id]">) {
         name={name}
         avatarUrl={owner.avatar_url}
         page
+        social={{ viewerId, reactions: social }}
+      />
+      <CommentThread
+        entryId={entry.id}
+        ownerId={owner.id}
+        viewerId={viewerId}
+        comments={comments}
+        likers={likers}
+        likes={social.likes}
+        loginHref={loginHref}
       />
       <Link
         href={`/@${owner.handle}`}

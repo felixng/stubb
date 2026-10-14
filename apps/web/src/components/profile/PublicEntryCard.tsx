@@ -2,7 +2,13 @@ import Link from "next/link";
 
 import { RatingStars } from "@/components/ui/RatingStars";
 import { formatDate, SHOW_TYPE_LABELS, type EntryRow } from "@/lib/entries";
+import type { Reactions } from "@/lib/reactions";
 import { Avatar } from "./Avatar";
+import { EntryReactions } from "./EntryReactions";
+
+// Who is looking (null when signed out) and the entry's likes and comments,
+// for the Like and Comment row under the card.
+export type CardSocial = { viewerId: string | null; reactions: Reactions };
 
 // One public entry, as a post: who and when, the show, where, stars, the note
 // and the photo. Used on profiles, trip pages and the entry's own page
@@ -10,6 +16,8 @@ import { Avatar } from "./Avatar";
 // trips appear as chips (RLS hides links to private ones), each linking to its
 // trip page. On a trip page (`inTrip`), the header and that trip's chip are
 // left out, since the page already says whose trip it is; the date stays.
+// With `social`, the card ends with Like and Comment; signed-out visitors
+// sign in and come back to `loginNext`.
 export function PublicEntryCard({
   entry,
   photoUrl,
@@ -18,6 +26,8 @@ export function PublicEntryCard({
   avatarUrl,
   page = false,
   inTrip,
+  social,
+  loginNext,
 }: {
   entry: EntryRow;
   photoUrl?: string;
@@ -26,6 +36,8 @@ export function PublicEntryCard({
   avatarUrl: string | null;
   page?: boolean;
   inTrip?: string;
+  social?: CardSocial;
+  loginNext?: string;
 }) {
   const Title = page ? "h1" : "h3";
   const trips = entry.collections.filter((c) => c.id !== inTrip);
@@ -96,6 +108,15 @@ export function PublicEntryCard({
             </li>
           ))}
         </ul>
+      )}
+      {social && (
+        <EntryReactions
+          entryId={entry.id}
+          reactions={social.reactions}
+          viewerId={social.viewerId}
+          commentsHref={page ? "#comments" : `/e/${entry.id}#comments`}
+          loginHref={`/login?next=${encodeURIComponent(loginNext ?? `/e/${entry.id}`)}`}
+        />
       )}
     </article>
   );

@@ -11,6 +11,8 @@ import { getShareCard } from "@/lib/supabase/data";
 
 export const metadata: Metadata = { title: "Entry" };
 
+const plural = (n: number, noun: string) => `${n} ${n === 1 ? noun : `${noun}s`}`;
+
 // The entry page is the share screen: sharing is the first thing on it, as
 // in Hevy. The share cards carry the title, venue, date and rating; the
 // details below add what the cards don't (type, note, trips, visibility).
@@ -80,6 +82,16 @@ async function Entry({ params, searchParams }: PageProps<"/app/entries/[id]">) {
           </p>
         </header>
         {entry.note && <p className="text-body whitespace-pre-line text-label">{entry.note}</p>}
+        {found.hasPage && (
+          <Link
+            href={`/e/${entry.id}#comments`}
+            className="w-fit text-subheadline font-semibold text-tint-text underline-offset-2 hover:underline"
+          >
+            {found.reactions.likes || found.reactions.comments
+              ? `${plural(found.reactions.likes, "like")} · ${plural(found.reactions.comments, "comment")}`
+              : "No likes or comments yet"}
+          </Link>
+        )}
         <div className="flex flex-wrap items-center gap-2">
           {entry.collections.map((c) => (
             <Link

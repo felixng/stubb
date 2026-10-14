@@ -247,3 +247,12 @@ Owner's call: build follows before the iOS app, so iOS copies a complete web MVP
 - All rules are in Postgres (`follows` table, RLS, triggers, `profile_is_visible`, `follow_counts`), so iOS writes the same table directly. `/@handle` now reads the visitor's session to show the button; entries are still read anonymously, except by an approved follower of a private profile.
 - **Not in this slice:** the feed of followed users' entries, finding people (search, suggestions), notifications for new followers or requests, and blocking. Sign-ups are still off, so only accounts made in the dashboard can follow for now.
 
+### 2026-10-14: Likes and comments, Hevy style
+Owner's call, after follows: include reactions and comments rather than defer them. Migration `20261014170000_likes_comments.sql`.
+- **Likes:** one heart per person per entry, with a count. **Comments:** plain text, up to 500 characters, oldest first, with no editing (delete and post again) and no replies or mentions.
+- **Who:** anyone signed in who can see the entry: a public, logged entry on a public profile, or on a private profile they're an approved follower of. Private and planned entries take no likes or comments. You can like your own show.
+- **Who sees them:** whoever can see the entry. If it's made private, its likes and comments are hidden from everyone but its owner and come back if it's made public again.
+- **Deleting:** commenters delete their own comments; the entry's owner can delete any comment on their show. Nobody is notified.
+- **Where:** every public entry card (profile, trip page, entry page) ends with Like and Comment. The thread lives on the entry's page (`/e/[id]#comments`), with "Liked by @a, @b and N others" above it. The owner's entry screen in the app links there with the counts. Signed-out visitors sign in and come back (`safeNext` now allows `/e/<id>` and `/t/<id>`).
+- **`/e/[id]` now opens for approved followers of a private profile** (read with their session), so they can see and join the thread. Those pages aren't indexed and get no preview image; link previews still read anonymously.
+- **Not in this slice:** notifications for likes and comments, a list of everyone who liked, reporting or blocking (Phase 3 moderation hooks), turning comments off per entry, and a feed.

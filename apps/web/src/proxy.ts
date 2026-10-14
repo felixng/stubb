@@ -5,10 +5,12 @@ export async function proxy(request: NextRequest) {
   // Signed-in visitors to the landing page go straight to the app. Anyone
   // without a Supabase auth cookie can't be signed in, so they skip the
   // session check and the landing page stays fast and cacheable for them.
-  // Public profiles likewise: they need the session only to show a signed-in
-  // visitor's Follow button and, for a private profile they follow, its shows.
+  // Public profiles, entries and trips likewise: they need the session only
+  // for a signed-in visitor's Follow, Like and Comment and, for a private
+  // profile they follow, its shows.
   const { pathname } = request.nextUrl;
-  if ((pathname === "/" || pathname.startsWith("/@")) && !hasAuthCookie(request)) {
+  const isPublicPage = pathname.startsWith("/@") || pathname.startsWith("/e/") || pathname.startsWith("/t/");
+  if ((pathname === "/" || isPublicPage) && !hasAuthCookie(request)) {
     return NextResponse.next();
   }
   return updateSession(request);
@@ -23,8 +25,8 @@ function hasAuthCookie(request: NextRequest) {
 }
 
 // Only signed-in surfaces need the session refreshed, plus the landing page
-// so signed-in users can be sent on to the app, and public profiles for
-// follows.
+// so signed-in users can be sent on to the app, and public profiles, entries
+// and trips for follows, likes and comments.
 export const config = {
-  matcher: ["/", "/app/:path*", "/login", "/welcome", "/auth/:path*", "/@:handle", "/@:handle/:list"],
+  matcher: ["/", "/app/:path*", "/login", "/welcome", "/auth/:path*", "/@:handle", "/@:handle/:list", "/e/:id", "/t/:id"],
 };

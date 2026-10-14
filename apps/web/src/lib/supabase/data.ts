@@ -1,6 +1,7 @@
 import { connection } from "next/server";
 
 import { ENTRY_SELECT, signPhotos, toEntryRow, TRIP_SELECT, type Collection, type EntryRow } from "@/lib/entries";
+import { getReactions, NO_REACTIONS } from "@/lib/reactions";
 import { createClient } from "@/lib/supabase/server";
 
 // Server-side reads for the owner app. Always scoped to the signed-in user:
@@ -62,17 +63,22 @@ export async function getShareCard(id: string) {
   const found = await getOwnEntry(id);
   if (!found) return null;
   const { supabase, userId } = await ownerContext();
-  const [{ data: stats }, { data: profile }] = await Promise.all([
+  const [{ data: stats }, { data: profile }, reactions] = await Promise.all([
     supabase
       .rpc("entry_card_stats", { entry_id: id })
       .maybeSingle<{ show_of_year: number; venue_visit: number; times_seen: number }>(),
     supabase.from("profiles").select("handle, is_private").eq("id", userId!).maybeSingle(),
+    getReactions(supabase, [id]),
   ]);
   return {
     ...found,
     handle: (profile?.handle as string | null) ?? null,
     // Whether /e/[id] shows this entry to everyone (see lib/public-pages).
     isPublic: found.entry.visibility === "public" && found.entry.status === "logged" && profile?.is_private === false,
+    // Likes and comments, and whether its page (with the thread) opens for
+    // the owner: approved followers of a private profile see it too.
+    reactions: reactions.get(id) ?? NO_REACTIONS,
+    hasPage: found.entry.visibility === "public" && found.entry.status === "logged",
     showOfYear: stats?.show_of_year ?? 0,
     venueVisit: stats?.venue_visit ?? 0,
     timesSeen: stats?.times_seen ?? 0,

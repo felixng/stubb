@@ -6,13 +6,16 @@ import { Suspense } from "react";
 import { Avatar } from "@/components/profile/Avatar";
 import { PublicEntryCard } from "@/components/profile/PublicEntryCard";
 import { formatTripDates } from "@/lib/entries";
+import { viewerContext } from "@/lib/follows";
 import { getPublicTrip, type TripStats } from "@/lib/public-pages";
+import { getReactions, NO_REACTIONS } from "@/lib/reactions";
 
 // Public trip page, the recap behind a shared trip card (#16): the trip's
 // name and dates, who went, its numbers, then each public show in date
 // order. A trip is public when it holds a public show and the profile isn't
 // private (RLS, via the publishable key); private shows in it are left out,
-// and so are their counts. Its preview image is /api/og/trip/[id].
+// and so are their counts. Each show has Like and Comment, read with the
+// visitor's session. Its preview image is /api/og/trip/[id].
 
 const plural = (n: number, one: string, many = `${one}s`) => `${n} ${n === 1 ? one : many}`;
 
@@ -44,6 +47,8 @@ async function Trip({ params }: PageProps<"/t/[id]">) {
   const found = await getPublicTrip(id);
   if (!found) notFound();
   const { trip, owner, entries, photos, stats } = found;
+  const { supabase, userId } = await viewerContext();
+  const reactions = await getReactions(supabase, entries.map((e) => e.id));
   const name = owner.display_name || `@${owner.handle}`;
   const where = place(stats);
   const numbers: [string, string][] = [
@@ -95,6 +100,8 @@ async function Trip({ params }: PageProps<"/t/[id]">) {
             name={name}
             avatarUrl={owner.avatar_url}
             inTrip={trip.id}
+            social={{ viewerId: userId, reactions: reactions.get(e.id) ?? NO_REACTIONS }}
+            loginNext={`/t/${trip.id}`}
           />
         ))}
       </section>
