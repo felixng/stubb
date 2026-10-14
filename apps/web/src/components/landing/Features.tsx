@@ -14,9 +14,9 @@ const IMAGE_HEIGHT = 1500;
 const FEATURES = [
   {
     title: "Track your visits",
-    body: "Log a show in seconds on the way out: venue, date, a half-star rating and a line on what you thought.",
+    body: "Every show you see, in one place: the venue, the date, your half-star rating and your thoughts about the show.",
     image: "/landing/features/track.svg",
-    alt: "Logging Hadestown at the Lyric Theatre with four and a half stars",
+    alt: "Tracking a visit to Hadestown at the Lyric Theatre, rated four and a half stars",
   },
   {
     title: "Share with your friends",

@@ -8,7 +8,7 @@ import heroDiary from "@/images/hero-diary.webp";
 
 // Static chips under the subhead: short, sentence case, no numbers.
 const HIGHLIGHTS = [
-  "Log in seconds",
+  "Track your visits",
   "Instagram share cards",
   "Trips and stats",
 ];
@@ -25,8 +25,8 @@ export function Hero() {
             Your theatre life, shared.
           </h1>
           <p className="max-w-[480px] text-[20px] leading-7 text-label-secondary">
-            Log and rate the shows you see, and see what is trending in the
-            theatre community. Your diary, and the people who get it.
+            Track your theatre visits. Rate the shows. Your diary, shared with
+            the people who get it.
           </p>
           <ul aria-label="Features" className="flex flex-wrap gap-2">
             {HIGHLIGHTS.map((highlight) => (

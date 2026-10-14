@@ -70,7 +70,7 @@ export function ShareSheet({
   const card = variants && (transparent ? variants.clear : variants.photo);
   const canShareFiles =
     typeof navigator !== "undefined" && card ? Boolean(navigator.canShare?.({ files: [card.file] })) : false;
-  const text = `${data.title} at ${data.venue}. Logged on Stubbed ${INSTAGRAM}`;
+  const text = `${data.title} at ${data.venue}. Tracked on Stubbed ${INSTAGRAM}`;
 
   function goTo(i: number) {
     const el = scroller.current?.children[i] as HTMLElement | undefined;

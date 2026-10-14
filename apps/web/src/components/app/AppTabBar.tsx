@@ -74,7 +74,7 @@ export function AppTabBarLinks({ pathname }: { pathname: string }) {
           >
             <path d="M12 5v14M5 12h14" />
           </svg>
-          Log
+          Track
         </Link>
       </div>
       <Link
