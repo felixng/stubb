@@ -226,8 +226,58 @@ struct TripView: View {
   }
 }
 
-/// The trip recap cards: built in #71.
+/// The trip recap: four card designs drawn on the device from the shows
+/// seen, in date order, with their photos.
 struct TripShare: View {
   let model: TripView.Model
-  var body: some View { EmptyView() }
+
+  @State private var cards: [RenderedCard]?
+  @State private var failed = false
+
+  var body: some View {
+    ShareCarousel(subject: .trip, cards: cards, failed: failed, text: caption, link: link)
+      .task(id: model.seen.map(\.id)) { await draw() }
+  }
+
+  private var cities: [String] {
+    Array(Set(model.seen.compactMap { $0.venue?.city?.trimmingCharacters(in: .whitespaces) }.filter { !$0.isEmpty }))
+  }
+
+  private var place: String? {
+    cities.count == 1 ? cities[0] : cities.count > 1 ? "\(cities.count) cities" : nil
+  }
+
+  private var caption: String {
+    let n = model.seen.count
+    return "\(model.trip.name): \(n) \(n == 1 ? "show" : "shows")\(place.map { " in \($0)" } ?? ""). Tracked on Stubbed \(stubbedInstagram)"
+  }
+
+  /// The public trip page, once one of its shows is public.
+  private var link: URL? {
+    guard !model.isPrivate, model.seen.contains(where: { $0.visibility == .public }) else { return nil }
+    return AppConfig.current.webURL.appendingPathComponent("t/\(model.trip.id.uuidString.lowercased())")
+  }
+
+  private func draw() async {
+    failed = false
+    var shows: [TripCardShow] = []
+    for entry in model.seen {
+      let photo = await ShareCards.image(entry.photoPath.flatMap { model.photos[$0] })
+      shows.append(
+        TripCardShow(title: entry.show.title, venue: entry.venue?.name, day: Day.formatShort(entry.date), rating: entry.rating, photo: photo))
+    }
+    let rated = model.seen.compactMap(\.rating)
+    let data = TripCardData(
+      name: model.trip.name, dates: model.trip.dates, place: place, cities: cities.count, handle: model.handle,
+      shows: shows, venues: model.venues, average: rated.isEmpty ? nil : rated.reduce(0, +) / Double(rated.count))
+    do {
+      let slug = ShareCards.slug(model.trip.name)
+      cards = try TripCardDesign.allCases.map { design in
+        let image = try ShareCards.render(TripCardView(design: design, data: data), name: "stubbed-\(slug)-\(design.id)")
+        return RenderedCard(id: design.id, name: design.name, file: image.file, image: image.image)
+      }
+    } catch {
+      failed = true
+    }
+  }
 }

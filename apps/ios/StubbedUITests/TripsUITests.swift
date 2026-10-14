@@ -60,4 +60,18 @@ final class TripsUITests: XCTestCase {
     app.sheets.buttons["Delete trip"].firstMatch.tap()
     XCTAssertTrue(app.staticTexts["@ios_test"].waitForExistence(timeout: 10))
   }
+
+  @MainActor
+  func testTripRecapCardsDraw() throws {
+    let app = try openProfile()
+    app.buttons["Trips"].tap()
+    scrollAndTap(button(app, startingWith: "NYC Oct 2026"), in: app)
+    for n in 1...4 {
+      let card = app.images.matching(NSPredicate(format: "label BEGINSWITH %@", "Share card \(n) of 4")).firstMatch
+      XCTAssertTrue(card.waitForExistence(timeout: 15))
+      snapshot("trip-card-\(n)")
+      if n < 4 { card.swipeLeft() }
+    }
+    XCTAssertFalse(app.buttons["Background"].exists, "Trip cards have no background toggle")
+  }
 }

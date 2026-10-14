@@ -39,6 +39,8 @@ enum Day {
   static func format(_ day: String) -> String { render(day, "d MMM yyyy") }
   /// "Wednesday 8 October 2026"
   static func formatLong(_ day: String) -> String { render(day, "EEEE d MMMM yyyy") }
+  /// "Sun 4 Oct"
+  static func formatShort(_ day: String) -> String { render(day, "EEE d MMM") }
   /// "Wednesday 8 October"
   static func formatWeekday(_ day: String) -> String { render(day, "EEEE d MMMM") }
 
