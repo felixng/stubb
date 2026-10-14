@@ -1,7 +1,5 @@
-import { Container } from "@/components/landing/Container";
-
 // Questions people ask before signing up. The same list feeds the FAQPage
-// structured data on the landing page, so the two can't drift. Answers must
+// structured data on /faq, so the two can't drift. Answers must
 // stay true to the private beta: no open sign-up, no prices, no dates.
 export const FAQS = [
   {
@@ -43,22 +41,13 @@ export const FAQS = [
 
 export function Faq() {
   return (
-    <section aria-labelledby="faq-heading" className="pb-20">
-      <Container>
-        <div className="flex max-w-3xl flex-col gap-6">
-          <h2 id="faq-heading" className="font-display text-title text-label">
-            Questions
-          </h2>
-          <div className="flex flex-col gap-6">
-            {FAQS.map((faq) => (
-              <div key={faq.question} className="flex flex-col gap-1">
-                <h3 className="text-headline text-label">{faq.question}</h3>
-                <p className="text-body text-label-secondary">{faq.answer}</p>
-              </div>
-            ))}
-          </div>
+    <div className="flex flex-col gap-6">
+      {FAQS.map((faq) => (
+        <div key={faq.question} className="flex flex-col gap-1">
+          <h2 className="text-headline text-label">{faq.question}</h2>
+          <p className="text-body text-label-secondary">{faq.answer}</p>
         </div>
-      </Container>
-    </section>
+      ))}
+    </div>
   );
 }

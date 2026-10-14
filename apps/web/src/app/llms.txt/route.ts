@@ -21,6 +21,7 @@ export function GET() {
     "## Links",
     "",
     `- [Home page and waitlist](${SITE_URL.href})`,
+    `- [Questions](${new URL("/faq", SITE_URL).href})`,
     "",
   ].join("\n");
 

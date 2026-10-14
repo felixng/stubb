@@ -3,7 +3,8 @@ import Link from "next/link";
 import { Container } from "@/components/landing/Container";
 import { Wordmark } from "@/components/ui/Wordmark";
 
-const LEGAL_LINKS = [
+const LINKS = [
+  { href: "/faq", label: "FAQ" },
   { href: "/terms", label: "Terms" },
   { href: "/privacy", label: "Privacy" },
 ] as const;
@@ -15,8 +16,8 @@ export function Footer() {
         <Wordmark size={16} />
         <p>Built by a theatre regular, for the theatre regulars.</p>
         <div className="flex items-center gap-1">
-          <nav aria-label="Legal" className="flex items-center">
-            {LEGAL_LINKS.map(({ href, label }) => (
+          <nav aria-label="Footer" className="flex items-center">
+            {LINKS.map(({ href, label }) => (
               <Link
                 key={href}
                 href={href}
