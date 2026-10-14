@@ -21,16 +21,13 @@ export type ShareSubject =
   | { kind: "entry"; data: CardData; photoUrl: string | null }
   | { kind: "trip"; data: TripCardData; photoUrls: (string | null)[] };
 
-type Design = { id: string; name: string; story: boolean };
-const ENTRY_DESIGNS: Design[] = CARD_DESIGNS.map((d) => ({ ...d, story: false }));
-
 // Hevy-style share screen: swipe between card designs, optionally drop the
 // background (entry cards), then send the card in view to an Instagram story, the share
 // sheet or the camera roll. Every card is drawn on the device, with and
 // without its background, before any button is tapped, so the share sheet
 // opens straight from the tap (iOS needs that).
 export function ShareSheet({ subject, slug, editHref }: { subject: ShareSubject; slug: string; editHref?: string }) {
-  const designs = subject.kind === "entry" ? ENTRY_DESIGNS : TRIP_CARD_DESIGNS;
+  const designs = subject.kind === "entry" ? CARD_DESIGNS : TRIP_CARD_DESIGNS;
   const [cards, setCards] = useState<Variants[] | null>(null);
   const [failed, setFailed] = useState(false);
   const [active, setActive] = useState(0);
@@ -175,20 +172,17 @@ export function ShareSheet({ subject, slug, editHref }: { subject: ShareSubject;
               role="group"
               aria-roledescription="slide"
               aria-label={`${i + 1} of ${designs.length}: ${design.name}`}
-              // Story cards are 9:16; held to a phone-height preview, centred.
-              className={`w-full shrink-0 snap-center ${design.story ? "flex justify-center" : `aspect-square overflow-hidden rounded-[6%] ${clear ? "bg-[repeating-conic-gradient(#5b5b5f_0%_25%,#47474a_0%_50%)] bg-[length:28px_28px]" : ""}`}`}
+              className={`aspect-square w-full shrink-0 snap-center overflow-hidden rounded-[6%] ${clear ? "bg-[repeating-conic-gradient(#5b5b5f_0%_25%,#47474a_0%_50%)] bg-[length:28px_28px]" : ""}`}
             >
               {shown ? (
                 // eslint-disable-next-line @next/next/no-img-element -- local PNG drawn on the device
                 <img
                   src={shown.url}
                   alt={`Share card, ${design.name.toLowerCase()}${clear ? ", no background" : ""}: ${title}`}
-                  className={design.story ? STORY_PREVIEW : "size-full"}
+                  className="size-full"
                 />
               ) : (
-                <div
-                  className={`flex items-center justify-center bg-fill text-subheadline text-label-secondary ${design.story ? STORY_PREVIEW : "size-full"}`}
-                >
+                <div className="flex size-full items-center justify-center bg-fill text-subheadline text-label-secondary">
                   {failed ? "Couldn’t draw this card." : "Drawing…"}
                 </div>
               )}
@@ -278,9 +272,6 @@ export function ShareSheet({ subject, slug, editHref }: { subject: ShareSubject;
     </section>
   );
 }
-
-// A 9:16 card shown at most about two thirds of the screen tall.
-const STORY_PREVIEW = "aspect-[9/16] h-[min(66vh,600px)] w-auto rounded-md";
 
 const plural = (n: number, one: string) => `${n} ${one}${n === 1 ? "" : "s"}`;
 

@@ -3,8 +3,6 @@ import { notFound } from "next/navigation";
 import { Suspense } from "react";
 
 import { DeleteTripButton } from "@/components/app/DeleteTripButton";
-import { EmptyState } from "@/components/app/EmptyState";
-import { EntryList } from "@/components/app/EntryList";
 import { ShareSheet } from "@/components/app/share/ShareSheet";
 import { TripEntries } from "@/components/app/TripEntries";
 import { TripForm } from "@/components/app/TripForm";
@@ -63,8 +61,6 @@ async function Trip({ params, searchParams }: PageProps<"/app/trips/[id]">) {
   };
   const photoUrls = seen.map((e) => (e.photo_path ? (photos.get(e.photo_path) ?? null) : null));
   const slug = trip.name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "") || "trip";
-  const pickable = (list: typeof all) =>
-    list.map((e) => ({ id: e.id, title: e.show.title, venue: e.venue?.name ?? null, date: e.date }));
 
   return (
     <section className="flex flex-col gap-5">
@@ -83,14 +79,7 @@ async function Trip({ params, searchParams }: PageProps<"/app/trips/[id]">) {
         <Stat value={nights} label={nights === 1 ? "night" : "nights"} />
       </div>
       {seen.length > 0 && <ShareSheet subject={{ kind: "trip", data: card, photoUrls }} slug={slug} />}
-      {entries.length ? (
-        <EntryList entries={entries} photos={photos} />
-      ) : (
-        <EmptyState title="No shows in this trip yet">
-          Add shows dated within the trip, or plan one: it’s offered this trip when its date falls inside.
-        </EmptyState>
-      )}
-      <TripEntries tripId={trip.id} inTrip={pickable(entries)} others={pickable(others)} />
+      <TripEntries tripId={trip.id} inTrip={entries} others={others} photos={Object.fromEntries(photos)} />
       <details className="rounded-md border border-separator bg-surface shadow-sm">
         <summary className="flex min-h-[50px] cursor-pointer list-none items-center px-4 text-headline text-tint-text focus-visible:outline-2 focus-visible:outline-focus [&::-webkit-details-marker]:hidden">
           Edit trip
