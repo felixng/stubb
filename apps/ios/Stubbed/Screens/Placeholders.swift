@@ -1,7 +1,6 @@
 import SwiftUI
 
-// The three tab screens, filled in by later issues: Home (#72), Profile
-// (#68) and Log (#66).
+// The three tab screens, filled in by later issues: Home (#72) and Profile (#68).
 
 struct HomeView: View {
   var body: some View {
@@ -28,25 +27,6 @@ struct ProfileView: View {
           Button("Sign out", role: .destructive) { Task { await session.signOut() } }
         } label: {
           Label("Account", systemImage: "ellipsis.circle")
-        }
-      }
-    }
-  }
-}
-
-struct LogView: View {
-  @Environment(\.dismiss) private var dismiss
-
-  var body: some View {
-    NavigationStack {
-      Screen(title: "Track a show") {
-        EmptyState(title: "Coming soon") {
-          Text("Logging a show arrives with the log form.")
-        }
-      }
-      .toolbar {
-        ToolbarItem(placement: .cancellationAction) {
-          Button("Cancel") { dismiss() }
         }
       }
     }

@@ -66,6 +66,13 @@ extension XCTestCase {
     element.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5)).tap()
   }
 
+  /// A button whose label starts with `prefix` (rows with a second line read
+  /// as "Title, Subtitle").
+  @MainActor
+  func button(_ app: XCUIApplication, startingWith prefix: String) -> XCUIElement {
+    app.buttons.matching(NSPredicate(format: "label BEGINSWITH %@", prefix)).firstMatch
+  }
+
   /// Saves the screen as build/ui/<name>.png.
   @MainActor
   func snapshot(_ name: String) {
