@@ -248,7 +248,7 @@ Owner's call: build follows before the iOS app, so iOS copies a complete web MVP
 - **Not in this slice:** the feed of followed users' entries, finding people (search, suggestions), notifications for new followers or requests, and blocking. Sign-ups are still off, so only accounts made in the dashboard can follow for now.
 
 ### 2026-10-14: Likes and comments, Hevy style
-Owner's call, after follows: include reactions and comments rather than defer them. Migration `20261014170000_likes_comments.sql`.
+Owner's call, after follows: include reactions and comments rather than defer them. Migration `20261014180000_likes_comments.sql`.
 - **Likes:** one heart per person per entry, with a count. **Comments:** plain text, up to 500 characters, oldest first, with no editing (delete and post again) and no replies or mentions.
 - **Who:** anyone signed in who can see the entry: a public, logged entry on a public profile, or on a private profile they're an approved follower of. Private and planned entries take no likes or comments. You can like your own show.
 - **Who sees them:** whoever can see the entry. If it's made private, its likes and comments are hidden from everyone but its owner and come back if it's made public again.
