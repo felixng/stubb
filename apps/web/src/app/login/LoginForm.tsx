@@ -26,6 +26,11 @@ export function LoginForm() {
 
   return (
     <div className="flex flex-col gap-6">
+      {params.get("deleted") === "1" && (
+        <p role="status" className="rounded-md bg-tint-fill px-4 py-3 text-subheadline font-medium text-label">
+          Your account and everything in it have been deleted.
+        </p>
+      )}
       <div className="flex flex-col gap-3">
         <form action={signInWithProvider}>
           <input type="hidden" name="provider" value="apple" />

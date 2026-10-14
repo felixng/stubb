@@ -5,8 +5,9 @@ import { usePathname } from "next/navigation";
 
 import { TAB_ICONS } from "@/components/ui/TabBar";
 
-// Bottom tab bar for the owner app (#13): Diary, a big centre Log button, and
-// Trips. Same look as the `TabBar` UI component, but with links.
+// Bottom tab bar for the owner app (#13): Home (the diary, for now), a big
+// centre Log button, and Profile (which holds trips). Same look as the
+// `TabBar` UI component, but with links.
 function Icon({ id, size = 24 }: { id: string; size?: number }) {
   return (
     <svg
@@ -38,8 +39,9 @@ export function AppTabBar() {
 // Rendered with no active tab while the page prerenders (the path is only
 // known per request), then with the real path.
 export function AppTabBarLinks({ pathname }: { pathname: string }) {
-  const diary = pathname === "/app";
-  const trips = pathname.startsWith("/app/trips");
+  const home = pathname === "/app";
+  // Trip pages sit under Profile.
+  const profile = pathname.startsWith("/app/profile") || pathname.startsWith("/app/trips");
   const log = pathname.startsWith("/app/log");
 
   return (
@@ -49,11 +51,11 @@ export function AppTabBarLinks({ pathname }: { pathname: string }) {
     >
       <Link
         href="/app"
-        aria-current={diary ? "page" : undefined}
-        className={`${tab} ${diary ? "text-tint-text" : "text-label-secondary"}`}
+        aria-current={home ? "page" : undefined}
+        className={`${tab} ${home ? "text-tint-text" : "text-label-secondary"}`}
       >
         <Icon id="diary" />
-        <span>Diary</span>
+        <span>Home</span>
       </Link>
       <div className="flex flex-1 justify-center">
         <Link
@@ -78,12 +80,12 @@ export function AppTabBarLinks({ pathname }: { pathname: string }) {
         </Link>
       </div>
       <Link
-        href="/app/trips"
-        aria-current={trips ? "page" : undefined}
-        className={`${tab} ${trips ? "text-tint-text" : "text-label-secondary"}`}
+        href="/app/profile"
+        aria-current={profile ? "page" : undefined}
+        className={`${tab} ${profile ? "text-tint-text" : "text-label-secondary"}`}
       >
-        <Icon id="trips" />
-        <span>Trips</span>
+        <Icon id="profile" />
+        <span>Profile</span>
       </Link>
     </nav>
   );

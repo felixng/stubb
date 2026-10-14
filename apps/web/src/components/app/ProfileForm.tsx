@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/Button";
 import { BIO_MAX, NAME_MAX, handleProblem, normalizeHandle, normalizeLink } from "@/lib/profile-handle";
 import type { OwnProfile } from "@/lib/supabase/data";
 import { createClient } from "@/lib/supabase/client";
+import { useFreshOnReturn } from "@/lib/use-fresh-on-return";
 import { fieldClass } from "./log/Typeahead";
 
 const label = "text-subheadline font-medium text-label";
@@ -30,6 +31,8 @@ export function ProfileForm({ userId, initial }: { userId: string; initial: OwnP
   const [saved, setSaved] = useState(initial.handle);
   const [saving, setSaving] = useState(false);
   const [status, setStatus] = useState<{ ok: boolean; text: string } | null>(null);
+  // "Saved." is for this visit; it's gone when the page is shown again.
+  const shown = useFreshOnReturn(() => setStatus(null));
 
   async function save(e: React.FormEvent) {
     e.preventDefault();
@@ -60,6 +63,7 @@ export function ProfileForm({ userId, initial }: { userId: string; initial: OwnP
     setHandle(h);
     setLink(url ?? "");
     setSaved(h);
+    shown();
     setStatus({ ok: true, text: isPrivate ? "Saved. Your profile is private." : "Saved. Your profile is public." });
     router.refresh();
   }

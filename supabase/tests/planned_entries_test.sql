@@ -36,8 +36,8 @@ insert into public.entries (id, user_id, show_id, venue_id, date, visibility, st
   ('e0000000-0000-0000-0000-000000000003', 'aaaaaaaa-0000-0000-0000-000000000000', '5a000000-0000-0000-0000-000000000001', null, '2026-11-01', 'public', 'planned');
 
 -- A public trip holding one logged and one planned entry.
-insert into public.collections (id, user_id, name, visibility) values
-  ('c0000000-0000-0000-0000-000000000001', 'aaaaaaaa-0000-0000-0000-000000000000', 'NYC', 'public');
+insert into public.collections (id, user_id, name, start_date, end_date) values
+  ('c0000000-0000-0000-0000-000000000001', 'aaaaaaaa-0000-0000-0000-000000000000', 'NYC', '2026-10-01', '2026-11-30');
 insert into public.entry_collections (entry_id, collection_id) values
   ('e0000000-0000-0000-0000-000000000001', 'c0000000-0000-0000-0000-000000000001'),
   ('e0000000-0000-0000-0000-000000000003', 'c0000000-0000-0000-0000-000000000001');

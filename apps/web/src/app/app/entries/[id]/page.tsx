@@ -19,6 +19,7 @@ async function Entry({ params, searchParams }: PageProps<"/app/entries/[id]">) {
   const found = await getShareCard(id);
   if (!found) notFound();
   const { entry, photoUrl } = found;
+  const planned = entry.status === "planned";
   const where = [entry.venue?.name, entry.venue?.city].filter(Boolean).join(", ");
   const data: CardData = {
     title: entry.show.title,
@@ -38,7 +39,7 @@ async function Entry({ params, searchParams }: PageProps<"/app/entries/[id]">) {
     <article className="flex flex-col gap-5">
       {query.new === "1" && (
         <p role="status" className="rounded-md bg-tint-fill px-4 py-3 text-subheadline font-medium text-label">
-          Saved to your diary. Share it?
+          {planned ? "Added to Upcoming in your diary." : "Saved to your diary. Share it?"}
         </p>
       )}
       {query.photo === "failed" && (
@@ -46,7 +47,23 @@ async function Entry({ params, searchParams }: PageProps<"/app/entries/[id]">) {
           Saved, but the photo didn’t upload. Edit the entry to add it again.
         </p>
       )}
-      <ShareSheet data={data} photoUrl={photoUrl} slug={slug} editHref={`/app/entries/${entry.id}/edit`} />
+      {planned ? (
+        // Nothing to share before the show: planned entries are owner-only.
+        <div className="flex flex-col items-start gap-3 rounded-md border border-separator bg-surface p-4 shadow-sm">
+          <p className="text-subheadline text-label">
+            You’re going on {formatDate(entry.date, { weekday: "long", day: "numeric", month: "long" })}. Once
+            you’ve been, track it with your rating and share it.
+          </p>
+          <Link
+            href={`/app/entries/${entry.id}/edit`}
+            className="inline-flex min-h-11 items-center rounded-pill bg-tint-fill px-4 text-[15px] leading-5 font-semibold text-tint-text hover:bg-fill focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus"
+          >
+            Edit
+          </Link>
+        </div>
+      ) : (
+        <ShareSheet subject={{ kind: "entry", data, photoUrl }} slug={slug} editHref={`/app/entries/${entry.id}/edit`} />
+      )}
       <section className="flex flex-col gap-3 border-t border-separator pt-5">
         <header className="flex flex-col gap-1">
           <h1 className="text-title-2 font-display text-label">{entry.show.title}</h1>
@@ -69,7 +86,11 @@ async function Entry({ params, searchParams }: PageProps<"/app/entries/[id]">) {
             </Link>
           ))}
           <span className="text-footnote text-label-secondary">
-            {entry.visibility === "public" ? "Public" : "Private. Sharing the image doesn’t change that."}
+            {planned
+              ? "Only you can see upcoming shows."
+              : entry.visibility === "public"
+                ? "Public"
+                : "Private. Sharing the image doesn’t change that."}
           </span>
         </div>
       </section>

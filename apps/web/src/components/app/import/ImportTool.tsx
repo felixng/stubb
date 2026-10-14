@@ -4,7 +4,7 @@ import { useEffect, useId, useRef, useState } from "react";
 
 import { Button } from "@/components/ui/Button";
 import { Chip } from "@/components/ui/Chip";
-import type { Collection } from "@/lib/entries";
+import { TRIP_SELECT, tripCovers, type Collection } from "@/lib/entries";
 import type { Identification } from "@/lib/identify";
 import {
   centroid,
@@ -23,6 +23,7 @@ import type { EmailExtraction } from "@/lib/import/extract-email";
 import { lookupNearby, preparePhoto, requestIdentify, type PreparedPhoto } from "@/lib/import/photo-pipeline";
 import { resolveShow, resolveVenue, runPool, saveDraft, SaveError } from "@/lib/import/resolve";
 import { createClient } from "@/lib/supabase/client";
+import { useFreshOnReturn } from "@/lib/use-fresh-on-return";
 import { DraftCard, type Draft } from "./DraftCard";
 import { CompareGrid } from "./CompareGrid";
 import { COMPARE_ALL, DEFAULT_CHAIN, ModelPicker, type ProvidersInfo } from "./ModelPicker";
@@ -106,6 +107,7 @@ export function ImportTool({ admin = false }: { admin?: boolean }) {
   const [existing, setExisting] = useState<{ id: string; date: string; show_id: string }[]>([]);
   const [visibility, setVisibility] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
+  const imported = useFreshOnReturn(reset);
 
   // Unique refs across several drops in one session.
   const seq = useRef(0);
@@ -131,9 +133,10 @@ export function ImportTool({ admin = false }: { admin?: boolean }) {
         supabase.from("profiles").select("default_visibility").eq("id", uid).single(),
         supabase
           .from("collections")
-          .select("id, name, kind, start_date, end_date, visibility")
+          .select(TRIP_SELECT)
           .eq("user_id", uid)
-          .order("start_date", { ascending: false, nullsFirst: false }),
+          .eq("kind", "trip")
+          .order("start_date", { ascending: false }),
         supabase.from("entries").select("id, date, show_id").eq("user_id", uid),
       ]);
       setVisibility(profile.data?.default_visibility ?? null);
@@ -142,7 +145,9 @@ export function ImportTool({ admin = false }: { admin?: boolean }) {
     })();
   }, []);
 
-  useEffect(() => () => urls.current.forEach((u) => URL.revokeObjectURL(u)), []);
+  // Preview URLs are freed by reset(), not in an effect cleanup: that also runs
+  // when the page is hidden, and the kept drafts would come back with broken
+  // previews. The browser frees any left when the tab closes.
 
   useEffect(() => {
     if (!admin) return;
@@ -490,7 +495,11 @@ export function ImportTool({ admin = false }: { admin?: boolean }) {
           date: d.date,
           rating: d.rating,
           note: d.note,
-          collectionIds,
+          // A trip holds only shows within its dates; others are saved without it.
+          collectionIds: collectionIds.filter((cid) => {
+            const trip = collections.find((c) => c.id === cid);
+            return trip ? tripCovers(trip, d.date) : false;
+          }),
           photo,
         });
         saved++;
@@ -503,6 +512,8 @@ export function ImportTool({ admin = false }: { admin?: boolean }) {
       }
     }
     setSaving(false);
+    // All saved: the import is done, so it starts over the next time it's shown.
+    if (saved === toSave.length && !busy) imported();
     setNotice(
       `Saved ${saved} of ${toSave.length}.${photoFailures ? ` ${photoFailures} photo${photoFailures === 1 ? "" : "s"} didn’t upload; add them from the entry.` : ""}`,
     );
@@ -711,7 +722,7 @@ export function ImportTool({ admin = false }: { admin?: boolean }) {
           {collections.length > 0 && (
             <div className="flex flex-col gap-2 pt-2">
               <span id={`${id}-trips`} className="text-subheadline font-medium text-label">
-                Add saved shows to
+                Add shows within its dates to trip
               </span>
               <div role="group" aria-labelledby={`${id}-trips`} className="flex flex-wrap gap-2">
                 {collections.map((c) => (

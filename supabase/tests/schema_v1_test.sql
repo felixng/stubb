@@ -4,7 +4,7 @@
 -- `as_user` switches to the `authenticated` role with that user's JWT, the
 -- way PostgREST does for a real request.
 begin;
-select plan(48);
+select plan(49);
 
 create function pg_temp.as_user(uid uuid) returns void language sql as $$
   select set_config('role', 'authenticated', true),
@@ -261,8 +261,9 @@ select lives_ok(
   'a user can create a trip'
 );
 
-insert into public.collections (id, name, kind, visibility) values
-  ('c0000000-0000-0000-0000-00000000000b', 'Secret label', 'label', 'private');
+-- A label (kind kept for later) needs no dates. It holds only a private show.
+insert into public.collections (id, name, kind) values
+  ('c0000000-0000-0000-0000-00000000000b', 'Secret label', 'label');
 
 select throws_ok(
   $$ insert into public.collections (name, start_date, end_date) values ('Backwards', '2026-10-18', '2026-10-12') $$,
@@ -273,9 +274,15 @@ select throws_ok(
 select lives_ok(
   $$ insert into public.entry_collections (entry_id, collection_id) values
        ('e0000000-0000-0000-0000-00000000000a', 'c0000000-0000-0000-0000-00000000000a'),
-       ('e0000000-0000-0000-0000-00000000000b', 'c0000000-0000-0000-0000-00000000000a'),
-       ('e0000000-0000-0000-0000-00000000000a', 'c0000000-0000-0000-0000-00000000000b') $$,
+       ('e0000000-0000-0000-0000-00000000000b', 'c0000000-0000-0000-0000-00000000000b') $$,
   'owners can add their entries to their collections'
+);
+
+select throws_ok(
+  $$ insert into public.entry_collections (entry_id, collection_id) values
+       ('e0000000-0000-0000-0000-00000000000b', 'c0000000-0000-0000-0000-00000000000a') $$,
+  '23514', null,
+  'a show dated outside a trip cannot be added to it'
 );
 
 select pg_temp.as_anon();
@@ -283,13 +290,13 @@ select pg_temp.as_anon();
 select ok(
   exists (select 1 from public.collections where id = 'c0000000-0000-0000-0000-00000000000a')
   and not exists (select 1 from public.collections where id = 'c0000000-0000-0000-0000-00000000000b'),
-  'anon can read public collections but not private ones'
+  'anon can read a trip with a public show, but not one with only private shows'
 );
 
 select results_eq(
   $$ select entry_id, collection_id from public.entry_collections $$,
   $$ values ('e0000000-0000-0000-0000-00000000000a'::uuid, 'c0000000-0000-0000-0000-00000000000a'::uuid) $$,
-  'anon sees only links where both the entry and the collection are public'
+  'anon sees only links to public shows'
 );
 
 select pg_temp.as_user('bbbbbbbb-0000-0000-0000-000000000000');
@@ -299,7 +306,8 @@ select ok(
   'user B cannot read user A''s private collection'
 );
 
-insert into public.collections (id, name) values ('c0000000-0000-0000-0000-0000000000bb', 'Bob''s trip');
+insert into public.collections (id, name, start_date, end_date)
+values ('c0000000-0000-0000-0000-0000000000bb', 'Bob''s trip', '2026-10-01', '2026-10-31');
 
 select throws_ok(
   $$ insert into public.entry_collections (entry_id, collection_id)
@@ -322,7 +330,7 @@ select pg_temp.as_user('aaaaaaaa-0000-0000-0000-000000000000');
 
 select is(
   (select count(*)::int from public.entry_collections),
-  3,
+  2,
   'user B could not remove user A''s links'
 );
 

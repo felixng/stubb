@@ -37,15 +37,18 @@ Check what's applied with `npx supabase migration list`.
 |-------|------|-------|
 | `profiles` | Everyone (anon: handle, display name, avatar, bio, link only) | Own row; created by a trigger on sign-up |
 | `shows`, `venues` | Everyone | Signed-in users add; creators edit their own unverified rows; `verified` is set from the dashboard |
-| `entries`, `collections` | Everyone if `visibility = 'public'` and the owner's profile isn't private (entries must also be `logged`, so `planned` ones are owner-only); owner always | Owner only |
-| `entry_collections` | Everyone if both ends are public; owner always | Owner, linking own entries to own collections |
+| `entries` | Everyone if `visibility = 'public'`, `status = 'logged'` (so `planned` ones are owner-only) and the owner's profile isn't private; owner always | Owner only |
+| `collections` (trips) | Everyone if the trip holds a public, logged entry and the owner's profile isn't private (`collection_is_public`); owner always. Trips have no visibility of their own | Owner only |
+| `entry_collections` | Everyone if the entry is public and logged; owner always | Owner, linking own entries to own collections |
 
 | Storage `entry-photos` | Owner always; everyone else only while the entry using the file is public | Owner, into `{user_id}/` only. JPEG ≤ 5 MB, re-encoded on the device so it carries no EXIF/GPS |
 | Storage `avatars` | Everyone, by public URL (bucket is public; only the owner can list) | Owner, into `{user_id}/` only. JPEG ≤ 2 MB, cropped square to 512 px and re-encoded on the device (no EXIF/GPS) |
 
-New entries and collections take `visibility` from `profiles.default_visibility` (default `public`) unless given.
+New entries take `visibility` from `profiles.default_visibility` (default `public`) unless given.
 
 `entries.status` is `planned` (a show you're going to; needs only a show and a date, no rating) or `logged` (the default). Logging a planned show updates the same row, so its trip and share links carry over. `venue_id` is optional on every entry. Tests: `tests/planned_entries_test.sql`.
+
+A trip (`collections.kind = 'trip'`) needs a start and end date, and holds only entries dated within them: adding an entry outside the dates, shrinking the dates past an entry, or re-dating an entry outside its trip is rejected (`23514`). The `label` kind is kept for later; the app doesn't create labels. Tests: `tests/trips_v2_test.sql`.
 
 ## Auth (#13)
 
@@ -73,3 +76,7 @@ Locally, use email + password: add a user in Studio (http://127.0.0.1:54323). Go
 ## Public profile stats
 
 `public_profile_stats(profile_id)` returns `shows`, `venues` and `cities` for a profile's **public** entries, whoever calls it (the owner too), so `/@handle` and iOS show the same numbers. Tests: `tests/profile_stats_test.sql`.
+
+## Account deletion
+
+`delete_my_account(confirm)` deletes the caller's auth user when `confirm` is their handle (case, spaces and a leading `@` ignored). That cascades to their profile, entries, collections, links and events; shows and venues they added stay, with `created_by` set to null. Postgres can't delete Storage files, so clients first remove everything under `{user_id}/` in `entry-photos` and `avatars` through the Storage API, then call the function.

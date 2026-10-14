@@ -23,7 +23,7 @@ export default function LoginPage() {
           <Wordmark size={44} />
           <h1 className="text-title-2 font-display text-label">Sign in</h1>
         </div>
-        {/* Reads ?next and ?error, so it renders at request time. */}
+        {/* Reads ?next, ?error and ?deleted, so it renders at request time. */}
         <Suspense>
           <LoginForm />
         </Suspense>

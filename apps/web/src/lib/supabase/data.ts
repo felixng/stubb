@@ -1,6 +1,6 @@
 import { connection } from "next/server";
 
-import { ENTRY_SELECT, signPhotos, toEntryRow, type EntryRow } from "@/lib/entries";
+import { ENTRY_SELECT, signPhotos, toEntryRow, TRIP_SELECT, type Collection, type EntryRow } from "@/lib/entries";
 import { createClient } from "@/lib/supabase/server";
 
 // Server-side reads for the owner app. Always scoped to the signed-in user:
@@ -40,6 +40,19 @@ export async function listOwnEntries() {
   const entries = ((data ?? []) as never[]).map(toEntryRow);
   const photos = await signPhotos(supabase, entries.map((e) => e.photo_path));
   return { entries, photos };
+}
+
+// The owner's trips, newest first.
+export async function listOwnTrips() {
+  const { supabase, userId } = await ownerContext();
+  if (!userId) return [] as Collection[];
+  const { data } = await supabase
+    .from("collections")
+    .select(TRIP_SELECT)
+    .eq("user_id", userId)
+    .eq("kind", "trip")
+    .order("start_date", { ascending: false });
+  return (data ?? []) as Collection[];
 }
 
 // One entry plus what its share cards show: its place in the year, the visit

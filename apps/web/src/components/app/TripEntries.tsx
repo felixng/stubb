@@ -1,110 +1,142 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useMemo, useState } from "react";
 
 import { Button } from "@/components/ui/Button";
-import { formatDate } from "@/lib/entries";
+import type { EntryRow } from "@/lib/entries";
 import { createClient } from "@/lib/supabase/client";
+import { EmptyState } from "./EmptyState";
+import { EntryList } from "./EntryList";
 
-type Pickable = { id: string; title: string; venue: string | null; date: string };
-
-// Add several diary entries to a trip at once, or take them out.
+// The trip's shows, with a select mode to take some out in place, like the
+// diary's. Adding lists the shows not in the trip yet (only those dated within
+// it can join), all ticked to start with.
 export function TripEntries({
   tripId,
   inTrip,
   others,
+  photos,
 }: {
   tripId: string;
-  inTrip: Pickable[];
-  others: Pickable[];
+  inTrip: EntryRow[];
+  others: EntryRow[];
+  photos: Record<string, string>;
 }) {
   const router = useRouter();
+  const photoMap = useMemo(() => new Map(Object.entries(photos)), [photos]);
   const [mode, setMode] = useState<"idle" | "add" | "remove">("idle");
   const [picked, setPicked] = useState<string[]>([]);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const list = mode === "add" ? others : inTrip;
+  function reset() {
+    setPicked([]);
+    setMode("idle");
+    setError(null);
+  }
+
+  function toggle(id: string) {
+    setPicked((p) => (p.includes(id) ? p.filter((x) => x !== id) : [...p, id]));
+  }
 
   async function apply() {
-    if (!picked.length) return setMode("idle");
+    if (!picked.length) return reset();
     setBusy(true);
     setError(null);
     const supabase = createClient();
     const { error: write } =
       mode === "add"
-        ? await supabase.from("entry_collections").insert(picked.map((entry_id) => ({ entry_id, collection_id: tripId })))
+        ? await supabase
+            .from("entry_collections")
+            .insert(picked.map((entry_id) => ({ entry_id, collection_id: tripId })))
         : await supabase.from("entry_collections").delete().eq("collection_id", tripId).in("entry_id", picked);
     setBusy(false);
     if (write) return setError("Couldn’t update the trip. Try again.");
-    setPicked([]);
-    setMode("idle");
+    reset();
     router.refresh();
   }
 
-  if (mode === "idle") {
-    return (
-      <div className="flex flex-wrap gap-2">
-        {others.length > 0 && (
-          <Button variant="secondary" size="sm" onClick={() => setMode("add")}>
-            Add shows
-          </Button>
-        )}
-        {inTrip.length > 0 && (
-          <Button variant="ghost" size="sm" onClick={() => setMode("remove")}>
-            Remove shows
-          </Button>
-        )}
-      </div>
-    );
-  }
+  const selection = { picked, onToggle: toggle };
+  const n = picked.length;
 
   return (
-    <fieldset className="flex flex-col gap-3">
-      <legend className="pb-2 text-headline text-label">
-        {mode === "add" ? "Add from your diary" : "Remove from this trip"}
-      </legend>
-      <ul className="max-h-96 overflow-y-auto rounded-md border border-separator bg-surface shadow-sm">
-        {list.map((e) => (
-          <li key={e.id} className="border-b border-separator last:border-b-0">
-            <label className="flex min-h-11 cursor-pointer items-center gap-3 px-4 py-2 hover:bg-fill">
-              <input
-                type="checkbox"
-                className="size-5 accent-[var(--tint)]"
-                checked={picked.includes(e.id)}
-                onChange={() => setPicked((p) => (p.includes(e.id) ? p.filter((x) => x !== e.id) : [...p, e.id]))}
-              />
-              <span className="flex min-w-0 flex-col">
-                <span className="truncate text-body text-label">{e.title}</span>
-                <span className="truncate text-footnote text-label-secondary">
-                  {[e.venue, formatDate(e.date)].filter(Boolean).join(" · ")}
-                </span>
-              </span>
-            </label>
-          </li>
-        ))}
-      </ul>
-      {error && (
-        <p role="alert" className="text-footnote text-destructive">
-          {error}
-        </p>
+    <div className="flex flex-col gap-3">
+      {/* Keeps its height in every mode, so the list never jumps. */}
+      {inTrip.length > 0 && (
+        <div className="flex min-h-11 items-center justify-between gap-3">
+          <p className="text-subheadline text-label-secondary" aria-live="polite">
+            {mode === "remove" && (n ? `${n} selected` : "Pick shows to take out of this trip")}
+          </p>
+          {mode !== "add" && (
+            <Button variant="ghost" size="sm" onClick={mode === "remove" ? reset : () => setMode("remove")}>
+              {mode === "remove" ? "Cancel" : "Select"}
+            </Button>
+          )}
+        </div>
       )}
-      <div className="flex gap-2">
-        <Button size="sm" onClick={apply} disabled={busy || !picked.length}>
-          {mode === "add" ? `Add ${picked.length || ""}`.trim() : `Remove ${picked.length || ""}`.trim()}
-        </Button>
-        <Button
-          variant="ghost"
-          size="sm"
-          onClick={() => {
-            setPicked([]);
-            setMode("idle");
-          }}
-        >
-          Cancel
-        </Button>
-      </div>
-    </fieldset>
+
+      {inTrip.length ? (
+        <EntryList entries={inTrip} photos={photoMap} selection={mode === "remove" ? selection : undefined} />
+      ) : (
+        <EmptyState title="No shows in this trip yet">
+          Add shows dated within the trip, or plan one: it’s offered this trip when its date falls inside.
+        </EmptyState>
+      )}
+
+      {mode === "idle" && others.length > 0 && (
+        <div>
+          <Button
+            variant="secondary"
+            size="sm"
+            onClick={() => {
+              setPicked(others.map((e) => e.id));
+              setMode("add");
+            }}
+          >
+            Add shows
+          </Button>
+        </div>
+      )}
+
+      {mode === "add" && (
+        <section className="flex flex-col gap-3" aria-labelledby={`${tripId}-add`}>
+          <div className="flex min-h-9 items-center justify-between gap-3">
+            <h2 id={`${tripId}-add`} className="text-headline text-label">
+              Shows within the trip’s dates
+            </h2>
+            <Button variant="ghost" size="sm" onClick={reset}>
+              Cancel
+            </Button>
+          </div>
+          <EntryList entries={others} photos={photoMap} selection={selection} />
+        </section>
+      )}
+
+      {/* Sits on the tab bar (49px), like the diary's select bar. */}
+      {mode !== "idle" && (
+        <div className="sticky bottom-[calc(env(safe-area-inset-bottom)+49px)] z-10 -mx-4 flex flex-col gap-3 bg-background/90 px-4 pt-3 pb-4 backdrop-blur">
+          {error && (
+            <p role="alert" className="text-footnote text-destructive">
+              {error}
+            </p>
+          )}
+          {mode === "add" ? (
+            <Button className="w-full" disabled={!n || busy} onClick={() => void apply()}>
+              {n ? `Add ${n} to this trip` : "Pick shows"}
+            </Button>
+          ) : (
+            <button
+              type="button"
+              disabled={!n || busy}
+              onClick={() => void apply()}
+              className="min-h-[50px] w-full cursor-pointer rounded-pill border border-separator bg-surface px-5 text-headline font-semibold text-destructive hover:bg-fill focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus disabled:cursor-not-allowed disabled:opacity-40"
+            >
+              {n ? `Remove ${n} from this trip` : "Pick shows"}
+            </button>
+          )}
+        </div>
+      )}
+    </div>
   );
 }
