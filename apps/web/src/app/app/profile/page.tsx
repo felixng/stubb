@@ -2,11 +2,10 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { Suspense } from "react";
 
-import { DeleteAccountButton } from "@/components/app/DeleteAccountButton";
-import { EmptyState } from "@/components/app/EmptyState";
+import { Diary } from "@/components/app/Diary";
 import { FollowRequests } from "@/components/app/FollowRequests";
-import { ProfileForm } from "@/components/app/ProfileForm";
-import { formatTripDates, TRIP_SELECT, type Collection } from "@/lib/entries";
+import { TripsList } from "@/components/app/TripsList";
+import { Avatar } from "@/components/profile/Avatar";
 import { getFollowCounts, listFollowRequests } from "@/lib/follows";
 import { getOwnProfile, ownerContext } from "@/lib/supabase/data";
 
@@ -14,147 +13,138 @@ export const metadata: Metadata = { title: "Profile" };
 
 const loading = <p className="text-subheadline text-label-secondary">Loading…</p>;
 
-// The owner's trips, newest first. Trips live here rather than in a tab of
-// their own: most visits aren't part of a trip.
-async function Trips() {
+const PILL =
+  "inline-flex min-h-11 flex-1 items-center justify-center rounded-pill bg-fill px-4 text-[15px] leading-5 font-semibold text-label hover:bg-tint-fill focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus";
+
+// Who you are, Hevy style: avatar, handle, name and bio, then shows,
+// followers and following (linking to the lists, where followers can be
+// removed), any follow requests to approve, and buttons to edit the profile
+// (/app/settings) and see it as others do (/@handle).
+async function Header() {
   const { supabase, userId } = await ownerContext();
   if (!userId) return null;
-  const { data } = await supabase
-    .from("collections")
-    .select(`${TRIP_SELECT}, entry_collections(count)`)
-    .eq("user_id", userId)
-    .eq("kind", "trip")
-    .order("start_date", { ascending: false })
-    .order("created_at", { ascending: false });
-  const trips = (data ?? []) as (Collection & { entry_collections: { count: number }[] })[];
-
-  if (!trips.length) {
-    return (
-      <EmptyState title="No trips yet">
-        Group shows from a trip or festival, like “NYC Oct 2026”. Pick them in your diary, or start a trip here.
-      </EmptyState>
-    );
-  }
-  return (
-    <ul className="overflow-hidden rounded-md border border-separator bg-surface shadow-sm">
-      {trips.map((t) => {
-        const count = t.entry_collections[0]?.count ?? 0;
-        return (
-          <li key={t.id} className="border-b border-separator last:border-b-0">
-            <Link
-              href={`/app/trips/${t.id}`}
-              className="flex min-h-11 items-center justify-between gap-4 px-4 py-3 hover:bg-fill focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-focus"
-            >
-              <div className="flex min-w-0 flex-col">
-                <span className="truncate text-headline text-label">{t.name}</span>
-                <span className="truncate text-subheadline text-label-secondary">{formatTripDates(t)}</span>
-              </div>
-              <span className="shrink-0 text-subheadline tabular-nums text-label-secondary">
-                {count} {count === 1 ? "show" : "shows"}
-              </span>
-            </Link>
-          </li>
-        );
-      })}
-    </ul>
-  );
-}
-
-// Follow requests waiting for approval (private profiles only get them; a
-// profile that goes public approves them all), then links to the owner's
-// followers and following lists, where followers can be removed.
-async function Follows() {
-  const [{ supabase, userId }, profile] = await Promise.all([ownerContext(), getOwnProfile()]);
-  if (!userId || !profile?.handle) return null;
-  const [requests, counts] = await Promise.all([
-    listFollowRequests(supabase, userId),
+  const [profile, counts, requests, { count: shows }] = await Promise.all([
+    getOwnProfile(),
     getFollowCounts(supabase, userId),
+    listFollowRequests(supabase, userId),
+    supabase.from("entries").select("id", { count: "exact", head: true }).eq("user_id", userId).eq("status", "logged"),
   ]);
-  const handle = profile.handle;
+  if (!profile?.handle) return null;
+  const name = profile.display_name || `@${profile.handle}`;
+  const stats: [string, number, string | null][] = [
+    [shows === 1 ? "Show" : "Shows", shows ?? 0, null],
+    [counts.followers === 1 ? "Follower" : "Followers", counts.followers, `/@${profile.handle}/followers`],
+    ["Following", counts.following, `/@${profile.handle}/following`],
+  ];
+
   return (
-    <>
+    <section aria-labelledby="profile-handle" className="flex flex-col gap-4">
+      <div className="flex items-center gap-4">
+        <Avatar name={name} url={profile.avatar_url} size={80} />
+        <div className="flex min-w-0 flex-col gap-0.5">
+          <h1 id="profile-handle" className="truncate text-title font-display text-label">
+            @{profile.handle}
+          </h1>
+          {profile.display_name && <p className="truncate text-subheadline text-label-secondary">{profile.display_name}</p>}
+          {profile.is_private && <p className="text-footnote text-label-secondary">Private profile</p>}
+        </div>
+      </div>
+      {profile.bio && <p className="whitespace-pre-line text-body text-label">{profile.bio}</p>}
+      <dl className="flex gap-8">
+        {stats.map(([label, value, href]) => (
+          <div key={label} className="flex flex-col-reverse">
+            <dt className="text-footnote text-label-secondary">{label}</dt>
+            <dd className="text-title-2 font-display text-label tabular-nums">
+              {href ? (
+                <Link href={href} aria-label={`${value} ${label.toLowerCase()}`} className="underline-offset-2 hover:underline">
+                  {value}
+                </Link>
+              ) : (
+                value
+              )}
+            </dd>
+          </div>
+        ))}
+      </dl>
+      {/* Only private profiles get requests; going public approves them all. */}
       {requests.length > 0 && (
         <section aria-labelledby="requests-heading" className="flex flex-col gap-3">
-          <h2 id="requests-heading" className="text-title-2 font-display text-label">
-            Follow requests
+          <h2 id="requests-heading" className="text-headline text-label">
+            {requests.length === 1 ? "1 follow request" : `${requests.length} follow requests`}
           </h2>
           <FollowRequests ownerId={userId} people={requests} />
         </section>
       )}
-      <p className="flex gap-4 text-subheadline text-label-secondary">
-        <Link href={`/@${handle}/followers`} className="underline-offset-2 hover:underline">
-          <span className="font-semibold text-label tabular-nums">{counts.followers}</span>{" "}
-          {counts.followers === 1 ? "follower" : "followers"}
+      <div className="flex gap-3">
+        <Link href="/app/settings" className={PILL}>
+          Edit profile
         </Link>
-        <Link href={`/@${handle}/following`} className="underline-offset-2 hover:underline">
-          <span className="font-semibold text-label tabular-nums">{counts.following}</span> following
+        <Link href={`/@${profile.handle}`} className={PILL}>
+          View public profile
         </Link>
-      </p>
+      </div>
+    </section>
+  );
+}
+
+const VIEWS = [
+  { id: "diary", label: "Diary" },
+  { id: "trips", label: "Trips" },
+] as const;
+
+async function Body({ searchParams }: { searchParams: PageProps<"/app/profile">["searchParams"] }) {
+  const { view } = await searchParams;
+  const active = view === "trips" ? "trips" : "diary";
+  return (
+    <>
+      <nav aria-label="Profile sections" className="flex rounded-pill bg-fill p-1">
+        {VIEWS.map((v) => (
+          <Link
+            key={v.id}
+            href={v.id === "diary" ? "/app/profile" : `/app/profile?view=${v.id}`}
+            aria-current={active === v.id ? "page" : undefined}
+            className={`flex min-h-9 flex-1 items-center justify-center rounded-pill text-subheadline font-semibold focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus ${
+              active === v.id ? "bg-surface text-label shadow-sm" : "text-label-secondary hover:text-label"
+            }`}
+          >
+            {v.label}
+          </Link>
+        ))}
+      </nav>
+      {active === "trips" ? (
+        <section aria-label="Trips" className="flex flex-col gap-3">
+          <Link
+            href="/app/trips/new"
+            className="self-end text-subheadline font-semibold text-tint-text underline-offset-2 hover:underline"
+          >
+            + New trip
+          </Link>
+          <Suspense fallback={loading}>
+            <TripsList />
+          </Suspense>
+        </section>
+      ) : (
+        <section aria-label="Diary" className="flex flex-col gap-5">
+          <Suspense fallback={loading}>
+            <Diary />
+          </Suspense>
+        </section>
+      )}
     </>
   );
 }
 
-async function Form() {
-  const [{ userId }, profile] = await Promise.all([ownerContext(), getOwnProfile()]);
-  if (!userId) return null;
+// The Profile tab: you, then your diary or your trips. Editing the profile
+// and deleting the account live on /app/settings.
+export default function ProfilePage({ searchParams }: PageProps<"/app/profile">) {
   return (
-    <ProfileForm
-      userId={userId}
-      initial={profile ?? { handle: null, display_name: null, bio: null, link: null, avatar_url: null, is_private: false }}
-    />
-  );
-}
-
-async function DeleteAccount() {
-  const profile = await getOwnProfile();
-  // Everyone in the app has a handle (the proxy sends others to /welcome).
-  return profile?.handle ? <DeleteAccountButton handle={profile.handle} /> : null;
-}
-
-// Follow requests and counts, trips, then everything on the public profile (/@handle) and whether it is
-// private, then account deletion.
-export default function ProfilePage() {
-  return (
-    <section className="flex flex-col gap-5">
-      <h1 className="text-large-title font-display text-label">Profile</h1>
-      <Suspense fallback={null}>
-        <Follows />
+    <div className="flex flex-col gap-5">
+      <Suspense fallback={loading}>
+        <Header />
       </Suspense>
-      <section id="trips" aria-labelledby="trips-heading" className="flex scroll-mt-20 flex-col gap-3">
-        <div className="flex items-baseline justify-between gap-3">
-          <h2 id="trips-heading" className="text-title-2 font-display text-label">
-            Trips
-          </h2>
-          <Link
-            href="/app/trips/new"
-            className="text-subheadline font-semibold text-tint-text underline-offset-2 hover:underline"
-          >
-            + New trip
-          </Link>
-        </div>
-        <Suspense fallback={loading}>
-          <Trips />
-        </Suspense>
-      </section>
-      <section aria-labelledby="details-heading" className="flex flex-col gap-3 border-t border-separator pt-5">
-        <h2 id="details-heading" className="text-title-2 font-display text-label">
-          Your details
-        </h2>
-        <Suspense fallback={loading}>
-          <Form />
-        </Suspense>
-      </section>
-      <section aria-labelledby="delete-heading" className="flex flex-col gap-2 border-t border-separator pt-5">
-        <h2 id="delete-heading" className="text-title-2 font-display text-label">
-          Delete account
-        </h2>
-        <p className="text-subheadline text-label-secondary">
-          Permanently delete your profile, diary, trips and photos. This can’t be undone.
-        </p>
-        <Suspense fallback={null}>
-          <DeleteAccount />
-        </Suspense>
-      </section>
-    </section>
+      <Suspense fallback={loading}>
+        <Body searchParams={searchParams} />
+      </Suspense>
+    </div>
   );
 }

@@ -98,3 +98,33 @@ export async function getOwnProfile() {
     .maybeSingle<OwnProfile>();
   return data;
 }
+
+export type FeedOwner = { id: string; handle: string | null; display_name: string | null; avatar_url: string | null; is_private: boolean };
+export type FeedItem = { entry: EntryRow; owner: FeedOwner; mine: boolean };
+
+export const FEED_SIZE = 30;
+
+// The home feed (feed_entries in Postgres, so iOS gets the same): your own
+// shows and the ones RLS lets you see from people you follow, newest first.
+// `following` counts follows and requests, for the empty state.
+export async function getFeed() {
+  const { supabase, userId } = await ownerContext();
+  if (!userId) return { items: [] as FeedItem[], photos: new Map<string, string>(), following: 0 };
+  const [{ data: rows, error }, { count: following }] = await Promise.all([
+    supabase.rpc("feed_entries", { max_rows: FEED_SIZE }).select(`${ENTRY_SELECT}, user_id`),
+    supabase.from("follows").select("followee_id", { count: "exact", head: true }).eq("follower_id", userId),
+  ]);
+  if (error) console.error("feed_entries failed", error.code, error.message);
+  const raw = (rows ?? []) as unknown as { user_id: string }[];
+  const ids = [...new Set(raw.map((r) => r.user_id))];
+  const { data: owners } = ids.length
+    ? await supabase.from("profiles").select("id, handle, display_name, avatar_url, is_private").in("id", ids)
+    : { data: [] };
+  const byId = new Map(((owners ?? []) as FeedOwner[]).map((o) => [o.id, o]));
+  const items = raw.flatMap((r) => {
+    const owner = byId.get(r.user_id);
+    return owner?.handle ? [{ entry: toEntryRow(r as never), owner, mine: r.user_id === userId }] : [];
+  });
+  const photos = await signPhotos(supabase, items.map((i) => i.entry.photo_path));
+  return { items, photos, following: following ?? 0 };
+}

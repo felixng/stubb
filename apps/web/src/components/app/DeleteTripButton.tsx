@@ -22,7 +22,7 @@ export function DeleteTripButton({ id }: { id: string }) {
           window.alert("Couldn’t delete. Try again.");
           return;
         }
-        router.push("/app/profile#trips");
+        router.push("/app/profile?view=trips");
         router.refresh();
       }}
       className="min-h-11 self-center rounded-pill px-4 text-subheadline font-semibold text-destructive hover:bg-fill focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus disabled:opacity-40"
