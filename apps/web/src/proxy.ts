@@ -1,12 +1,26 @@
-import type { NextRequest } from "next/server";
+import { NextResponse, type NextRequest } from "next/server";
 import { updateSession } from "@/lib/supabase/proxy";
 
 export async function proxy(request: NextRequest) {
+  // Signed-in visitors to the landing page go straight to the app. Anyone
+  // without a Supabase auth cookie can't be signed in, so they skip the
+  // session check and the landing page stays fast and cacheable for them.
+  if (request.nextUrl.pathname === "/" && !hasAuthCookie(request)) {
+    return NextResponse.next();
+  }
   return updateSession(request);
 }
 
-// Only signed-in surfaces need the session refreshed. Keeping the public
-// landing page and share cards out of the proxy keeps them fast and cacheable.
+// Supabase stores the session as sb-<project>-auth-token, sometimes split
+// into .0, .1, … chunks.
+function hasAuthCookie(request: NextRequest) {
+  return request.cookies
+    .getAll()
+    .some(({ name }) => name.startsWith("sb-") && name.includes("-auth-token"));
+}
+
+// Only signed-in surfaces need the session refreshed, plus the landing page
+// so signed-in users can be sent on to the app.
 export const config = {
-  matcher: ["/app/:path*", "/login", "/welcome", "/auth/:path*"],
+  matcher: ["/", "/app/:path*", "/login", "/welcome", "/auth/:path*"],
 };

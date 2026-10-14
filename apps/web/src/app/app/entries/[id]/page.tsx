@@ -38,7 +38,7 @@ async function Entry({ params, searchParams }: PageProps<"/app/entries/[id]">) {
     <article className="flex flex-col gap-5">
       {query.new === "1" && (
         <p role="status" className="rounded-md bg-tint-fill px-4 py-3 text-subheadline font-medium text-label">
-          Logged. Share it?
+          Saved to your diary. Share it?
         </p>
       )}
       {query.photo === "failed" && (

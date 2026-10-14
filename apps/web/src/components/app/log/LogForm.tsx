@@ -459,7 +459,7 @@ function EntryForm({ initial, onSaved }: { initial?: EntryDraft; onSaved: () => 
       const images = [...e.dataTransfer.files].filter(
         (f) => f.type.startsWith("image/") || /\.(jpe?g|png|heic|heif|webp|gif)$/i.test(f.name),
       );
-      setDropNote(images.length > 1 ? "One photo per entry, so the first is used. To log several shows at once, use Import." : null);
+      setDropNote(images.length > 1 ? "One photo per show, so the first is used. To add several shows at once, use Import." : null);
       if (images[0]) void onPhoto(images[0]);
       else {
         setStarted(true);

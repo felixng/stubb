@@ -68,7 +68,7 @@ async function Trip({ params }: { params: PageProps<"/app/trips/[id]">["params"]
         <EntryList entries={entries} photos={photos} />
       ) : (
         <EmptyState title="No shows in this trip yet">
-          Add shows from your diary, or pick this trip when you log one.
+          Add shows from your diary, or pick this trip when you add one.
         </EmptyState>
       )}
       <TripEntries tripId={trip.id} inTrip={pickable(entries)} others={pickable(others)} />

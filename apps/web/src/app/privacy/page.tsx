@@ -29,7 +29,7 @@ export default function PrivacyPage() {
       intro={
         <>
           <p>
-            Stubbed is a theatre diary: you log the shows you see, rate them and
+            Stubbed is a theatre diary: you track the shows you see, rate them and
             share them. This policy explains what personal data we collect, why,
             who we share it with, how long we keep it, and the rights you have
             wherever you live, including in the UK, the European Union and the
@@ -66,8 +66,10 @@ export default function PrivacyPage() {
         <List>
           <li>
             <strong>Your email address</strong>, so we can invite you when
-            spaces open up. Legal basis: your consent, which you can withdraw at
-            any time.
+            spaces open up. We email you once to confirm you signed up, and you
+            join the list only after you tap the link. Legal basis: your
+            consent, which you can withdraw at any time, including from the
+            unsubscribe link in any email we send.
           </li>
           <li>
             <strong>Where you came from</strong> (a campaign tag or the
@@ -194,12 +196,12 @@ export default function PrivacyPage() {
             account aren’t counted.
           </li>
           <li>
-            <strong>Some things you do in your account</strong>: when you log
-            a new entry (whether you started from a photo, whether we could
+            <strong>Some things you do in your account</strong>: when you add
+            a new show (whether you started from a photo, whether we could
             work out the show, and whether you added a rating or a note, but not
             what they say), and when you share, save or copy a share card
             (which button and card design). This is stored with your account so
-            we can see how many people keep logging and sharing.
+            we can see how many people keep tracking and sharing.
           </li>
         </List>
         <p>
@@ -257,6 +259,9 @@ export default function PrivacyPage() {
           </li>
           <li>
             <strong>Vercel</strong>: website hosting and visit statistics.
+          </li>
+          <li>
+            <strong>Kit</strong>: keeps the waitlist and sends its emails.
           </li>
           <li>
             <strong>AI providers</strong>: reading photos and ticket emails, as

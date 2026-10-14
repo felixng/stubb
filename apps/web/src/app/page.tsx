@@ -1,8 +1,6 @@
 import type { Metadata, Viewport } from "next";
 
-import { About } from "@/components/landing/About";
 import { Container } from "@/components/landing/Container";
-import { Faq, FAQS } from "@/components/landing/Faq";
 import { Features } from "@/components/landing/Features";
 import { Footer } from "@/components/landing/Footer";
 import { Hero } from "@/components/landing/Hero";
@@ -24,9 +22,8 @@ export const metadata: Metadata = {
   },
 };
 
-// Structured data: the site name for search results, what the product is,
-// and the FAQ, built from the same list the page shows. No offers or prices:
-// sign-ups aren't open yet.
+// Structured data: the site name for search results and what the product is
+// (the FAQPage lives on /faq). No offers or prices: sign-ups aren't open yet.
 const JSON_LD = {
   "@context": "https://schema.org",
   "@graph": [
@@ -52,14 +49,6 @@ const JSON_LD = {
       applicationCategory: "LifestyleApplication",
       operatingSystem: "Any (web browser)",
       publisher: { "@id": new URL("/#organization", SITE_URL).href },
-    },
-    {
-      "@type": "FAQPage",
-      mainEntity: FAQS.map((faq) => ({
-        "@type": "Question",
-        name: faq.question,
-        acceptedAnswer: { "@type": "Answer", text: faq.answer },
-      })),
     },
   ],
 };
@@ -88,8 +77,8 @@ export default function Home() {
                 aria-hidden="true"
                 className="size-2 rounded-full bg-star motion-safe:animate-pulse"
               />
-              <span className="sm:hidden">Private beta</span>
-              <span className="hidden sm:inline">Currently in private beta</span>
+              <span className="sm:hidden">Private Beta</span>
+              <span className="hidden sm:inline">Currently in Private Beta</span>
             </p>
             <SiteMenu />
           </div>
@@ -97,9 +86,7 @@ export default function Home() {
       </header>
       <main className="flex-auto">
         <Hero />
-        <About />
         <Features />
-        <Faq />
       </main>
       <Footer />
     </div>

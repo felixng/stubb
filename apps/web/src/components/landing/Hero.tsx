@@ -1,14 +1,14 @@
+import Image from "next/image";
 import Link from "next/link";
 
 import { Container } from "@/components/landing/Container";
-import { PhoneFrame } from "@/components/landing/PhoneFrame";
-import { DiaryScreenMock } from "@/components/landing/DiaryScreenMock";
 import { WaitlistForm } from "@/components/landing/WaitlistForm";
 import { Chip } from "@/components/ui/Chip";
+import heroDiary from "@/images/hero-diary.webp";
 
 // Static chips under the subhead: short, sentence case, no numbers.
 const HIGHLIGHTS = [
-  "Log in seconds",
+  "Track your visits",
   "Instagram share cards",
   "Trips and stats",
 ];
@@ -16,7 +16,7 @@ const HIGHLIGHTS = [
 export function Hero() {
   return (
     <section className="overflow-hidden pt-8 pb-16 sm:pb-20">
-      <Container className="flex flex-col gap-12 lg:flex-row lg:items-center lg:gap-16">
+      <Container className="flex flex-col gap-12 lg:flex-row lg:items-start lg:gap-16">
         <div className="flex min-w-0 flex-col gap-6 lg:flex-[1_1_520px]">
           <p className="inline-flex min-h-8 items-center self-start rounded-pill border border-separator bg-surface px-3.5 text-footnote font-medium tracking-[0.08em] text-label-secondary uppercase shadow-sm">
             For the theatre regulars
@@ -25,8 +25,8 @@ export function Hero() {
             Your theatre life, shared.
           </h1>
           <p className="max-w-[480px] text-[20px] leading-7 text-label-secondary">
-            Log and rate the shows you see, and see what is trending in the
-            theatre community. Your diary, and the people who get it.
+            Track your theatre visits. Rate the shows. Your diary, shared with
+            the people who get it.
           </p>
           <ul aria-label="Features" className="flex flex-wrap gap-2">
             {HIGHLIGHTS.map((highlight) => (
@@ -38,7 +38,7 @@ export function Hero() {
           <div id="waitlist" className="mt-2 flex scroll-mt-24 flex-col gap-1">
             <WaitlistForm />
             <p className="text-footnote text-label-secondary">
-              One email, at launch. Unsubscribe any time.{" "}
+              One email to confirm, then one at launch. Unsubscribe any time.{" "}
               <Link
                 href="/privacy"
                 className="underline underline-offset-2 hover:text-label focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus"
@@ -50,16 +50,23 @@ export function Hero() {
         </div>
 
         <div className="flex min-w-0 justify-center lg:flex-[1_1_400px]">
-          <div className="relative flex w-full max-w-[480px] justify-center py-10">
+          <div className="relative flex w-full max-w-[540px] justify-center">
             {/* Decorative halo: a `glow` circle with a soft tint ring. */}
             <div
               aria-hidden="true"
-              className="absolute top-1/2 left-1/2 aspect-square w-[min(100%,460px)] -translate-1/2 rounded-full bg-glow shadow-[0_0_0_28px_color-mix(in_srgb,var(--tint)_16%,transparent)]"
+              className="absolute top-1/2 left-1/2 aspect-square w-[min(100%,520px)] -translate-1/2 rounded-full bg-glow shadow-[0_0_0_28px_color-mix(in_srgb,var(--tint)_16%,transparent)]"
             />
-            <div className="relative h-[460px] w-[310px] overflow-hidden mask-[linear-gradient(to_bottom,white_80%,transparent)]">
-              <PhoneFrame priority alt="The Stubbed diary on a phone">
-                <DiaryScreenMock />
-              </PhoneFrame>
+            {/* Mockup of the Diary screen, transparent around the phone. The box
+                keeps the top 86% of the image (down to the tab bar) and fades
+                out, so the browser URL bar never shows or takes up space. */}
+            <div className="relative aspect-[777/1285] w-[350px] max-w-full overflow-hidden mask-[linear-gradient(to_bottom,white_94%,transparent)]">
+              <Image
+                src={heroDiary}
+                alt="The Stubbed diary on a phone: Hamilton, Miss Saigon and other recent shows with star ratings"
+                priority
+                sizes="350px"
+                className="h-auto w-full"
+              />
             </div>
           </div>
         </div>

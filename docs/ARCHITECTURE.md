@@ -200,7 +200,7 @@ Tracked in the **NYC week** epic on GitHub (label `nyc-week`). Goal: the owner l
 | `/api/card/*`, `/e/:id`, `/t/:id` | Public | Entry and trip share cards + public pages with Open Graph |
 
 Additions to the architecture for this week:
-- **`waitlist` table.** Anonymous visitors can insert but never read (RLS); spam is blocked with a honeypot field and a unique email.
+- **Waitlist → Kit.** The landing form subscribes visitors to a Kit form with double opt-in (confirmation email); a honeypot field blocks simple bots. The `waitlist` table (anon insert-only, RLS) remains as the fallback when Kit isn't configured. See `docs/DECISIONS.md`.
 - **Smart import route** `/api/import` (Vercel, server-side key). It takes pasted email text or a downscaled photo plus EXIF hints, and a small Claude model returns structured drafts. Drafts are only saved after the owner confirms them. **This is the first paid usage** (fractions of a penny per import) and needs the owner's OK and an API key.
 - **Photos** read EXIF (date, GPS) on the device for matching, then are re-encoded without metadata before upload.
 

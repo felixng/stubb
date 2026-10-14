@@ -35,7 +35,7 @@ export default function PublicProfileLayout({ children }: LayoutProps<"/u">) {
               Keep your own theatre diary
             </h2>
             <p className="max-w-[460px] text-subheadline text-label-secondary">
-              Log the shows you see, rate them and share a card. Stubbed is in private beta, and the waitlist is open.
+              Track the shows you see, rate them and share a card. Stubbed is in private beta, and the waitlist is open.
             </p>
           </div>
           <Link href={JOIN_HREF} className={`${JOIN_BUTTON} min-h-[50px] shrink-0 px-6 text-headline`}>
