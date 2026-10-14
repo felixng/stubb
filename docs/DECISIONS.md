@@ -205,3 +205,6 @@ A trip's page now opens its share sheet, the same one as an entry (carousel, Sto
 - Adapting to the number of shows: the list has photo rows up to 5 shows, compact rows (no thumbnails) up to 7, then 6 rows and "+ N more shows". Grids hold up to 6 tiles and the collage up to 4 (shows with photos first); the last tile shows "+N". A show without a photo is a tile with its title (initials in the list).
 - No "Background" (transparent) toggle for trip cards: each design is built around its ground or photos.
 - Analytics: `card_shared` records the design id (`trip-list`, `trip-grid`, `trip-collage`, `trip-square`).
+
+### 2026-10-14: Account deletion
+The Profile tab ends with "Delete account". A modal asks the user to type their handle before the delete button enables; Postgres checks the handle again (`delete_my_account`), so iOS gets the same rule. Deletion is immediate and permanent, with no grace period. Entry photos and avatars are removed through the Storage API first, then the auth user is deleted, which cascades to profile, entries, trips and events. Shows and venues the user added stay in the shared catalogue, unattributed.

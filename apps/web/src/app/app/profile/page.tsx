@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { Suspense } from "react";
 
+import { DeleteAccountButton } from "@/components/app/DeleteAccountButton";
 import { EmptyState } from "@/components/app/EmptyState";
 import { ProfileForm } from "@/components/app/ProfileForm";
 import { formatTripDates, TRIP_SELECT, type Collection } from "@/lib/entries";
@@ -68,7 +69,14 @@ async function Form() {
   );
 }
 
-// Trips, then everything on the public profile (/@handle) and whether it is private.
+async function DeleteAccount() {
+  const profile = await getOwnProfile();
+  // Everyone in the app has a handle (the proxy sends others to /welcome).
+  return profile?.handle ? <DeleteAccountButton handle={profile.handle} /> : null;
+}
+
+// Trips, then everything on the public profile (/@handle) and whether it is
+// private, then account deletion.
 export default function ProfilePage() {
   return (
     <section className="flex flex-col gap-5">
@@ -95,6 +103,17 @@ export default function ProfilePage() {
         </h2>
         <Suspense fallback={loading}>
           <Form />
+        </Suspense>
+      </section>
+      <section aria-labelledby="delete-heading" className="flex flex-col gap-2 border-t border-separator pt-5">
+        <h2 id="delete-heading" className="text-title-2 font-display text-label">
+          Delete account
+        </h2>
+        <p className="text-subheadline text-label-secondary">
+          Permanently delete your profile, diary, trips and photos. This can’t be undone.
+        </p>
+        <Suspense fallback={null}>
+          <DeleteAccount />
         </Suspense>
       </section>
     </section>
