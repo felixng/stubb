@@ -6,8 +6,10 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import {
   ensureShow,
   ensureVenue,
+  localToday,
   PHOTO_BUCKET,
   photoPath,
+  statusFor,
   type NearbyVenue,
   type NewShow,
   type Show,
@@ -73,7 +75,8 @@ export class SaveError extends Error {
 
 // Same order as the log form: catalogue rows, the entry, its trips, then the
 // photo, so a failed upload never loses the entry. Visibility is left to the
-// database default (the owner's profile setting).
+// database default (the owner's profile setting). A ticket for a date after
+// today is saved as an upcoming (planned) show, without a rating.
 export async function saveDraft(
   supabase: SupabaseClient,
   userId: string,
@@ -86,12 +89,14 @@ export async function saveDraft(
     step = "venue";
     const venueId = await ensureVenue(supabase, draft.venue);
     step = "entry";
+    const planned = statusFor(draft.date, localToday()) === "planned";
     const { error: write } = await supabase.from("entries").insert({
       id,
       show_id: showId,
       venue_id: venueId,
       date: draft.date,
-      rating: draft.rating,
+      status: planned ? "planned" : "logged",
+      rating: planned ? null : draft.rating,
       note: draft.note?.trim() || null,
     });
     if (write) throw write;

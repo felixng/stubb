@@ -19,12 +19,6 @@ export function AccountMenu() {
       </summary>
       <div className="absolute right-0 z-10 mt-1 min-w-44 overflow-hidden rounded-md border border-separator bg-surface shadow-lg">
         <Link
-          href="/app/profile"
-          className="flex min-h-11 w-full items-center px-4 text-body text-label hover:bg-fill focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-focus"
-        >
-          Profile
-        </Link>
-        <Link
           href="/app/import"
           className="flex min-h-11 w-full items-center px-4 text-body text-label hover:bg-fill focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-focus"
         >

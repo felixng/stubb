@@ -32,8 +32,8 @@ insert into public.entries (id, user_id, show_id, venue_id, date, visibility, ph
    '5a000000-0000-0000-0000-000000000001', '7e000000-0000-0000-0000-000000000001', '2026-10-01', 'public',
    'aaaaaaaa-0000-0000-0000-000000000000/e0000000-0000-0000-0000-00000000000a.jpg');
 
-insert into public.collections (id, user_id, name, visibility) values
-  ('c0000000-0000-0000-0000-00000000000a', 'aaaaaaaa-0000-0000-0000-000000000000', 'NYC Oct 2026', 'public');
+insert into public.collections (id, user_id, name, start_date, end_date) values
+  ('c0000000-0000-0000-0000-00000000000a', 'aaaaaaaa-0000-0000-0000-000000000000', 'NYC Oct 2026', '2026-10-01', '2026-10-05');
 
 insert into public.entry_collections (entry_id, collection_id) values
   ('e0000000-0000-0000-0000-00000000000a', 'c0000000-0000-0000-0000-00000000000a');

@@ -4,7 +4,7 @@ import { useEffect, useId, useRef, useState } from "react";
 
 import { Button } from "@/components/ui/Button";
 import { Chip } from "@/components/ui/Chip";
-import type { Collection } from "@/lib/entries";
+import { TRIP_SELECT, tripCovers, type Collection } from "@/lib/entries";
 import type { Identification } from "@/lib/identify";
 import {
   centroid,
@@ -131,9 +131,10 @@ export function ImportTool({ admin = false }: { admin?: boolean }) {
         supabase.from("profiles").select("default_visibility").eq("id", uid).single(),
         supabase
           .from("collections")
-          .select("id, name, kind, start_date, end_date, visibility")
+          .select(TRIP_SELECT)
           .eq("user_id", uid)
-          .order("start_date", { ascending: false, nullsFirst: false }),
+          .eq("kind", "trip")
+          .order("start_date", { ascending: false }),
         supabase.from("entries").select("id, date, show_id").eq("user_id", uid),
       ]);
       setVisibility(profile.data?.default_visibility ?? null);
@@ -490,7 +491,11 @@ export function ImportTool({ admin = false }: { admin?: boolean }) {
           date: d.date,
           rating: d.rating,
           note: d.note,
-          collectionIds,
+          // A trip holds only shows within its dates; others are saved without it.
+          collectionIds: collectionIds.filter((cid) => {
+            const trip = collections.find((c) => c.id === cid);
+            return trip ? tripCovers(trip, d.date) : false;
+          }),
           photo,
         });
         saved++;
@@ -711,7 +716,7 @@ export function ImportTool({ admin = false }: { admin?: boolean }) {
           {collections.length > 0 && (
             <div className="flex flex-col gap-2 pt-2">
               <span id={`${id}-trips`} className="text-subheadline font-medium text-label">
-                Add saved shows to
+                Add shows within its dates to trip
               </span>
               <div role="group" aria-labelledby={`${id}-trips`} className="flex flex-wrap gap-2">
                 {collections.map((c) => (

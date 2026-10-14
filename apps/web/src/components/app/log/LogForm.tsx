@@ -7,12 +7,14 @@ import { Button } from "@/components/ui/Button";
 import { Chip } from "@/components/ui/Chip";
 import { track } from "@/lib/analytics";
 import {
-  activeTripFor,
   ensureShow,
   ensureVenue,
   localToday,
   PHOTO_BUCKET,
   photoPath,
+  statusFor,
+  TRIP_SELECT,
+  tripsCovering,
   type Collection,
   type NewShow,
   type Show,
@@ -112,6 +114,8 @@ function EntryForm({ initial, onSaved }: { initial?: EntryDraft; onSaved: () => 
   const [pickedDate, setDate] = useState(initial?.date ?? "");
   const today = useToday();
   const date = pickedDate || today || "";
+  // A date after today is a show you're going to: no rating yet, venue optional.
+  const planned = Boolean(today && date && statusFor(date, today) === "planned");
   const [rating, setRating] = useState<number | null>(initial?.rating ?? null);
   const [note, setNote] = useState(initial?.note ?? "");
   const [visibility, setVisibility] = useState<Visibility>(initial?.visibility ?? "public");
@@ -172,7 +176,7 @@ function EntryForm({ initial, onSaved }: { initial?: EntryDraft; onSaved: () => 
     setDetect({ step: "idle" });
   }
 
-  // The owner's default visibility, trips and labels, and recent venues.
+  // The owner's default visibility, trips, and recent venues.
   useEffect(() => {
     const supabase = createClient();
     (async () => {
@@ -184,9 +188,10 @@ function EntryForm({ initial, onSaved }: { initial?: EntryDraft; onSaved: () => 
         supabase.from("profiles").select("default_visibility").eq("id", uid).single(),
         supabase
           .from("collections")
-          .select("id, name, kind, start_date, end_date, visibility")
+          .select(TRIP_SELECT)
           .eq("user_id", uid)
-          .order("start_date", { ascending: false, nullsFirst: false }),
+          .eq("kind", "trip")
+          .order("start_date", { ascending: false }),
         supabase
           .from("entries")
           .select("show_id, venue:venues!inner(id, name, city, country, lat, lng, osm_id)")
@@ -200,10 +205,13 @@ function EntryForm({ initial, onSaved }: { initial?: EntryDraft; onSaved: () => 
     })();
   }, []);
 
-  // A trip covering the entry date is pre-selected until the user picks.
+  // Trips are offered only when one covers the entry's date (a trip holds only
+  // shows within its dates), so most visits never see the field. The first
+  // covering trip is pre-selected until the user picks.
+  const offeredTrips = date ? tripsCovering(collections, date) : [];
   useEffect(() => {
     if (touched.current.collections || !date) return;
-    const trip = activeTripFor(collections, date);
+    const trip = tripsCovering(collections, date)[0];
     setCollectionIds(trip ? [trip.id] : []);
   }, [collections, date]);
 
@@ -341,8 +349,8 @@ function EntryForm({ initial, onSaved }: { initial?: EntryDraft; onSaved: () => 
     e.preventDefault();
     setError(null);
     if (!show) return setError(identifying ? "Pick a show, or wait for the suggestion from your photo." : "Pick a show.");
-    if (!venue) return setError("Pick a venue.");
-    if (!venue.id && !venue.osm_id && (!venue.city?.trim() || !venue.country?.trim())) {
+    if (!venue && !planned) return setError("Pick a venue.");
+    if (venue && !venue.id && !venue.osm_id && (!venue.city?.trim() || !venue.country?.trim())) {
       return setError("Add the venue’s city and country.");
     }
     if (!date) return setError("Pick a date.");
@@ -359,7 +367,24 @@ function EntryForm({ initial, onSaved }: { initial?: EntryDraft; onSaved: () => 
     try {
       const showId = await ensureShow(supabase, show);
       step = "venue";
-      const venueId = await ensureVenue(supabase, venue);
+      const venueId = venue ? await ensureVenue(supabase, venue) : null;
+
+      // Trips no longer covering the date (it changed) drop out. Links go
+      // before the entry is re-dated: the database keeps a trip's shows
+      // within its dates.
+      step = "trips";
+      const chosen = collectionIds.filter((c) => offeredTrips.some((t) => t.id === c));
+      const before = new Set(initial?.collectionIds ?? []);
+      const added = chosen.filter((c) => !before.has(c));
+      const removed = [...before].filter((c) => !chosen.includes(c));
+      if (removed.length) {
+        const { error: unlink } = await supabase
+          .from("entry_collections")
+          .delete()
+          .eq("entry_id", entryId)
+          .in("collection_id", removed);
+        if (unlink) throw unlink;
+      }
 
       // The entry first, so a failed photo upload never loses it. Upsert, so
       // retrying after a later step failed doesn't trip over the same id.
@@ -369,7 +394,8 @@ function EntryForm({ initial, onSaved }: { initial?: EntryDraft; onSaved: () => 
         show_id: showId,
         venue_id: venueId,
         date,
-        rating,
+        status: planned ? ("planned" as const) : ("logged" as const),
+        rating: planned ? null : rating,
         note: note.trim() || null,
         visibility,
         photo_path: keptPath,
@@ -385,17 +411,11 @@ function EntryForm({ initial, onSaved }: { initial?: EntryDraft; onSaved: () => 
       }
 
       step = "trips";
-      const before = new Set(initial?.collectionIds ?? []);
-      const added = collectionIds.filter((c) => !before.has(c));
-      const removed = [...before].filter((c) => !collectionIds.includes(c));
       if (added.length) {
         const { error: link } = await supabase
           .from("entry_collections")
           .upsert(added.map((collection_id) => ({ entry_id: entryId, collection_id })), { ignoreDuplicates: true });
         if (link) throw link;
-      }
-      if (removed.length) {
-        await supabase.from("entry_collections").delete().eq("entry_id", entryId).in("collection_id", removed);
       }
 
       // The photo last: if it fails, the entry is still saved without it.
@@ -415,7 +435,8 @@ function EntryForm({ initial, onSaved }: { initial?: EntryDraft; onSaved: () => 
       }
 
       // How new entries get logged: photo or by hand, and how far detection got.
-      if (!editing) {
+      // A planned show isn't a visit yet, so it isn't counted.
+      if (!editing && !planned) {
         void track(supabase, "entry_logged", {
           method: photo ? "photo" : "manual",
           detection: detect.step === "done" ? (detect.result?.confidence ?? "none") : detect.step === "idle" ? "skipped" : "pending",
@@ -635,7 +656,7 @@ function EntryForm({ initial, onSaved }: { initial?: EntryDraft; onSaved: () => 
           {/* Venue */}
           <div className="flex flex-col gap-2">
             <span id={`${id}-venue`} className={label}>
-              Venue
+              Venue {planned && <span className="font-normal text-label-secondary">(optional)</span>}
             </span>
             <VenueField
               labelledBy={`${id}-venue`}
@@ -719,13 +740,19 @@ function EntryForm({ initial, onSaved }: { initial?: EntryDraft; onSaved: () => 
             </div>
           </div>
 
-          {/* Rating */}
-          <div className="flex flex-col gap-1">
-            <span id={`${id}-rating`} className={label}>
-              Rating
-            </span>
-            <RatingInput labelledBy={`${id}-rating`} value={rating} onChange={setRating} />
-          </div>
+          {/* Rating, once you've been. A future date makes this an upcoming show. */}
+          {planned ? (
+            <p role="status" className="rounded-md bg-tint-fill px-4 py-3 text-subheadline text-label">
+              That’s after today, so this goes in Upcoming. Rate it after you’ve been.
+            </p>
+          ) : (
+            <div className="flex flex-col gap-1">
+              <span id={`${id}-rating`} className={label}>
+                Rating
+              </span>
+              <RatingInput labelledBy={`${id}-rating`} value={rating} onChange={setRating} />
+            </div>
+          )}
 
           {/* Note */}
           <div className="flex flex-col gap-2">
@@ -744,14 +771,14 @@ function EntryForm({ initial, onSaved }: { initial?: EntryDraft; onSaved: () => 
             />
           </div>
 
-          {/* Trips and labels */}
-          <div className="flex flex-col gap-2">
-            <span id={`${id}-trips`} className={label}>
-              Trips and labels
-            </span>
-            {collections.length ? (
+          {/* Trip: only when one of the user's trips covers this date. */}
+          {offeredTrips.length > 0 && (
+            <div className="flex flex-col gap-2">
+              <span id={`${id}-trips`} className={label}>
+                Part of a trip?
+              </span>
               <div role="group" aria-labelledby={`${id}-trips`} className="flex flex-wrap gap-2">
-                {collections.map((c) => (
+                {offeredTrips.map((c) => (
                   <Chip
                     key={c.id}
                     selected={collectionIds.includes(c.id)}
@@ -764,12 +791,8 @@ function EntryForm({ initial, onSaved }: { initial?: EntryDraft; onSaved: () => 
                   </Chip>
                 ))}
               </div>
-            ) : (
-              <p className="text-footnote text-label-secondary">
-                None yet. Create one under Trips, like “NYC Oct 2026”.
-              </p>
-            )}
-          </div>
+            </div>
+          )}
 
           {/* Visibility */}
           <div className="flex flex-col gap-2">
@@ -809,7 +832,7 @@ function EntryForm({ initial, onSaved }: { initial?: EntryDraft; onSaved: () => 
           {/* Sits on the tab bar (49px); the bottom padding clears its raised Log button. */}
           <div className="sticky bottom-[calc(env(safe-area-inset-bottom)+49px)] z-10 -mx-4 bg-background/90 px-4 pt-3 pb-7 backdrop-blur">
             <Button type="submit" className="w-full" disabled={saving}>
-              {saving ? "Saving…" : editing ? "Save changes" : "Save"}
+              {saving ? "Saving…" : editing ? "Save changes" : planned ? "Add to Upcoming" : "Save"}
             </Button>
           </div>
         </div>
