@@ -1,8 +1,15 @@
-# Stubbed iOS app (planned)
+# Stubbed iOS app
 
 Native **SwiftUI** app using [`supabase-swift`](https://github.com/supabase/supabase-swift) against the same Supabase project as the web app. Same users, same data, same row-level security. See [`docs/ARCHITECTURE.md`](../../docs/ARCHITECTURE.md) §5 and the 2026-10-14 entry in [`docs/DECISIONS.md`](../../docs/DECISIONS.md).
 
-The Xcode project lands here when iOS work starts. Until then this folder is a placeholder.
+The Xcode project is set up (`Stubbed.xcodeproj`, supabase-swift, local and hosted config) with a placeholder screen. The screens below are still to build.
+
+## Getting started
+
+1. `supabase start` in the repo root (Docker Desktop must be running).
+2. `cd apps/ios && scripts/dev run`, or open `Stubbed.xcodeproj` in Xcode and press Run.
+
+Debug builds use local Supabase; Release builds use the hosted project. [`CLAUDE.md`](CLAUDE.md) has the full command-line loop, the config files and the project conventions.
 
 ## Scope of the first version
 
@@ -20,7 +27,7 @@ Left out: import (an iOS-focused import comes later), admin pages, landing / wai
 ## Notes for building it
 
 - **Minimum iOS 17** (iPhone XS/XR, SE 2nd gen and later).
-- Logic both apps need (validation, stats, search) lives in Postgres (`supabase/migrations`), not in Swift or TypeScript. Generate Swift types from the schema: `supabase gen types --lang swift`.
+- Logic both apps need (validation, stats, search) lives in Postgres (`supabase/migrations`), not in Swift or TypeScript. Swift types from the schema are in `Stubbed/Generated/Database.swift`; regenerate with `scripts/dev types`.
 - Every entry read must tolerate a **null venue** and **planned** entries (`status = 'planned'`, no rating).
 - **Share cards are drawn natively** (SwiftUI `ImageRenderer`), matching the web designs in `apps/web/src/lib/share-card.ts` (1080×1080, three designs, transparent-background option). Their numbers come from `rpc("entry_card_stats", { entry_id })`.
 - **Server routes** on the web app (`/api/photo/nearby`, `/api/photo/identify`): send the session's access token as `Authorization: Bearer <token>`.
