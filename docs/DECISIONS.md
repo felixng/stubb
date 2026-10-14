@@ -247,3 +247,10 @@ Owner's call: build follows before the iOS app, so iOS copies a complete web MVP
 - All rules are in Postgres (`follows` table, RLS, triggers, `profile_is_visible`, `follow_counts`), so iOS writes the same table directly. `/@handle` now reads the visitor's session to show the button; entries are still read anonymously, except by an approved follower of a private profile.
 - **Not in this slice:** the feed of followed users' entries, finding people (search, suggestions), notifications for new followers or requests, and blocking. Sign-ups are still off, so only accounts made in the dashboard can follow for now.
 
+
+### 2026-10-14: Home is the feed; the diary moves to the Profile tab
+Owner's call, on top of follows (above). Hevy style.
+- **Home is the feed** (`feed_entries()` in `20261014170000_feed.sql`, so iOS matches): your own logged shows, private ones included and marked "Private", plus the shows RLS lets you see from everyone you follow, newest first, the latest 30. Including your own shows means the feed is never empty for a solo user. Upcoming shows stay out. Your shows open in the app; others' open their public page, or don't link when the profile is private.
+- **Find people** (`/app/people`, `search_profiles()`): handle prefix or any part of the name, each with the Follow / Requested / Following button. A "Follow people you go to the theatre with" card shows on Home until you follow someone.
+- **Profile tab:** avatar, handle, name, bio, shows / followers / following (linking to the lists), follow requests to approve, "Edit profile" and "View public profile", then a **Diary | Trips** switch (`?view=trips`). Your details, privacy and account deletion moved to `/app/settings`; the Follow button's "Edit profile" on your own `/@handle` goes there too.
+- Not yet: notifications for new followers or requests, blocking, reactions or comments (still a decision for #4), feed pages beyond the latest 30.

@@ -12,7 +12,7 @@ const nextConfig: NextConfig = {
     { source: "/@:handle/:list(followers|following)", destination: "/u/:handle/:list" },
   ],
   // Trips moved under Profile (Home · Log · Profile); old links still work.
-  redirects: async () => [{ source: "/app/trips", destination: "/app/profile", permanent: false }],
+  redirects: async () => [{ source: "/app/trips", destination: "/app/profile?view=trips", permanent: false }],
   turbopack: {
     rules: {
       "*.css": {

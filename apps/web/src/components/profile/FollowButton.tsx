@@ -15,17 +15,20 @@ const LINK_BUTTON =
 // follow is accepted at once or waits for approval (private profiles); this
 // writes the row, then refreshes the page so counts and shows catch up.
 // Signed-out visitors go to sign in and come back here; the owner gets a
-// link to edit their profile.
+// link to edit their profile. `onChanged` lets a list that read the status in
+// the browser (people search) read it again, since a refresh doesn't reach it.
 export function FollowButton({
   profileId,
   handle,
   isPrivate,
   viewer,
+  onChanged,
 }: {
   profileId: string;
   handle: string;
   isPrivate: boolean;
   viewer: Viewer | null;
+  onChanged?: () => void;
 }) {
   const router = useRouter();
   const [saving, setSaving] = useState(false);
@@ -41,7 +44,7 @@ export function FollowButton({
   }
   if (viewer.isOwner) {
     return (
-      <Link href="/app/profile" className={`${LINK_BUTTON} bg-tint-fill text-tint-text hover:bg-fill`}>
+      <Link href="/app/settings" className={`${LINK_BUTTON} bg-tint-fill text-tint-text hover:bg-fill`}>
         Edit profile
       </Link>
     );
@@ -65,6 +68,7 @@ export function FollowButton({
       window.alert("Couldn’t update. Try again.");
       return;
     }
+    onChanged?.();
     // The refreshed page brings the new state; the button stays busy until it lands.
     startRefresh(() => {
       setSaving(false);

@@ -1,6 +1,7 @@
 // Bottom tab bar for the web app at phone width; iOS uses the native TabView.
 // Four destinations at most; the selected one is `tint-text`.
 export const TAB_ICONS: Record<string, string[]> = {
+  home: ["M4 10.5 12 4l8 6.5V19a1 1 0 0 1-1 1h-4.5v-5.5h-5V20H5a1 1 0 0 1-1-1z"],
   diary: ["M5 4h11a3 3 0 0 1 3 3v13H8a3 3 0 0 1-3-3z", "M5 17a3 3 0 0 1 3-3h11"],
   log: ["M12 3.5a8.5 8.5 0 1 0 0 17 8.5 8.5 0 0 0 0-17z", "M12 8v8M8 12h8"],
   stats: ["M5 20V10M12 20V4M19 20v-7"],
