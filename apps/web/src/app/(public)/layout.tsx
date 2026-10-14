@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { cache, Suspense } from "react";
+import { Suspense } from "react";
 
 import { Wordmark } from "@/components/ui/Wordmark";
 import { viewerContext } from "@/lib/follows";
@@ -8,8 +8,8 @@ import { viewerContext } from "@/lib/follows";
 // trips (/t/[id]), and their not-found pages.
 // Always light, like the landing page (data-theme switches the whole
 // document). Visitors here are mostly logged out and arrive from a shared
-// card or an Instagram bio, so the header button and the join card both lead
-// to the waitlist; sign-ups are still off.
+// card or an Instagram bio, so the header button and the join card (signed-out
+// visitors only) both lead to the waitlist; sign-ups are still off.
 const JOIN_HREF = "/#waitlist";
 const JOIN_BUTTON =
   "inline-flex min-h-11 items-center justify-center rounded-pill bg-tint font-sans font-semibold text-on-tint shadow-btn transition-colors hover:bg-tint-pressed focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus";
@@ -28,32 +28,28 @@ export default function PublicLayout({ children }: { children: React.ReactNode }
         </div>
       </header>
       <main className="mx-auto flex w-full max-w-[1040px] flex-1 flex-col gap-5 px-4 py-5 sm:px-8">
-        <Suspense fallback={<JoinCard top />}>
-          <JoinCardFor signedIn={false} top />
+        <Suspense fallback={<JoinCard />}>
+          <SignedOutJoinCard />
         </Suspense>
         {children}
-        <Suspense fallback={null}>
-          <JoinCardFor signedIn />
-        </Suspense>
       </main>
     </div>
   );
 }
 
-// Signed-out visitors (most of them) see the card first, above the page;
-// signed-in ones see it under the page. The fallback is the top card, so
-// signed-out visitors get no layout shift while the session is checked.
-async function JoinCardFor({ signedIn, top = false }: { signedIn: boolean; top?: boolean }) {
-  return (await isSignedIn()) === signedIn ? <JoinCard top={top} /> : null;
+// Only signed-out visitors see the card, above the page. It is also the
+// fallback, so they (most visitors) get no layout shift while the session is
+// checked.
+async function SignedOutJoinCard() {
+  const { userId } = await viewerContext();
+  return userId ? null : <JoinCard />;
 }
 
-const isSignedIn = cache(async () => (await viewerContext()).userId !== null);
-
-function JoinCard({ top = false }: { top?: boolean }) {
+function JoinCard() {
   return (
     <section
       aria-labelledby="join-heading"
-      className={`${top ? "" : "mt-4 "}flex flex-col items-start gap-4 rounded-md border border-separator bg-tint-fill p-5 sm:flex-row sm:items-center sm:justify-between sm:p-6`}
+      className="flex flex-col items-start gap-4 rounded-md border border-separator bg-tint-fill p-5 sm:flex-row sm:items-center sm:justify-between sm:p-6"
     >
       <div className="flex min-w-0 flex-col gap-1">
         <h2 id="join-heading" className="font-display text-title-2 text-label">
