@@ -241,44 +241,119 @@ function drawGrid(ctx: Ctx, p: Palette, d: TripCardData, shows: Show[]) {
   drawPhotoGrid(ctx, p, shows, PAD, top, INNER, FOOTER_TOP - GAP - top, false);
 }
 
-// Polaroid positions from the canvas (frame's top left in a 460 × 446 box,
-// rotation), for up to four shows; one show sits centred. Scaled to fit.
-const POLAROIDS = [
-  { left: 36, top: 0, rotate: -3 },
-  { left: 256, top: 12, rotate: -2 },
-  { left: 24, top: 212, rotate: 3 },
-  { left: 244, top: 222, rotate: -3 },
-];
-const SOLO = { left: 146, top: 0, rotate: -3 };
+// Polaroid layouts from the canvas's "Trip collage" row, one per number of
+// shows (2 to 8): each frame's top left within the photo area (484 wide,
+// below the header), size and tilt. One show gets a single large polaroid.
+type Polaroid = { left: number; top: number; rotate: number };
+const LARGE = { w: 200, h: 267, pad: 4 };
+const MEDIUM = { w: 168, h: 224, pad: 4 };
+const SMALL_4 = { w: 152, h: 202, pad: 4 };
+const SMALL = { w: 110, h: 146, pad: 3 };
+const COLLAGES: Record<number, { size: typeof LARGE; at: Polaroid[] }> = {
+  1: { size: { w: 240, h: 320, pad: 5 }, at: [{ left: 122, top: 25, rotate: -3 }] },
+  2: {
+    size: LARGE,
+    at: [
+      { left: 30, top: 0, rotate: -4 },
+      { left: 254, top: 100, rotate: 3 },
+    ],
+  },
+  3: {
+    size: MEDIUM,
+    at: [
+      { left: 8, top: 10, rotate: -4 },
+      { left: 304, top: 0, rotate: 3 },
+      { left: 150, top: 140, rotate: -2 },
+    ],
+  },
+  4: {
+    size: SMALL_4,
+    at: [
+      { left: 60, top: 0, rotate: -4 },
+      { left: 272, top: 8, rotate: 3 },
+      { left: 60, top: 170, rotate: -2 },
+      { left: 272, top: 168, rotate: 4 },
+    ],
+  },
+  5: {
+    size: SMALL_4,
+    at: [
+      { left: 48, top: 0, rotate: -4 },
+      { left: 260, top: 8, rotate: 3 },
+      { left: 7, top: 170, rotate: -2 },
+      { left: 166, top: 168, rotate: 4 },
+      { left: 325, top: 170, rotate: -3 },
+    ],
+  },
+  6: {
+    size: SMALL_4,
+    at: [
+      { left: 7, top: 0, rotate: -4 },
+      { left: 166, top: 8, rotate: 3 },
+      { left: 325, top: 0, rotate: -2 },
+      { left: 7, top: 170, rotate: 4 },
+      { left: 166, top: 168, rotate: -3 },
+      { left: 325, top: 170, rotate: 2 },
+    ],
+  },
+  7: {
+    size: SMALL,
+    at: [
+      { left: 76, top: 0, rotate: -4 },
+      { left: 274, top: 8, rotate: 3 },
+      { left: 38, top: 121, rotate: -2 },
+      { left: 187, top: 111, rotate: 4 },
+      { left: 336, top: 121, rotate: -3 },
+      { left: 76, top: 224, rotate: 2 },
+      { left: 274, top: 226, rotate: -5 },
+    ],
+  },
+  8: {
+    size: SMALL,
+    at: [
+      { left: 38, top: 0, rotate: -4 },
+      { left: 187, top: 8, rotate: 3 },
+      { left: 336, top: 0, rotate: -2 },
+      { left: 100, top: 121, rotate: 4 },
+      { left: 298, top: 111, rotate: -3 },
+      { left: 38, top: 224, rotate: 2 },
+      { left: 187, top: 226, rotate: -5 },
+      { left: 336, top: 224, rotate: 3 },
+    ],
+  },
+};
 
-// "Trip wrap · photo collage", squared: up to four polaroids, shows with
-// photos first.
+// "Trip collage": a layout per number of shows, in date order. Past 8
+// shows, the 8-show layout prefers shows with photos and the last
+// polaroid reads "+N".
 function drawCollage(ctx: Ctx, p: Palette, d: TripCardData, shows: Show[]) {
   const top = drawHeader(ctx, p, d, shows.length) + GAP;
-  const bottom = FOOTER_TOP - GAP;
-  const picks = [...shows].sort((a, b) => Number(Boolean(b.photo)) - Number(Boolean(a.photo))).slice(0, 4);
+  const bottom = FOOTER_TOP - 12;
+  let picks = shows;
+  if (shows.length > 8) {
+    const keep = new Set([...shows].sort((a, b) => Number(Boolean(b.photo)) - Number(Boolean(a.photo))).slice(0, 8));
+    picks = shows.filter((s) => keep.has(s));
+  }
   const more = shows.length - picks.length;
-  const boxW = 460;
-  const boxH = picks.length > 2 ? 446 : 236;
-  // Fill the space: a lone polaroid can grow; a row of two stays in width.
-  const k = Math.min(picks.length === 1 ? 1.4 : INNER / boxW, (bottom - top) / boxH);
-  const x0 = PAD + (INNER - boxW * k) / 2;
-  const y0 = top + (bottom - top - boxH * k) / 2;
+  const { size, at } = COLLAGES[picks.length];
+  // Centre the layout in the space between header and footer.
+  const layoutH = Math.max(...at.map((a) => a.top + size.h));
+  const y0 = top + Math.max(0, (bottom - top - layoutH) / 2);
   picks.forEach((s, i) => {
-    const at = picks.length === 1 ? SOLO : POLAROIDS[i];
-    const fw = 168 * k;
-    const fh = 224 * k;
+    const { left, top: y, rotate } = at[i];
     ctx.save();
-    ctx.translate(x0 + at.left * k + fw / 2, y0 + at.top * k + fh / 2);
-    ctx.rotate((at.rotate * Math.PI) / 180);
-    ctx.translate(-fw / 2, -fh / 2);
+    ctx.translate(PAD + left + size.w / 2, y0 + y + size.h / 2);
+    ctx.rotate((rotate * Math.PI) / 180);
+    ctx.translate(-size.w / 2, -size.h / 2);
     softShadow(ctx);
-    roundRect(ctx, 0, 0, fw, fh, 4);
+    roundRect(ctx, 0, 0, size.w, size.h, 4);
     ctx.fillStyle = p.surface;
     ctx.fill();
     noShadow(ctx);
-    strokeRound(ctx, 0, 0, fw, fh, 4, p.separator);
-    drawTile(ctx, p, s, 4, 4, fw - 8, fh - 8, 2, i === picks.length - 1 ? more : 0);
+    strokeRound(ctx, 0, 0, size.w, size.h, 4, p.separator);
+    const inset = size.pad;
+    const last = i === picks.length - 1;
+    drawTile(ctx, p, s, inset, inset, size.w - inset * 2, size.h - inset * 2, 2, last ? more : 0, true);
     ctx.restore();
   });
 }
@@ -320,8 +395,21 @@ function drawPhotoGrid(ctx: Ctx, p: Palette, all: Show[], x: number, y: number, 
   });
 }
 
-// A show's photo, or its title set large on `fill` when it has none.
-function drawTile(ctx: Ctx, p: Palette, s: Show, x: number, y: number, w: number, h: number, r: number, more: number) {
+// A show's photo, or its title set large on `fill` when it has none: at the
+// bottom left, or at the top (`titleTop`) where the next polaroid in a
+// collage overlaps the bottom.
+function drawTile(
+  ctx: Ctx,
+  p: Palette,
+  s: Show,
+  x: number,
+  y: number,
+  w: number,
+  h: number,
+  r: number,
+  more: number,
+  titleTop = false,
+) {
   ctx.save();
   roundRect(ctx, x, y, w, h, r);
   ctx.clip();
@@ -329,15 +417,19 @@ function drawTile(ctx: Ctx, p: Palette, s: Show, x: number, y: number, w: number
   else {
     ctx.fillStyle = p.fill;
     ctx.fillRect(x, y, w, h);
-    const size = Math.max(17, Math.min(28, w / 8));
+    // Smaller tiles (the 7- and 8-show collages) get tighter type.
+    const inset = w < 140 ? 8 : 16;
+    const size = Math.max(w < 140 ? 13 : 17, Math.min(28, w / 8));
     setFont(ctx, 700, size, DISPLAY, size * -0.01);
     const lh = size * 1.1;
-    let lines = wrap(ctx, s.title, w - 32);
-    if (lines.length > 3) lines = [lines[0], lines[1], fit(ctx, lines.slice(2).join(" "), w - 32)];
+    const tw = w - inset * 2;
+    let lines = wrap(ctx, s.title, tw);
+    if (lines.length > 3) lines = [lines[0], lines[1], fit(ctx, lines.slice(2).join(" "), tw)];
     ctx.fillStyle = p.label;
     ctx.textBaseline = "middle";
     lines.forEach((line, i) => {
-      ctx.fillText(fit(ctx, line, w - 32), x + 16, y + h - 16 - lh * (lines.length - i) + lh / 2);
+      const lineY = titleTop ? y + inset + lh * i + lh / 2 : y + h - inset - lh * (lines.length - i) + lh / 2;
+      ctx.fillText(fit(ctx, line, tw), x + inset, lineY);
     });
   }
   if (more) {
