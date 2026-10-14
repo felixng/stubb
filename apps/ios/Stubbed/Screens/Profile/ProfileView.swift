@@ -12,6 +12,12 @@ struct ProfileView: View {
   @State private var header: Loadable<Header> = .loading
   @State private var diary: Loadable<(entries: [Entry], photos: [String: URL])> = .loading
   @State private var upcomingOpen = true
+  @State private var selecting = false
+  @State private var picked: Set<UUID> = []
+  @State private var choosingTrip = false
+  @State private var confirmDelete = false
+  @State private var trips: [Trip] = []
+  @State private var selectError: String?
 
   struct Header {
     var profile: Profile
@@ -41,6 +47,10 @@ struct ProfileView: View {
         }
       }
     }
+    .safeAreaInset(edge: .bottom) {
+      if selecting, section == .diary { selectBar }
+    }
+    .onChange(of: section) { _, _ in endSelecting() }
     .refreshable { await load() }
     .task(id: router.dataVersion) { await load() }
   }
@@ -142,6 +152,9 @@ struct ProfileView: View {
               .accessibilityLabel("Upcoming, \(upcoming.count)")
               .accessibilityValue(upcomingOpen ? "Expanded" : "Collapsed")
               Spacer()
+              Button("+ Plan a trip") { router.newTrip() }
+                .font(.stubSubheadline.weight(.semibold))
+                .foregroundStyle(Palette.tintText)
             }
             if upcomingOpen {
               EntryList(entries: Array(upcoming), photos: data.photos)
@@ -151,9 +164,96 @@ struct ProfileView: View {
         if seen.isEmpty {
           EmptyState(title: "Nothing seen yet") { Text("Your shows appear here once you’ve been.") }
         } else {
-          EntryList(entries: seen, photos: data.photos)
+          HStack {
+            Text(selecting ? (picked.isEmpty ? "Pick shows" : "\(picked.count) selected") : "")
+              .font(.stubSubheadline)
+              .foregroundStyle(Palette.labelSecondary)
+            Spacer()
+            Button(selecting ? "Cancel" : "Select") {
+              if selecting { endSelecting() } else { selecting = true }
+            }
+            .font(.stubSubheadline.weight(.semibold))
+            .foregroundStyle(Palette.tintText)
+            .frame(minHeight: Space.touch)
+          }
+          EntryList(entries: seen, photos: data.photos, selection: selecting ? $picked : nil)
         }
       }
+    }
+  }
+
+  // MARK: - Select
+
+  /// Group the picked shows into a trip (one that covers all their dates,
+  /// or a new one with dates to fit), or delete them together.
+  private var selectBar: some View {
+    let chosen = diary.value?.entries.filter { picked.contains($0.id) } ?? []
+    let dates = chosen.map(\.date).sorted()
+    let covering = trips.filter { trip in dates.allSatisfy(trip.covers) }
+    return VStack(spacing: Space.s) {
+      if let selectError {
+        Text(selectError).font(.stubFootnote).foregroundStyle(Palette.destructive)
+      }
+      HStack(spacing: Space.m) {
+        Button("Add to trip") { choosingTrip = true }
+          .buttonStyle(.primary)
+        Button("Delete", role: .destructive) { confirmDelete = true }
+          .buttonStyle(PillButtonStyle())
+          .foregroundStyle(Palette.destructive)
+      }
+      .disabled(picked.isEmpty)
+    }
+    .padding(.horizontal, Space.l)
+    .padding(.vertical, Space.m)
+    .background(Palette.background)
+    .overlay(alignment: .top) { Palette.separator.frame(height: 1) }
+    .confirmationDialog("Add \(picked.count) to a trip", isPresented: $choosingTrip, titleVisibility: .visible) {
+      ForEach(covering) { trip in
+        Button(trip.name) { Task { await add(to: trip) } }
+      }
+      Button("New trip") {
+        let ids = Array(picked)
+        endSelecting()
+        router.newTrip(start: dates.first, end: dates.last, entryIds: ids)
+      }
+    } message: {
+      Text(covering.isEmpty ? "None of your trips covers these dates." : "Trips that cover these dates")
+    }
+    .confirmationDialog(
+      "Delete \(picked.count == 1 ? "this show" : "these \(picked.count) shows")?", isPresented: $confirmDelete,
+      titleVisibility: .visible
+    ) {
+      Button("Delete", role: .destructive) { Task { await deletePicked(chosen) } }
+    } message: {
+      Text("This can’t be undone.")
+    }
+  }
+
+  private func endSelecting() {
+    selecting = false
+    picked = []
+    selectError = nil
+  }
+
+  private func add(to trip: Trip) async {
+    do {
+      try await Trips.add(Array(picked), to: trip.id)
+      endSelecting()
+      router.dataChanged()
+      router.profilePath.append(.trip(trip.id))
+    } catch {
+      selectError = "Couldn’t add them to the trip. Try again."
+    }
+  }
+
+  private func deletePicked(_ entries: [Entry]) async {
+    do {
+      for entry in entries { try await Entries.delete(entry) }
+      endSelecting()
+      router.dataChanged()
+    } catch {
+      selectError = "Couldn’t delete them. Try again."
+      router.dataChanged()
     }
   }
 
@@ -165,22 +265,17 @@ struct ProfileView: View {
     async let counts = Profiles.followCounts(userId)
     async let shows = Profiles.loggedCount(userId)
     async let entries = Profiles.ownEntries(userId)
+    async let ownTrips = Trips.list(userId)
     do {
       header = .loaded(Header(profile: try await profile, counts: await counts, shows: await shows))
     } catch {
       if header.value == nil { header = .failed("Couldn’t load your profile.") }
     }
+    trips = (try? await ownTrips)?.map(\.trip) ?? trips
     do {
       diary = .loaded(try await entries)
     } catch {
       if diary.value == nil { diary = .failed("Check your connection and try again.") }
     }
-  }
-}
-
-/// Your trips: built in #70.
-struct TripsList: View {
-  var body: some View {
-    EmptyState(title: "No trips yet") { Text("Trips arrive in the next update.") }
   }
 }

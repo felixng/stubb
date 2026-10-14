@@ -13,7 +13,7 @@ final class AppRouter {
 
   enum Route: Hashable {
     case entry(UUID, notice: Notice? = nil)
-    case trip(UUID)
+    case trip(UUID, addFailed: Bool = false)
     case settings
     case profile(handle: String)
   }
@@ -24,10 +24,21 @@ final class AppRouter {
     var editing: Entry?
   }
 
+  /// The trip form sheet: a new trip (optionally with shows picked in the
+  /// diary and dates to fit them), or editing one.
+  struct TripFormRequest: Identifiable {
+    let id = UUID()
+    var editing: Trip?
+    var start: String?
+    var end: String?
+    var entryIds: [UUID] = []
+  }
+
   var tab = Tab.home
   var homePath: [Route] = []
   var profilePath: [Route] = []
   var log: LogRequest?
+  var tripForm: TripFormRequest?
   private(set) var dataVersion = 0
 
   func startLog() { log = LogRequest() }
@@ -49,6 +60,21 @@ final class AppRouter {
       stack[index] = .entry(id, notice: notice)
       setPath(stack, for: tab)
     }
+  }
+
+  func newTrip(start: String? = nil, end: String? = nil, entryIds: [UUID] = []) {
+    tripForm = TripFormRequest(start: start, end: end, entryIds: entryIds)
+  }
+
+  func editTrip(_ trip: Trip) { tripForm = TripFormRequest(editing: trip) }
+
+  /// After a trip save: a new trip opens on the Profile tab.
+  func tripSaved(_ id: UUID, isNew: Bool, linksFailed: Bool) {
+    tripForm = nil
+    dataChanged()
+    guard isNew else { return }
+    tab = .profile
+    profilePath.append(.trip(id, addFailed: linksFailed))
   }
 
   /// Something was written or deleted: screens reload.

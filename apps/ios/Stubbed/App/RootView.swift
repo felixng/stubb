@@ -19,6 +19,9 @@ struct RootView: View {
     .sheet(item: $router.log) { request in
       LogView(editing: request.editing)
     }
+    .sheet(item: $router.tripForm) { request in
+      TripForm(request: request)
+    }
     .environment(router)
   }
 
@@ -30,7 +33,7 @@ struct RootView: View {
         .navigationDestination(for: AppRouter.Route.self) { route in
           switch route {
           case .entry(let id, let notice): EntryView(id: id, notice: notice)
-          case .trip: Text("Trip")  // #70
+          case .trip(let id, let addFailed): TripView(id: id, addFailed: addFailed)
           case .settings: SettingsView()
           case .profile(let handle): PublicProfileView(handle: handle)
           }
