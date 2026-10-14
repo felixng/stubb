@@ -63,7 +63,7 @@ export function Hero() {
               alt="The Stubbed diary on a phone: Hamilton, Miss Saigon and other recent shows with star ratings"
               priority
               sizes="350px"
-              className="relative h-auto w-[350px] max-w-full mask-[linear-gradient(to_bottom,white_82%,transparent_86%)]"
+              className="relative h-auto w-[350px] max-w-full translate-y-12 mask-[linear-gradient(to_bottom,white_82%,transparent_86%)]"
             />
           </div>
         </div>
