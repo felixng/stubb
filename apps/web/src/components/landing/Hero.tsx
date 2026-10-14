@@ -1,10 +1,10 @@
+import Image from "next/image";
 import Link from "next/link";
 
 import { Container } from "@/components/landing/Container";
-import { PhoneFrame } from "@/components/landing/PhoneFrame";
-import { DiaryScreenMock } from "@/components/landing/DiaryScreenMock";
 import { WaitlistForm } from "@/components/landing/WaitlistForm";
 import { Chip } from "@/components/ui/Chip";
+import heroDiary from "@/images/hero-diary.webp";
 
 // Static chips under the subhead: short, sentence case, no numbers.
 const HIGHLIGHTS = [
@@ -56,11 +56,14 @@ export function Hero() {
               aria-hidden="true"
               className="absolute top-1/2 left-1/2 aspect-square w-[min(100%,460px)] -translate-1/2 rounded-full bg-glow shadow-[0_0_0_28px_color-mix(in_srgb,var(--tint)_16%,transparent)]"
             />
-            <div className="relative h-[460px] w-[310px] overflow-hidden mask-[linear-gradient(to_bottom,white_80%,transparent)]">
-              <PhoneFrame priority alt="The Stubbed diary on a phone">
-                <DiaryScreenMock />
-              </PhoneFrame>
-            </div>
+            {/* Mockup of the Diary screen; transparent around the phone. */}
+            <Image
+              src={heroDiary}
+              alt="The Stubbed diary on a phone: Hamilton, Miss Saigon and other recent shows with star ratings"
+              priority
+              sizes="280px"
+              className="relative h-auto w-[280px]"
+            />
           </div>
         </div>
       </Container>
