@@ -2,11 +2,12 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useLayoutEffect, useMemo, useRef, useState } from "react";
+import { useMemo, useState } from "react";
 
 import { Button } from "@/components/ui/Button";
 import { formatDate, formatTripDates, tripCovers, type Collection, type EntryRow } from "@/lib/entries";
 import { createClient } from "@/lib/supabase/client";
+import { useFreshOnReturn } from "@/lib/use-fresh-on-return";
 import { EntryList } from "./EntryList";
 
 // The diary's tracked shows, with a select mode for grouping several into a
@@ -14,22 +15,15 @@ import { EntryList } from "./EntryList";
 // dates prefilled to fit. Hidden until "Select" is tapped, so the diary stays
 // plain for the many visits that aren't part of a trip.
 //
-// With cacheComponents, Next keeps the diary alive (hidden) while we're on the
-// trip page and shows it again on return, state and all. Once the selection
-// has gone to a trip it's done with, so the list remounts out of select mode
-// when it's shown again. A selection left for a stray tab tap is kept.
+// Once the selection has gone to a trip, the diary is back out of select mode
+// the next time it's shown (see useFreshOnReturn). A selection left for a
+// stray tab tap is kept.
 type Props = { entries: EntryRow[]; photos: Record<string, string>; trips: Collection[] };
 
 export function DiaryEntries(props: Props) {
   const [round, setRound] = useState(0);
-  const done = useRef(false);
-  // Runs again each time the hidden page is shown, before it paints.
-  useLayoutEffect(() => {
-    if (!done.current) return;
-    done.current = false;
-    setRound((r) => r + 1);
-  }, []);
-  return <Selectable key={round} {...props} onDone={() => (done.current = true)} />;
+  const done = useFreshOnReturn(() => setRound((r) => r + 1));
+  return <Selectable key={round} {...props} onDone={done} />;
 }
 
 function Selectable({ entries, photos, trips, onDone }: Props & { onDone: () => void }) {

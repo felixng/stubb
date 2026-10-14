@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useEffect, useId, useLayoutEffect, useRef, useState, useSyncExternalStore } from "react";
+import { useEffect, useId, useRef, useState, useSyncExternalStore } from "react";
 
 import { Button } from "@/components/ui/Button";
 import { Chip } from "@/components/ui/Chip";
@@ -24,6 +24,7 @@ import {
 import type { Identification } from "@/lib/identify";
 import { lookupNearby, preparePhoto, requestIdentify, type Place, type PreparedPhoto } from "@/lib/import/photo-pipeline";
 import { createClient } from "@/lib/supabase/client";
+import { useFreshOnReturn } from "@/lib/use-fresh-on-return";
 import { DateField } from "../DateField";
 import { RatingInput } from "./RatingInput";
 import { ShowField } from "./ShowField";
@@ -71,20 +72,13 @@ function useToday() {
 // about a second, and the AI's show suggestion arrives when it's ready.
 // Nothing waits on it: every field can be used, and Save works, throughout.
 //
-// With cacheComponents, Next keeps a page we navigate away from alive (hidden)
-// and shows it again on return, state and all. After a save the form must
-// start over next time, so it remounts when it's shown again. An unsaved
-// draft is kept, so a stray tap on another tab doesn't lose it.
+// After a save the form starts over the next time it's shown (see
+// useFreshOnReturn). An unsaved draft is kept, so a stray tap on another tab
+// doesn't lose it.
 export function LogForm({ initial }: { initial?: EntryDraft }) {
   const [round, setRound] = useState(0);
-  const saved = useRef(false);
-  // Runs again each time the hidden page is shown, before it paints.
-  useLayoutEffect(() => {
-    if (!saved.current) return;
-    saved.current = false;
-    setRound((r) => r + 1);
-  }, []);
-  return <EntryForm key={round} initial={initial} onSaved={() => (saved.current = true)} />;
+  const saved = useFreshOnReturn(() => setRound((r) => r + 1));
+  return <EntryForm key={round} initial={initial} onSaved={saved} />;
 }
 
 function EntryForm({ initial, onSaved }: { initial?: EntryDraft; onSaved: () => void }) {
@@ -215,9 +209,13 @@ function EntryForm({ initial, onSaved }: { initial?: EntryDraft; onSaved: () => 
     setCollectionIds(trip ? [trip.id] : []);
   }, [collections, date]);
 
-  useEffect(() => () => {
+  // The preview URL is freed when the photo is replaced or removed, not in an
+  // effect cleanup: that also runs when the page is hidden, and the kept
+  // draft would come back with a broken preview.
+  function replacePhoto(next: Photo | null) {
     if (photo) URL.revokeObjectURL(photo.previewUrl);
-  }, [photo]);
+    setPhoto(next);
+  }
 
   async function onPhoto(file: File) {
     clearPhotoResults();
@@ -237,7 +235,7 @@ function EntryForm({ initial, onSaved }: { initial?: EntryDraft; onSaved: () => 
     }
     if (!current()) return;
     const { meta, stored, small } = prepared;
-    setPhoto({ stored, previewUrl: URL.createObjectURL(stored) });
+    replacePhoto({ stored, previewUrl: URL.createObjectURL(stored) });
     setExistingPhoto(null);
     if (meta.date && !touched.current.date) {
       fromPhoto.current.date = true;
@@ -588,7 +586,7 @@ function EntryForm({ initial, onSaved }: { initial?: EntryDraft; onSaved: () => 
                 type="button"
                 onClick={() => {
                   clearPhotoResults();
-                  setPhoto(null);
+                  replacePhoto(null);
                   setExistingPhoto(null);
                 }}
                 className="min-h-11 rounded-pill px-3 text-subheadline font-semibold text-destructive hover:bg-fill focus-visible:outline-2 focus-visible:outline-focus"
