@@ -3,9 +3,9 @@ import Link from "next/link";
 import { Suspense } from "react";
 
 import { EmptyState } from "@/components/app/EmptyState";
-import { PublicEntryCard } from "@/components/profile/PublicEntryCard";
-import { NO_REACTIONS } from "@/lib/reactions";
-import { FEED_SIZE, getFeed } from "@/lib/supabase/data";
+import { FeedCard } from "@/components/app/FeedCard";
+import { FeedMore } from "@/components/app/FeedMore";
+import { getFeed } from "@/lib/supabase/data";
 
 export const metadata: Metadata = { title: "Home" };
 
@@ -13,7 +13,10 @@ const FIND =
   "inline-flex min-h-11 items-center rounded-pill bg-tint-fill px-4 text-[15px] leading-5 font-semibold text-tint-text hover:bg-fill focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus";
 
 async function Feed() {
-  const { items, photos, reactions, following, viewerId: me } = await getFeed();
+  const { items, next, following, failed } = await getFeed();
+  if (failed) {
+    return <EmptyState title="Couldn’t load your feed">Check your connection and open Home again.</EmptyState>;
+  }
 
   return (
     <>
@@ -36,46 +39,21 @@ async function Feed() {
           and it appears here, along with shows from people you follow.
         </EmptyState>
       ) : (
-        items.map(({ entry, owner, mine }) => {
-          // Your own shows open in the app; others' open their page, which
-          // opens for approved followers of a private profile too. Trip pages
-          // don't, so a private profile's trips don't link.
-          const open = mine ? `/app/entries/${entry.id}` : `/e/${entry.id}`;
-          return (
-            <PublicEntryCard
-              key={entry.id}
-              entry={entry}
-              photoUrl={entry.photo_path ? photos.get(entry.photo_path) : undefined}
-              handle={owner.handle!}
-              name={owner.display_name || `@${owner.handle}`}
-              avatarUrl={owner.avatar_url}
-              href={open}
-              tripHref={(id) => (mine ? `/app/trips/${id}` : owner.is_private ? null : `/t/${id}`)}
-              badge={mine && entry.visibility === "private" ? "Private" : undefined}
-              social={
-                entry.visibility === "public"
-                  ? { viewerId: me, reactions: reactions.get(entry.id) ?? NO_REACTIONS }
-                  : undefined
-              }
-            />
-          );
-        })
-      )}
-      {items.length === FEED_SIZE && (
-        <p className="text-center text-footnote text-label-secondary">
-          That’s the latest {FEED_SIZE}. Your older shows are in{" "}
-          <Link href="/app/profile" className="font-semibold text-tint-text underline-offset-2 hover:underline">
-            your diary
-          </Link>
-          .
-        </p>
+        <>
+          {items.map((item) => (
+            <FeedCard key={item.entry.id} item={item} />
+          ))}
+          {/* Older pages load in the browser. Keyed on the top show, so
+              logging a new one starts them over. */}
+          {next && <FeedMore key={items[0].entry.id} start={next} />}
+        </>
       )}
     </>
   );
 }
 
 // Home: the feed. Your shows and the shows of people you follow, newest
-// first. Your diary lives on the Profile tab.
+// first, a page at a time. Your diary lives on the Profile tab.
 export default function HomePage() {
   return (
     <section className="flex flex-col gap-5">

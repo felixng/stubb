@@ -1,7 +1,7 @@
 import type { createClient } from "@/lib/supabase/server";
 import type { FollowPerson } from "@/lib/follows";
 
-// Likes and comments on entries (supabase/migrations/20261014180000_likes_comments.sql).
+// Likes and comments on entries (supabase/migrations/20261014190000_likes_comments.sql).
 // Anyone signed in who can see a public entry can like it and comment on it;
 // Postgres enforces who, so these reads and the client writes stay thin.
 

@@ -155,7 +155,7 @@ Free-tier limits change often. Check the vendor pricing pages before relying on 
 stubb/
 ├── apps/
 │   ├── web/            # Next.js: landing page (/), owner app (/app), share cards. Vercel root directory.
-│   └── ios/            # SwiftUI Xcode project (next month)
+│   └── ios/            # SwiftUI Xcode project (apps/ios/README.md)
 ├── supabase/
 │   ├── migrations/     # SQL: tables, constraints, RLS, functions (the shared "API")
 │   ├── seed.sql        # US / UK venues + starter shows

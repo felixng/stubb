@@ -252,10 +252,21 @@ Owner's call, on top of follows (above). Hevy style.
 - **Home is the feed** (`feed_entries()` in `20261014170000_feed.sql`, so iOS matches): your own logged shows, private ones included and marked "Private", plus the shows RLS lets you see from everyone you follow, newest first, the latest 30. Including your own shows means the feed is never empty for a solo user. Upcoming shows stay out. Your shows open in the app; others' open their public page, or don't link when the profile is private.
 - **Find people** (`/app/people`, `search_profiles()`): handle prefix or any part of the name, each with the Follow / Requested / Following button. A "Follow people you go to the theatre with" card shows on Home until you follow someone.
 - **Profile tab:** avatar, handle, name, bio, shows / followers / following (linking to the lists), follow requests to approve, "Edit profile" and "View public profile", then a **Diary | Trips** switch (`?view=trips`). Your details, privacy and account deletion moved to `/app/settings`; the Follow button's "Edit profile" on your own `/@handle` goes there too.
-- Not yet: notifications for new followers or requests, blocking, reactions or comments (still a decision for #4), feed pages beyond the latest 30.
+- Not yet: notifications for new followers or requests, blocking, reactions or comments (still a decision for #4), feed pages beyond the latest 30 (now done, below).
+
+### 2026-10-14: The feed pages
+Home loads 20 shows, then the next 20 as you scroll near the end, with a "Load more" button for keyboards, screen readers and retries, until "You're all caught up". Pages are cut in Postgres on (date, created_at, id) (`20261014180000_feed_paging.sql`, replacing `feed_entries`), so shows logged in the same instant, as an import saves them, are never skipped or repeated. The first page is rendered on the server; later ones come from a server action (`loadFeedPage`) and stay when you tap away and back. Logging a new show starts them over. Replaces "the latest 30".
+
+### 2026-10-14: iOS project set up
+The Xcode project in `apps/ios` builds, tests and runs from the command line (`apps/ios/scripts/dev`), so Claude Code can work on it from a remote session on the Mac and check UI through Simulator screenshots.
+- **Bundle ID `com.felixng.stubbed`**, team `AAW3XNQ6D3`, automatic signing, iOS 17, iPhone only, portrait.
+- **No project generator** (XcodeGen, Tuist): Xcode's synchronized folders pick up new files on disk, so the project file rarely changes. Build settings live in `Config/*.xcconfig`.
+- **Debug talks to local Supabase, Release to the hosted project.** Both keys are publishable (RLS protects data); an optional git-ignored `Secrets.xcconfig` overrides Debug, e.g. for a real phone.
+- **Swift types are generated** from the local schema (`scripts/dev types`). The script backticks enum cases like `public` and `private`, which the generator leaves as bare Swift keywords.
+- One package: `supabase-swift` (2.x). Tests use Swift Testing.
 
 ### 2026-10-14: Likes and comments, Hevy style
-Owner's call, after follows: include reactions and comments rather than defer them. Migration `20261014180000_likes_comments.sql`.
+Owner's call, after follows: include reactions and comments rather than defer them. Migration `20261014190000_likes_comments.sql`.
 - **Likes:** one heart per person per entry, with a count. **Comments:** plain text, up to 500 characters, oldest first, with no editing (delete and post again) and no replies or mentions.
 - **Who:** anyone signed in who can see the entry: a public, logged entry on a public profile, or on a private profile they're an approved follower of. Private and planned entries take no likes or comments. You can like your own show.
 - **Who sees them:** whoever can see the entry. If it's made private, its likes and comments are hidden from everyone but its owner and come back if it's made public again.

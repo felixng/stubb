@@ -1,0 +1,8 @@
+// Release builds (TestFlight, App Store) talk to the hosted Supabase project.
+// The publishable key is public by design: row-level security protects data.
+
+#include "Shared.xcconfig"
+
+SUPABASE_URL = https:/$()/tvjkuzyrqsikpmryqymy.supabase.co
+SUPABASE_PUBLISHABLE_KEY = sb_publishable_s-BfNjL4ZBaLymbA33uiEA_1Oy7-CJR
+WEB_URL = https:/$()/getstubbed.app
