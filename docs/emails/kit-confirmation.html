@@ -1,0 +1,80 @@
+<!--
+  Waitlist confirmation email, sent by Kit (double opt-in).
+  Where: Kit → the "Stubbed waitlist" form → Incentive → Confirmation email.
+  Subject line: Confirm your spot on the Stubbed waitlist
+  Preview text: One tap and you're on the list.
+
+  Keep {{ confirm_url }}: Kit swaps in the confirm link. Kit adds its own
+  footer (unsubscribe link and postal address), so there is none here.
+  After confirming, Kit should redirect to https://getstubbed.app/confirmed
+  (Incentive → redirect URL).
+
+  If the Kit editor won't take HTML, paste this copy as plain text instead:
+
+    You're nearly on the Stubbed waitlist
+    Tap the button to confirm your email and hold your spot. Stubbed is in
+    private beta, and we'll let you know as soon as a space opens up.
+    [Confirm my spot] → {{ confirm_url }}
+    Didn't sign up? Ignore this email and you won't hear from us again.
+-->
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="color-scheme" content="light" />
+    <meta name="supported-color-schemes" content="light" />
+    <title>Confirm your spot on the Stubbed waitlist</title>
+  </head>
+  <body style="margin:0; padding:0; background-color:#fff9f6;">
+    <!-- Preview text, hidden in the email body. -->
+    <div style="display:none; max-height:0; overflow:hidden; opacity:0;">
+      One tap and you're on the list.
+    </div>
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background-color:#fff9f6;">
+      <tr>
+        <td align="center" style="padding:40px 16px;">
+          <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="max-width:480px;">
+            <!-- Wordmark: lowercase, heavy, tight tracking, in label colour. -->
+            <tr>
+              <td align="center" style="padding-bottom:24px; font-family:-apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; font-size:36px; line-height:40px; font-weight:800; letter-spacing:-1.6px; color:#1f1210;">
+                stubbed
+              </td>
+            </tr>
+            <tr>
+              <td style="background-color:#ffffff; border:1px solid #f9e0d6; border-radius:16px; padding:36px 28px; text-align:center; font-family:-apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;">
+                <h1 style="margin:0 0 12px; font-size:24px; line-height:30px; font-weight:700; color:#1f1210;">
+                  You're nearly on the waitlist
+                </h1>
+                <p style="margin:0 0 28px; font-size:16px; line-height:24px; color:#5e4039;">
+                  Tap the button to confirm your email and hold your spot.
+                  Stubbed is in private beta, and we'll let you know as soon
+                  as a space opens up.
+                </p>
+                <!-- Button: capsule, coral tint with dark text (passes contrast). -->
+                <table role="presentation" cellpadding="0" cellspacing="0" border="0" align="center">
+                  <tr>
+                    <td align="center" bgcolor="#ff7a5c" style="border-radius:999px;">
+                      <a href="{{ confirm_url }}" target="_blank" style="display:inline-block; padding:15px 32px; font-size:17px; line-height:20px; font-weight:600; color:#1f1210; text-decoration:none; border-radius:999px;">
+                        Confirm my spot
+                      </a>
+                    </td>
+                  </tr>
+                </table>
+                <p style="margin:28px 0 0; font-size:13px; line-height:18px; color:#5e4039;">
+                  Didn't sign up? Ignore this email and you won't hear from us
+                  again.
+                </p>
+              </td>
+            </tr>
+            <tr>
+              <td align="center" style="padding-top:20px; font-family:-apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; font-size:13px; line-height:18px; color:#98695b;">
+                Stubbed, the theatre diary. Log, rate and share every show you see.
+              </td>
+            </tr>
+          </table>
+        </td>
+      </tr>
+    </table>
+  </body>
+</html>
