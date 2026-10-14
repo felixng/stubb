@@ -50,11 +50,11 @@ export function Hero() {
         </div>
 
         <div className="flex min-w-0 justify-center lg:flex-[1_1_400px]">
-          <div className="relative flex w-full max-w-[480px] justify-center py-10">
+          <div className="relative flex w-full max-w-[540px] justify-center py-10">
             {/* Decorative halo: a `glow` circle with a soft tint ring. */}
             <div
               aria-hidden="true"
-              className="absolute top-1/2 left-1/2 aspect-square w-[min(100%,460px)] -translate-1/2 rounded-full bg-glow shadow-[0_0_0_28px_color-mix(in_srgb,var(--tint)_16%,transparent)]"
+              className="absolute top-1/2 left-1/2 aspect-square w-[min(100%,520px)] -translate-1/2 rounded-full bg-glow shadow-[0_0_0_28px_color-mix(in_srgb,var(--tint)_16%,transparent)]"
             />
             {/* Mockup of the Diary screen; transparent around the phone. The mask
                 fades out the browser URL bar at the bottom. */}
@@ -62,8 +62,8 @@ export function Hero() {
               src={heroDiary}
               alt="The Stubbed diary on a phone: Hamilton, Miss Saigon and other recent shows with star ratings"
               priority
-              sizes="280px"
-              className="relative h-auto w-[280px] mask-[linear-gradient(to_bottom,white_82%,transparent_86%)]"
+              sizes="350px"
+              className="relative h-auto w-[350px] max-w-full mask-[linear-gradient(to_bottom,white_82%,transparent_86%)]"
             />
           </div>
         </div>
