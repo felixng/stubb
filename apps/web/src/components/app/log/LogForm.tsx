@@ -30,7 +30,7 @@ import { VenueField, type NearbyVenue, type VenueChoice } from "./VenueField";
 export type EntryDraft = {
   id: string;
   show: Show;
-  venue: Venue;
+  venue: Venue | null;
   date: string;
   rating: number | null;
   note: string | null;

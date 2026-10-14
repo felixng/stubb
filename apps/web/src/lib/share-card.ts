@@ -7,8 +7,8 @@
 
 export type CardData = {
   title: string;
-  venue: string; // venue name, for the "Nth visit" stat
-  where: string; // "Belasco Theatre, New York"
+  venue: string | null; // venue name, for the "Nth visit" stat; null if none
+  where: string; // "Belasco Theatre, New York", or "" with no venue
   date: string; // "3 Oct 2026"
   year: number;
   rating: number | null;
@@ -121,7 +121,7 @@ function drawSquare(ctx: Ctx, d: CardData, bg: Background) {
   setFont(ctx, 400, 14, TEXT, -0.17);
   ctx.fillStyle = SECONDARY;
   ctx.textBaseline = "middle";
-  ctx.fillText(fit(ctx, `${d.where} · ${d.date}`, U - pad * 2), pad, metaBottom - 9.5);
+  ctx.fillText(fit(ctx, [d.where, d.date].filter(Boolean).join(" · "), U - pad * 2), pad, metaBottom - 9.5);
 
   drawTitle(ctx, d.title, pad, metaBottom - 19 - 4, U - pad * 2, 36, 40);
 }
@@ -146,7 +146,7 @@ function drawHevy(ctx: Ctx, d: CardData, bg: Background, middle: "venue" | "seen
   // Stats row: two or three equal columns (no rating, no rating column).
   const stats: { label: string; value: string | number; color?: string }[] = [
     { label: `Show of ${d.year}`, value: ordinal(d.showOfYear), color: CORAL },
-    middle === "venue"
+    middle === "venue" && d.venue
       ? { label: d.venue, value: `${ordinal(d.venueVisit)} visit` }
       : { label: "Time seen", value: ordinal(d.timesSeen) },
   ];
@@ -187,7 +187,7 @@ function drawHevy(ctx: Ctx, d: CardData, bg: Background, middle: "venue" | "seen
   const metaBottom = footerMid - 14 - 16;
   setFont(ctx, 400, 15, TEXT, -0.18);
   ctx.fillStyle = SOFT_WHITE;
-  ctx.fillText(fit(ctx, `${d.where} · ${d.date}`, U - x * 2), x, metaBottom - 10);
+  ctx.fillText(fit(ctx, [d.where, d.date].filter(Boolean).join(" · "), U - x * 2), x, metaBottom - 10);
   drawTitle(ctx, d.title, x, metaBottom - 20 - 2, U - x * 2, 34, 38);
 }
 

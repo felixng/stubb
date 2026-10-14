@@ -63,7 +63,7 @@ export async function getShareCard(id: string) {
     ...found,
     handle: (profile?.handle as string | null) ?? null,
     showOfYear: upTo.filter((r) => r.date.startsWith(year)).length,
-    venueVisit: upTo.filter((r) => r.venue_id === entry.venue.id).length,
+    venueVisit: entry.venue ? upTo.filter((r) => r.venue_id === entry.venue!.id).length : 0,
     timesSeen: upTo.filter((r) => r.show_id === entry.show.id).length,
   };
 }
