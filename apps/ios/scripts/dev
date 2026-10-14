@@ -5,9 +5,9 @@
 #   scripts/dev build          Build for the Simulator
 #   scripts/dev test           Run the unit tests on the Simulator
 #   scripts/dev ui [Class[/test]]   Run UI tests (StubbedUITests) as the
-#                              local test user; screenshots go to build/ui/
-#   scripts/dev test-user [--no-handle]   Create or reset the local test
-#                              user (ios-test@stubbed.local / stubbed-ios)
+#                              local test users; screenshots go to build/ui/
+#   scripts/dev test-users     Create or reset the local test users
+#                              (ios-test@ and ios-new@stubbed.local)
 #   scripts/dev run [png]      Build, install, launch, then save a screenshot
 #   scripts/dev screenshot [png]   Screenshot the running Simulator
 #   scripts/dev logs [secs]    Print the app's recent log lines (default 30s)
@@ -76,28 +76,41 @@ screenshot() {
   echo "Screenshot: $out"
 }
 
-# A local-only account for UI tests. Sign-ups are off, so it's created with
-# the service role key from `supabase status`, then given a handle (or none,
-# to test the welcome screen).
+# Local-only accounts for UI tests, created with the service role key from
+# `supabase status` (sign-ups are off). The main one has a handle; the "new"
+# one is deleted and recreated before every UI run, so it always starts at
+# the welcome screen (a handle can't be removed once set).
 TEST_EMAIL="ios-test@stubbed.local"
+NEW_EMAIL="ios-new@stubbed.local"
 TEST_PASSWORD="stubbed-ios"
 TEST_HANDLE="ios_test"
 
-test_user() {
-  local env api key id
+admin() {
+  local method="$1" path="$2" body="${3:-}"
+  curl -s -X "$method" "$SB_API$path" -H "apikey: $SB_KEY" -H "Authorization: Bearer $SB_KEY" \
+    -H "Content-Type: application/json" ${body:+-d "$body"}
+}
+
+user_id() {
+  admin GET "/auth/v1/admin/users?per_page=1000" \
+    | /usr/bin/python3 -c 'import json,sys; print(next((u["id"] for u in json.load(sys.stdin)["users"] if u["email"]==sys.argv[1]), ""))' "$1"
+}
+
+test_users() {
+  local env id
   env="$(cd "$REPO_DIR" && supabase status -o env 2>/dev/null)" || { echo "Local Supabase isn't running: supabase start" >&2; exit 1; }
-  api="$(sed -n 's/^API_URL="\{0,1\}\([^"]*\)"\{0,1\}$/\1/p' <<<"$env")"
-  key="$(sed -n 's/^SERVICE_ROLE_KEY="\{0,1\}\([^"]*\)"\{0,1\}$/\1/p' <<<"$env")"
-  curl -s -o /dev/null -X POST "$api/auth/v1/admin/users" -H "apikey: $key" -H "Authorization: Bearer $key" \
-    -H "Content-Type: application/json" \
-    -d "{\"email\":\"$TEST_EMAIL\",\"password\":\"$TEST_PASSWORD\",\"email_confirm\":true}"
-  id="$(curl -s "$api/auth/v1/admin/users?per_page=1000" -H "apikey: $key" -H "Authorization: Bearer $key" \
-    | /usr/bin/python3 -c 'import json,sys; print(next(u["id"] for u in json.load(sys.stdin)["users"] if u["email"]==sys.argv[1]))' "$TEST_EMAIL")"
-  local handle="\"$TEST_HANDLE\""
-  [ "$1" = "--no-handle" ] && handle="null"
-  curl -s -o /dev/null -X PATCH "$api/rest/v1/profiles?id=eq.$id" -H "apikey: $key" -H "Authorization: Bearer $key" \
-    -H "Content-Type: application/json" -d "{\"handle\":$handle,\"avatar_url\":null}"
-  echo "Test user: $TEST_EMAIL / $TEST_PASSWORD ($id), handle: $handle"
+  SB_API="$(sed -n 's/^API_URL="\{0,1\}\([^"]*\)"\{0,1\}$/\1/p' <<<"$env")"
+  SB_KEY="$(sed -n 's/^SERVICE_ROLE_KEY="\{0,1\}\([^"]*\)"\{0,1\}$/\1/p' <<<"$env")"
+  local user="{\"password\":\"$TEST_PASSWORD\",\"email_confirm\":true"
+
+  admin POST /auth/v1/admin/users "$user,\"email\":\"$TEST_EMAIL\"}" >/dev/null
+  id="$(user_id "$TEST_EMAIL")"
+  admin PATCH "/rest/v1/profiles?id=eq.$id&handle=is.null" "{\"handle\":\"$TEST_HANDLE\",\"display_name\":\"iOS Test\"}" >/dev/null
+
+  id="$(user_id "$NEW_EMAIL")"
+  [ -n "$id" ] && admin DELETE "/auth/v1/admin/users/$id" >/dev/null
+  admin POST /auth/v1/admin/users "$user,\"email\":\"$NEW_EMAIL\"}" >/dev/null
+  echo "Test users: $TEST_EMAIL (@$TEST_HANDLE) and $NEW_EMAIL (no handle), password $TEST_PASSWORD"
 }
 
 cmd="${1:-build}"
@@ -116,14 +129,18 @@ case "$cmd" in
     udid="$(sim_udid)"
     boot "$udid"
     rm -rf "$BUILD_DIR/ui" && mkdir -p "$BUILD_DIR/ui"
+    # A copy started by `run` can't be closed by XCUITest and stalls it.
+    xcrun simctl terminate "$udid" "$BUNDLE_ID" >/dev/null 2>&1 || true
+    test_users
     # TEST_RUNNER_X reaches the UI test process as X.
-    TEST_RUNNER_STUBBED_EMAIL="$TEST_EMAIL" TEST_RUNNER_STUBBED_PASSWORD="$TEST_PASSWORD" \
+    TEST_RUNNER_STUBBED_EMAIL="$TEST_EMAIL" TEST_RUNNER_STUBBED_NEW_EMAIL="$NEW_EMAIL" \
+      TEST_RUNNER_STUBBED_PASSWORD="$TEST_PASSWORD" \
       TEST_RUNNER_STUBBED_SCREENSHOTS="$BUILD_DIR/ui" \
       xcb test "$udid" "-only-testing:StubbedUITests${1:+/$1}"
     ls "$BUILD_DIR/ui"/*.png 2>/dev/null | sed 's/^/Screenshot: /' || true
     ;;
-  test-user)
-    test_user "${1:-}"
+  test-users)
+    test_users
     ;;
   run)
     udid="$(sim_udid)"

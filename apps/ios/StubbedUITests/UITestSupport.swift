@@ -28,8 +28,10 @@ extension XCTestCase {
   }
 
   @MainActor
-  func signIn(_ app: XCUIApplication) throws {
-    let email = try XCTUnwrap(env["STUBBED_EMAIL"], "Run through scripts/dev ui")
+  /// Signs in as the test user with a handle, or (`newUser`) the one that
+  /// hasn't set up a profile yet.
+  func signIn(_ app: XCUIApplication, newUser: Bool = false) throws {
+    let email = try XCTUnwrap(env[newUser ? "STUBBED_NEW_EMAIL" : "STUBBED_EMAIL"], "Run through scripts/dev ui")
     let password = try XCTUnwrap(env["STUBBED_PASSWORD"])
     let field = app.textFields["Email"]
     field.tap()
@@ -38,6 +40,30 @@ extension XCTestCase {
     secure.tap()
     secure.typeText(password)
     app.buttons["Sign in"].firstMatch.tap()
+    dismissSavePassword(app)
+  }
+
+  /// iOS offers to save the password after a sign-in; say "Not Now".
+  @MainActor
+  func dismissSavePassword(_ app: XCUIApplication) {
+    let springboard = XCUIApplication(bundleIdentifier: "com.apple.springboard")
+    for source in [app, springboard] {
+      let notNow = source.buttons["Not Now"]
+      if notNow.waitForExistence(timeout: 3) {
+        notNow.tap()
+        return
+      }
+    }
+  }
+
+  /// Taps a text field once it's on screen. SwiftUI fields with padding
+  /// around them can report "not hittable" while they take taps fine, so
+  /// this taps the element's centre. Buttons use plain `tap()`, which
+  /// scrolls them out from under the keyboard first.
+  @MainActor
+  func tap(_ element: XCUIElement, timeout: TimeInterval = 10) {
+    XCTAssertTrue(element.waitForExistence(timeout: timeout), "\(element) never appeared")
+    element.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5)).tap()
   }
 
   /// Saves the screen as build/ui/<name>.png.

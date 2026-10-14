@@ -10,6 +10,8 @@ Run from `apps/ios`. Every command is headless, so it works from a remote sessio
 |---|---|
 | `scripts/dev build` | Build for the Simulator. Prints errors, our warnings and the verdict; full log in `build/logs/build.log`. |
 | `scripts/dev test` | Run the unit tests (Swift Testing, `StubbedTests/`). |
+| `scripts/dev ui [Class[/test]]` | Run the UI tests (`StubbedUITests/`, XCUITest) against local Supabase. Resets the local test users first; screenshots saved with `snapshot("name")` land in `build/ui/`. Run it in the background: a full run takes a few minutes. |
+| `scripts/dev test-users` | Create or reset the local test users: `ios-test@stubbed.local` (handle `ios_test`) and `ios-new@stubbed.local` (no handle, recreated each run), password `stubbed-ios`. |
 | `scripts/dev run` | Build, install and launch on the Simulator, wait 3s (`WAIT=…`), save `build/screenshot.png`. **Read the PNG to check UI work.** |
 | `scripts/dev screenshot [path]` | Screenshot whatever is on the Simulator now. |
 | `scripts/dev logs [secs]` | The app's recent log lines. Log with `os.Logger(subsystem: "com.felixng.stubbed", …)` so they show up. |
@@ -17,7 +19,7 @@ Run from `apps/ios`. Every command is headless, so it works from a remote sessio
 
 `SIM="iPhone SE (3rd generation)" scripts/dev run` checks a small screen. Before calling UI work done, check the screenshot on both a small and a large phone, and in dark mode (`xcrun simctl ui booted appearance dark`).
 
-You can't tap the Simulator. To screenshot a screen deeper in the app, temporarily make it the root view, or write an XCUITest that navigates there. Don't leave debug shortcuts in.
+You can't tap the Simulator yourself. To check a screen deeper in the app, write a UI test that signs in (`signIn(app)` in `UITestSupport.swift`), navigates there and calls `snapshot(...)`. Don't leave debug shortcuts in the app. UI test notes: text fields use the `tap(_:)` helper (padded SwiftUI fields report "not hittable"); buttons use `.tap()`, which scrolls them into view; swipe up first if the keyboard covers a button; `signIn` dismisses iOS's "Save Password?" prompt.
 
 ## Backend
 
