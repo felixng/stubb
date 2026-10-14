@@ -1,0 +1,112 @@
+#!/usr/bin/env bash
+# Build, test and run the iOS app from the command line, without Xcode's UI,
+# so Claude Code (including a remote session on this Mac) can work on it.
+#
+#   scripts/dev build          Build for the Simulator
+#   scripts/dev test           Run the unit tests on the Simulator
+#   scripts/dev run [png]      Build, install, launch, then save a screenshot
+#   scripts/dev screenshot [png]   Screenshot the running Simulator
+#   scripts/dev logs [secs]    Print the app's recent log lines (default 30s)
+#   scripts/dev types          Regenerate Stubbed/Generated/Database.swift
+#                              from local Supabase
+#
+# SIM picks the Simulator by name (default "iPhone 17 Pro"). Output goes to
+# apps/ios/build/ (git-ignored); full xcodebuild logs are in build/logs/.
+set -euo pipefail
+
+IOS_DIR="$(cd "$(dirname "$0")/.." && pwd)"
+REPO_DIR="$(cd "$IOS_DIR/../.." && pwd)"
+BUILD_DIR="$IOS_DIR/build"
+DERIVED="$BUILD_DIR/DerivedData"
+SIM="${SIM:-iPhone 17 Pro}"
+BUNDLE_ID="com.felixng.stubbed"
+APP="$DERIVED/Build/Products/Debug-iphonesimulator/Stubbed.app"
+
+mkdir -p "$BUILD_DIR/logs"
+
+# UDID of the named Simulator on the newest iOS runtime that has it.
+sim_udid() {
+  xcrun simctl list devices available -j | /usr/bin/python3 -c '
+import json, sys
+name = sys.argv[1]
+runtimes = json.load(sys.stdin)["devices"]
+def version(key):
+    return [int(p) for p in key.rsplit("iOS-", 1)[-1].split("-") if p.isdigit()]
+for key in sorted((k for k in runtimes if ".iOS-" in k), key=version, reverse=True):
+    for device in runtimes[key]:
+        if device["name"] == name:
+            print(device["udid"]); sys.exit(0)
+sys.exit("No available Simulator named " + repr(name) + ". Try: xcrun simctl list devices available")
+' "$SIM"
+}
+
+boot() {
+  local udid="$1"
+  xcrun simctl bootstatus "$udid" -b >/dev/null
+}
+
+xcb() {
+  local action="$1" udid="$2" log="$BUILD_DIR/logs/$1.log"
+  set +e
+  xcodebuild "$action" \
+    -project "$IOS_DIR/Stubbed.xcodeproj" \
+    -scheme Stubbed \
+    -configuration Debug \
+    -destination "platform=iOS Simulator,id=$udid" \
+    -derivedDataPath "$DERIVED" \
+    -skipPackagePluginValidation \
+    >"$log" 2>&1
+  local status=$?
+  set -e
+  # Keep the output short: errors, warnings in our code, test results, verdict.
+  grep -E "error:|warning: .*/apps/ios/Stubbed|Test (Suite|Case|case|run)|✔|✘|\*\* .* (SUCCEEDED|FAILED) \*\*" "$log" \
+    | grep -v "/SourcePackages/" | sort -u | tail -60 || true
+  [ $status -eq 0 ] || echo "xcodebuild $action failed. Full log: $log" >&2
+  return $status
+}
+
+screenshot() {
+  local udid="$1" out="${2:-$BUILD_DIR/screenshot.png}"
+  xcrun simctl io "$udid" screenshot --type=png "$out" >/dev/null 2>&1
+  echo "Screenshot: $out"
+}
+
+cmd="${1:-build}"
+shift || true
+
+case "$cmd" in
+  build)
+    xcb build "$(sim_udid)"
+    ;;
+  test)
+    udid="$(sim_udid)"
+    boot "$udid"
+    xcb test "$udid"
+    ;;
+  run)
+    udid="$(sim_udid)"
+    boot "$udid"
+    xcb build "$udid"
+    xcrun simctl install "$udid" "$APP"
+    xcrun simctl launch --terminate-running-process "$udid" "$BUNDLE_ID" >/dev/null
+    sleep "${WAIT:-3}"
+    screenshot "$udid" "${1:-}"
+    ;;
+  screenshot)
+    screenshot "$(sim_udid)" "${1:-}"
+    ;;
+  logs)
+    xcrun simctl spawn "$(sim_udid)" log show --style compact --last "${1:-30}s" \
+      --predicate "subsystem BEGINSWITH '$BUNDLE_ID' OR process == 'Stubbed'"
+    ;;
+  types)
+    out="$IOS_DIR/Stubbed/Generated/Database.swift"
+    (cd "$REPO_DIR" && supabase gen types --lang swift --local --swift-access-control internal 2>/dev/null) \
+      | sed -E 's/case (public|private|internal|default|in|is|as|do|if|for) = /case `\1` = /' >"$out"
+    echo "Wrote $out ($(wc -l <"$out" | tr -d ' ') lines)"
+    ;;
+  *)
+    sed -n '2,13p' "$0"
+    exit 1
+    ;;
+esac

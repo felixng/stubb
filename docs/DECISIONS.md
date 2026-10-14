@@ -247,7 +247,6 @@ Owner's call: build follows before the iOS app, so iOS copies a complete web MVP
 - All rules are in Postgres (`follows` table, RLS, triggers, `profile_is_visible`, `follow_counts`), so iOS writes the same table directly. `/@handle` now reads the visitor's session to show the button; entries are still read anonymously, except by an approved follower of a private profile.
 - **Not in this slice:** the feed of followed users' entries, finding people (search, suggestions), notifications for new followers or requests, and blocking. Sign-ups are still off, so only accounts made in the dashboard can follow for now.
 
-
 ### 2026-10-14: Home is the feed; the diary moves to the Profile tab
 Owner's call, on top of follows (above). Hevy style.
 - **Home is the feed** (`feed_entries()` in `20261014170000_feed.sql`, so iOS matches): your own logged shows, private ones included and marked "Private", plus the shows RLS lets you see from everyone you follow, newest first, the latest 30. Including your own shows means the feed is never empty for a solo user. Upcoming shows stay out. Your shows open in the app; others' open their public page, or don't link when the profile is private.
@@ -257,3 +256,11 @@ Owner's call, on top of follows (above). Hevy style.
 
 ### 2026-10-14: The feed pages
 Home loads 20 shows, then the next 20 as you scroll near the end, with a "Load more" button for keyboards, screen readers and retries, until "You're all caught up". Pages are cut in Postgres on (date, created_at, id) (`20261014180000_feed_paging.sql`, replacing `feed_entries`), so shows logged in the same instant, as an import saves them, are never skipped or repeated. The first page is rendered on the server; later ones come from a server action (`loadFeedPage`) and stay when you tap away and back. Logging a new show starts them over. Replaces "the latest 30".
+
+### 2026-10-14: iOS project set up
+The Xcode project in `apps/ios` builds, tests and runs from the command line (`apps/ios/scripts/dev`), so Claude Code can work on it from a remote session on the Mac and check UI through Simulator screenshots.
+- **Bundle ID `com.felixng.stubbed`**, team `AAW3XNQ6D3`, automatic signing, iOS 17, iPhone only, portrait.
+- **No project generator** (XcodeGen, Tuist): Xcode's synchronized folders pick up new files on disk, so the project file rarely changes. Build settings live in `Config/*.xcconfig`.
+- **Debug talks to local Supabase, Release to the hosted project.** Both keys are publishable (RLS protects data); an optional git-ignored `Secrets.xcconfig` overrides Debug, e.g. for a real phone.
+- **Swift types are generated** from the local schema (`scripts/dev types`). The script backticks enum cases like `public` and `private`, which the generator leaves as bare Swift keywords.
+- One package: `supabase-swift` (2.x). Tests use Swift Testing.
