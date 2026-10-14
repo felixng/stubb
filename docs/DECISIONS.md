@@ -197,3 +197,11 @@ Owner's call, after discussing derived and hybrid trips. Most visits aren't part
 - **No trip privacy setting:** a trip is public when it holds a public, logged show (and the profile isn't private); its public view lists only those shows. `collections.visibility` is dropped.
 - **Labels are deferred** to a later version. The `label` kind stays in the schema, unused; the app no longer creates or shows labels. No trips or labels existed, so nothing was migrated.
 - **Planning a show = giving it a date after today.** The same log form saves it as `planned`, with no rating and an optional venue, into a collapsible **Upcoming** section at the top of the diary. Editing it after the date saves it as logged on the same row. Imported tickets for future dates are saved as planned too. Planned shows don't count in share-card stats, trip stats or the `entry_logged` event.
+
+### 2026-10-14: Trip recap cards on the trip page (#16)
+A trip's page now opens its share sheet, the same one as an entry (carousel, Stories, More, Download, Copy text), with the four trip designs from the "Share cards" canvas (https://claude.ai/artifact/JBrH9jzd4ke4YtpRLQWhPC): **List** and **Photo grid** (dark, Story 9:16, 1080×1920), **Collage** (light, Story) and **Square** (light, 1080×1080). Story cards keep Instagram's safe areas (132 top, 184 bottom in the 540-wide design units).
+- Drawn on the device with Canvas 2D (`apps/web/src/lib/share-card-trip.ts`), like the entry cards, so the system font is used and the photos never go to a server.
+- Cards cover the shows seen (logged), in date order; planned shows are left out, as in the trip stats. Without any, there's no share sheet. Stats: number of shows, the city (or "N cities"), theatres visited and the average rating.
+- Adapting to the number of shows: the list has photo rows up to 5 shows, compact rows (no thumbnails) up to 7, then 6 rows and "+ N more shows". Grids hold up to 6 tiles and the collage up to 4 (shows with photos first); the last tile shows "+N". A show without a photo is a tile with its title (initials in the list).
+- No "Background" (transparent) toggle for trip cards: each design is built around its ground or photos.
+- Analytics: `card_shared` records the design id (`trip-list`, `trip-grid`, `trip-collage`, `trip-square`).
