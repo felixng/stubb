@@ -13,17 +13,28 @@ Debug builds use local Supabase; Release builds use the hosted project. [`CLAUDE
 
 ## Scope of the first version
 
-Replicates the web owner app (`apps/web/src/app/app`):
+Replicates the web owner app (`apps/web/src/app/app`). The work is tracked in the epic [#80](https://github.com/felixng/stubbed/issues/80), one issue per area:
 
-- Sign in: Apple (native, `signInWithIdToken`), Google (GoogleSignIn SDK, `signInWithIdToken`), email + password. Then the welcome screen (handle, avatar).
-- Diary, with the Upcoming (planned) section.
-- Log and edit an entry: show and venue search, nearby theatres and the show suggestion from a photo, date, half-star rating, note, photo, visibility.
-- Entry screen: share-card carousel, Stories / More / Download / Copy text / Edit, delete.
-- Trips: list, detail, create, edit.
-- Profile settings, and the public profile as a screen, with Follow / Requested / Following, follower and following lists, and follow requests to approve (`follows` table; rules in `supabase/README.md`, "Follows").
-- Like and comment on public entries, with the comment thread on an entry screen (`entry_likes`, `entry_comments`, `entry_reactions`; rules in `supabase/README.md`, "Likes and comments").
+| Area | Issue |
+|---|---|
+| App shell: Home · Log · Profile tabs, design tokens, shared views | #63 |
+| Sign in: Apple (native, `signInWithIdToken`), Google (GoogleSignIn SDK, `signInWithIdToken`), email + password | #64 |
+| Welcome screen: handle, name, bio, link, avatar (and the Google avatar copy) | #65 |
+| Log and edit an entry: show and venue search, date, half-star rating, note, trips, photo, visibility, planned entries | #66 |
+| Log from a photo: EXIF date, nearby theatres, show suggestion (`/api/photo/*`) | #67 |
+| Profile tab: header and counts, Diary (with Upcoming) / Trips, the entry screen, delete | #68 |
+| Entry share cards: carousel, Stories / More / Download / Copy text / Copy link | #69 |
+| Trips and labels: list, detail, create, edit, add and remove entries, delete | #70 |
+| Trip recap share cards | #71 |
+| Home feed: your shows and those of people you follow (`feed_entries`), paged | #72 |
+| Find people (`search_profiles`), public profile with its calendar, public entry and trip screens | #73 |
+| Follow / Requested / Following, follower and following lists, follow requests (rules in `supabase/README.md`, "Follows") | #74 |
+| Likes and comments (`entry_likes`, `entry_comments`, `entry_reactions`; rules in `supabase/README.md`, "Likes and comments") | #75 |
+| Edit profile, private profile, sign out, delete account (`delete_my_account`) | #76 |
+| Universal links for `/e/:id`, `/t/:id` and `/@handle` | #77 |
+| TestFlight build | #79 |
 
-Left out: import (an iOS-focused import comes later), admin pages, landing / waitlist / FAQ / legal pages (link to the web).
+Left out: admin pages, and the landing / waitlist / FAQ / legal pages (the app links to the web). Import comes later, once the iOS approach is decided (#78).
 
 ## Notes for building it
 
