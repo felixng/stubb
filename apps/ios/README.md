@@ -18,7 +18,7 @@ Replicates the web owner app (`apps/web/src/app/app`). The work is tracked in th
 | Area | Issue |
 |---|---|
 | App shell: Home · Log · Profile tabs, design tokens, shared views | #63 |
-| Sign in: Apple (native, `signInWithIdToken`), Google (GoogleSignIn SDK, `signInWithIdToken`), email + password | #64 |
+| Sign in: Apple (native, `signInWithIdToken`), Google (Supabase OAuth in a secure browser sheet, back via `stubbed://auth-callback`), email + password | #64 |
 | Welcome screen: handle, name, bio, link, avatar (and the Google avatar copy) | #65 |
 | Log and edit an entry: show and venue search, date, half-star rating, note, trips, photo, visibility, planned entries | #66 |
 | Log from a photo: EXIF date, nearby theatres, show suggestion (`/api/photo/*`) | #67 |
@@ -44,7 +44,7 @@ Left out: admin pages, and the landing / waitlist / FAQ / legal pages (the app l
 - **Share cards are drawn natively** (SwiftUI `ImageRenderer`), matching the web designs in `apps/web/src/lib/share-card.ts` (1080×1080, three designs, transparent-background option). Their numbers come from `rpc("entry_card_stats", { entry_id })`.
 - **Server routes** on the web app (`/api/photo/nearby`, `/api/photo/identify`): send the session's access token as `Authorization: Bearer <token>`.
 - **Photos**: resize to 1600px and re-encode as JPEG on the device before upload, which drops EXIF/GPS (`apps/web/src/lib/photo.ts` has the sizes).
-- **Google avatar**: the web copies the Google profile photo into the `avatars` bucket on first sign-in (no handle and no avatar yet). Native sign-in skips that callback, so do it on the device: take the profile image URL from GoogleSignIn, re-encode to 512px JPEG, upload, set `profiles.avatar_url`.
+- **Google avatar**: the web copies the Google profile photo into the `avatars` bucket on first sign-in (no handle and no avatar yet). The app’s sign-in skips that callback, so do it on the device: take the profile image URL from the user’s Google metadata (`avatar_url` / `picture`), re-encode to 512px JPEG, upload, set `profiles.avatar_url`.
 - **Analytics**: record `entry_logged` and `card_shared` in the `events` table, with the same props as the web (`apps/web/src/lib/analytics.ts`, `docs/ANALYTICS.md`).
 - Sign in with Apple: add the app's bundle ID to Supabase → Auth → Apple → Client IDs. Google: create an iOS OAuth client and add it to the Google provider's authorised client IDs.
 - Build and test on a Mac (Xcode, TestFlight). Avoid macOS GitHub runners on a private repo: they use free minutes at 10×.

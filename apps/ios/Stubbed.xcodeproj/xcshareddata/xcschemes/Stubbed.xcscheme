@@ -39,6 +39,17 @@
                ReferencedContainer = "container:Stubbed.xcodeproj">
             </BuildableReference>
          </TestableReference>
+         <TestableReference
+            skipped = "NO"
+            parallelizable = "NO">
+            <BuildableReference
+               BuildableIdentifier = "primary"
+               BlueprintIdentifier = "A10000000000000000000203"
+               BuildableName = "StubbedUITests.xctest"
+               BlueprintName = "StubbedUITests"
+               ReferencedContainer = "container:Stubbed.xcodeproj">
+            </BuildableReference>
+         </TestableReference>
       </Testables>
    </TestAction>
    <LaunchAction

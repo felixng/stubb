@@ -9,9 +9,13 @@ struct StubbedApp: App {
     UINavigationBar.appearance().titleTextAttributes = [.foregroundColor: label]
   }
 
+  @State private var session = AppSession()
+
   var body: some Scene {
     WindowGroup {
-      RootView()
+      SessionGate()
+        .environment(session)
+        .task { await session.observe() }
         .tint(Palette.tintText)
         // Always light for now, like the web (owner's call). The palette
         // already has dark values for when that changes.

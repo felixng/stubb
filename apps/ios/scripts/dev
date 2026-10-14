@@ -4,6 +4,10 @@
 #
 #   scripts/dev build          Build for the Simulator
 #   scripts/dev test           Run the unit tests on the Simulator
+#   scripts/dev ui [Class[/test]]   Run UI tests (StubbedUITests) as the
+#                              local test user; screenshots go to build/ui/
+#   scripts/dev test-user [--no-handle]   Create or reset the local test
+#                              user (ios-test@stubbed.local / stubbed-ios)
 #   scripts/dev run [png]      Build, install, launch, then save a screenshot
 #   scripts/dev screenshot [png]   Screenshot the running Simulator
 #   scripts/dev logs [secs]    Print the app's recent log lines (default 30s)
@@ -47,8 +51,9 @@ boot() {
 
 xcb() {
   local action="$1" udid="$2" log="$BUILD_DIR/logs/$1.log"
+  shift 2
   set +e
-  xcodebuild "$action" \
+  xcodebuild "$action" "$@" \
     -project "$IOS_DIR/Stubbed.xcodeproj" \
     -scheme Stubbed \
     -configuration Debug \
@@ -71,6 +76,30 @@ screenshot() {
   echo "Screenshot: $out"
 }
 
+# A local-only account for UI tests. Sign-ups are off, so it's created with
+# the service role key from `supabase status`, then given a handle (or none,
+# to test the welcome screen).
+TEST_EMAIL="ios-test@stubbed.local"
+TEST_PASSWORD="stubbed-ios"
+TEST_HANDLE="ios_test"
+
+test_user() {
+  local env api key id
+  env="$(cd "$REPO_DIR" && supabase status -o env 2>/dev/null)" || { echo "Local Supabase isn't running: supabase start" >&2; exit 1; }
+  api="$(sed -n 's/^API_URL="\{0,1\}\([^"]*\)"\{0,1\}$/\1/p' <<<"$env")"
+  key="$(sed -n 's/^SERVICE_ROLE_KEY="\{0,1\}\([^"]*\)"\{0,1\}$/\1/p' <<<"$env")"
+  curl -s -o /dev/null -X POST "$api/auth/v1/admin/users" -H "apikey: $key" -H "Authorization: Bearer $key" \
+    -H "Content-Type: application/json" \
+    -d "{\"email\":\"$TEST_EMAIL\",\"password\":\"$TEST_PASSWORD\",\"email_confirm\":true}"
+  id="$(curl -s "$api/auth/v1/admin/users?per_page=1000" -H "apikey: $key" -H "Authorization: Bearer $key" \
+    | /usr/bin/python3 -c 'import json,sys; print(next(u["id"] for u in json.load(sys.stdin)["users"] if u["email"]==sys.argv[1]))' "$TEST_EMAIL")"
+  local handle="\"$TEST_HANDLE\""
+  [ "$1" = "--no-handle" ] && handle="null"
+  curl -s -o /dev/null -X PATCH "$api/rest/v1/profiles?id=eq.$id" -H "apikey: $key" -H "Authorization: Bearer $key" \
+    -H "Content-Type: application/json" -d "{\"handle\":$handle,\"avatar_url\":null}"
+  echo "Test user: $TEST_EMAIL / $TEST_PASSWORD ($id), handle: $handle"
+}
+
 cmd="${1:-build}"
 shift || true
 
@@ -81,7 +110,20 @@ case "$cmd" in
   test)
     udid="$(sim_udid)"
     boot "$udid"
-    xcb test "$udid"
+    xcb test "$udid" -only-testing:StubbedTests
+    ;;
+  ui)
+    udid="$(sim_udid)"
+    boot "$udid"
+    rm -rf "$BUILD_DIR/ui" && mkdir -p "$BUILD_DIR/ui"
+    # TEST_RUNNER_X reaches the UI test process as X.
+    TEST_RUNNER_STUBBED_EMAIL="$TEST_EMAIL" TEST_RUNNER_STUBBED_PASSWORD="$TEST_PASSWORD" \
+      TEST_RUNNER_STUBBED_SCREENSHOTS="$BUILD_DIR/ui" \
+      xcb test "$udid" "-only-testing:StubbedUITests${1:+/$1}"
+    ls "$BUILD_DIR/ui"/*.png 2>/dev/null | sed 's/^/Screenshot: /' || true
+    ;;
+  test-user)
+    test_user "${1:-}"
     ;;
   run)
     udid="$(sim_udid)"

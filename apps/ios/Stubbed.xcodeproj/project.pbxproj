@@ -18,11 +18,19 @@
 			remoteGlobalIDString = A10000000000000000000201;
 			remoteInfo = Stubbed;
 		};
+		A10000000000000000000602 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = A10000000000000000000001 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = A10000000000000000000201;
+			remoteInfo = Stubbed;
+		};
 /* End PBXContainerItemProxy section */
 
 /* Begin PBXFileReference section */
 		A10000000000000000000101 /* Stubbed.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Stubbed.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		A10000000000000000000102 /* StubbedTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = StubbedTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		A10000000000000000000103 /* StubbedUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = StubbedUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		A10000000000000000000111 /* Shared.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = Shared.xcconfig; sourceTree = "<group>"; };
 		A10000000000000000000112 /* Debug.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = Debug.xcconfig; sourceTree = "<group>"; };
 		A10000000000000000000113 /* Release.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = Release.xcconfig; sourceTree = "<group>"; };
@@ -38,6 +46,11 @@
 		A10000000000000000000022 /* StubbedTests */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
 			path = StubbedTests;
+			sourceTree = "<group>";
+		};
+		A10000000000000000000023 /* StubbedUITests */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			path = StubbedUITests;
 			sourceTree = "<group>";
 		};
 /* End PBXFileSystemSynchronizedRootGroup section */
@@ -58,6 +71,13 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		A10000000000000000000412 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
@@ -66,6 +86,7 @@
 			children = (
 				A10000000000000000000021 /* Stubbed */,
 				A10000000000000000000022 /* StubbedTests */,
+				A10000000000000000000023 /* StubbedUITests */,
 				A10000000000000000000013 /* Config */,
 				A10000000000000000000012 /* Products */,
 			);
@@ -76,6 +97,7 @@
 			children = (
 				A10000000000000000000101 /* Stubbed.app */,
 				A10000000000000000000102 /* StubbedTests.xctest */,
+				A10000000000000000000103 /* StubbedUITests.xctest */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -138,6 +160,27 @@
 			productReference = A10000000000000000000102 /* StubbedTests.xctest */;
 			productType = "com.apple.product-type.bundle.unit-test";
 		};
+		A10000000000000000000203 /* StubbedUITests */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = A10000000000000000000741 /* Build configuration list for PBXNativeTarget "StubbedUITests" */;
+			buildPhases = (
+				A10000000000000000000423 /* Sources */,
+				A10000000000000000000412 /* Frameworks */,
+				A10000000000000000000433 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				A10000000000000000000612 /* PBXTargetDependency */,
+			);
+			fileSystemSynchronizedGroups = (
+				A10000000000000000000023 /* StubbedUITests */,
+			);
+			name = StubbedUITests;
+			productName = StubbedUITests;
+			productReference = A10000000000000000000103 /* StubbedUITests.xctest */;
+			productType = "com.apple.product-type.bundle.ui-testing";
+		};
 /* End PBXNativeTarget section */
 
 /* Begin PBXProject section */
@@ -152,6 +195,10 @@
 						CreatedOnToolsVersion = 27.0;
 					};
 					A10000000000000000000202 = {
+						CreatedOnToolsVersion = 27.0;
+						TestTargetID = A10000000000000000000201;
+					};
+					A10000000000000000000203 = {
 						CreatedOnToolsVersion = 27.0;
 						TestTargetID = A10000000000000000000201;
 					};
@@ -176,6 +223,7 @@
 			targets = (
 				A10000000000000000000201 /* Stubbed */,
 				A10000000000000000000202 /* StubbedTests */,
+				A10000000000000000000203 /* StubbedUITests */,
 			);
 		};
 /* End PBXProject section */
@@ -189,6 +237,13 @@
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 		A10000000000000000000432 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		A10000000000000000000433 /* Resources */ = {
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
@@ -212,6 +267,13 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		A10000000000000000000423 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 /* End PBXSourcesBuildPhase section */
 
 /* Begin PBXTargetDependency section */
@@ -219,6 +281,11 @@
 			isa = PBXTargetDependency;
 			target = A10000000000000000000201 /* Stubbed */;
 			targetProxy = A10000000000000000000601 /* PBXContainerItemProxy */;
+		};
+		A10000000000000000000612 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = A10000000000000000000201 /* Stubbed */;
+			targetProxy = A10000000000000000000602 /* PBXContainerItemProxy */;
 		};
 /* End PBXTargetDependency section */
 
@@ -324,6 +391,36 @@
 			};
 			name = Release;
 		};
+		A10000000000000000000831 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = AAW3XNQ6D3;
+				GENERATE_INFOPLIST_FILE = YES;
+				MARKETING_VERSION = 0.1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.felixng.stubbed.uitests;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				TARGETED_DEVICE_FAMILY = 1;
+				TEST_TARGET_NAME = Stubbed;
+			};
+			name = Debug;
+		};
+		A10000000000000000000832 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = AAW3XNQ6D3;
+				GENERATE_INFOPLIST_FILE = YES;
+				MARKETING_VERSION = 0.1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.felixng.stubbed.uitests;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				TARGETED_DEVICE_FAMILY = 1;
+				TEST_TARGET_NAME = Stubbed;
+			};
+			name = Release;
+		};
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
@@ -350,6 +447,15 @@
 			buildConfigurations = (
 				A10000000000000000000821 /* Debug */,
 				A10000000000000000000822 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		A10000000000000000000741 /* Build configuration list for PBXNativeTarget "StubbedUITests" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				A10000000000000000000831 /* Debug */,
+				A10000000000000000000832 /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;

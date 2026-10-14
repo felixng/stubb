@@ -14,10 +14,21 @@ struct HomeView: View {
 }
 
 struct ProfileView: View {
+  @Environment(AppSession.self) private var session
+
   var body: some View {
     Screen(title: "Profile") {
       EmptyState(title: "No shows yet") {
         Text("Log your first one.")
+      }
+    }
+    .toolbar {
+      ToolbarItem(placement: .primaryAction) {
+        Menu {
+          Button("Sign out", role: .destructive) { Task { await session.signOut() } }
+        } label: {
+          Label("Account", systemImage: "ellipsis.circle")
+        }
       }
     }
   }

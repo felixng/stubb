@@ -13,6 +13,7 @@ TARGETED_DEVICE_FAMILY = 1
 IPHONEOS_DEPLOYMENT_TARGET = 17.0
 
 INFOPLIST_FILE = Config/Info.plist
+CODE_SIGN_ENTITLEMENTS = Config/Stubbed.entitlements
 GENERATE_INFOPLIST_FILE = YES
 INFOPLIST_KEY_CFBundleDisplayName = Stubbed
 INFOPLIST_KEY_LSApplicationCategoryType = public.app-category.lifestyle

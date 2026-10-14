@@ -9,6 +9,18 @@
 	<string>$(SUPABASE_PUBLISHABLE_KEY)</string>
 	<key>WebURL</key>
 	<string>$(WEB_URL)</string>
+	<key>CFBundleURLTypes</key>
+	<array>
+		<dict>
+			<!-- stubbed://auth-callback: Google sign-in returns here. -->
+			<key>CFBundleURLName</key>
+			<string>com.felixng.stubbed</string>
+			<key>CFBundleURLSchemes</key>
+			<array>
+				<string>stubbed</string>
+			</array>
+		</dict>
+	</array>
 	<key>NSAppTransportSecurity</key>
 	<dict>
 		<!-- Lets Debug builds reach local Supabase over http on 127.0.0.1. -->
