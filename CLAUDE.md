@@ -165,6 +165,7 @@ If logging and sharing are both very low after a genuine push to theatre-heavy u
 
 - **Product name: Stubbed.** Use it in UI copy, the landing page and share-card wordmarks.
 - **Current focus: the "NYC week" epic** (label `nyc-week`): public landing page + waitlist, and an owner-only app for logging, importing (email/photo), trips/labels and share cards. It deliberately pulls a few Phase 1–2 items forward in a minimal, owner-only form. Outside that epic, build Phase 0 then Phase 1 only unless told otherwise.
+- **Pages keep their state when you leave them.** The web app runs Next with `cacheComponents`, so a page you navigate away from is hidden, not unmounted: `useState` values survive and come back on return, while effects clean up and re-run. For every stateful client component, decide what the page should look like when someone returns after finishing the task (saved, created, added, deleted) and make that happen with `useFreshOnReturn` (`apps/web/src/lib/use-fresh-on-return.ts`). Keep unfinished drafts and selections for a stray tab tap. Never free something state still points at (e.g. `URL.revokeObjectURL` for a preview) in an effect cleanup, because that also runs when the page is hidden. Free it when it's replaced, removed or reset.
 - Prefer small, reviewable commits and short summaries of what changed.
 - When a requirement is ambiguous or a [Decision needed] appears, ask rather than guess.
 - Don't add dependencies, paid services or monetisation features without checking with the owner.

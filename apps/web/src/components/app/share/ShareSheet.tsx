@@ -74,6 +74,11 @@ export function ShareSheet({ subject, slug, editHref }: { subject: ShareSubject;
     return () => {
       cancelled = true;
       urls.forEach((u) => URL.revokeObjectURL(u));
+      // This also runs when the page is hidden (cacheComponents); the cards
+      // are drawn again when it's shown, so don't keep the freed ones.
+      setCards(null);
+      setFailed(false);
+      setNotice(null);
     };
   }, [subject, slug]);
 

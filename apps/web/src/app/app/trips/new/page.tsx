@@ -19,8 +19,11 @@ async function Form({ searchParams }: { searchParams: PageProps<"/app/trips/new"
   const from = one(query.from);
   const to = one(query.to);
   const entryIds = (one(query.entries) ?? "").split(",").filter((id) => ID.test(id));
+  // A new set of picks from the diary starts a fresh form, even if this page
+  // was kept alive from an earlier visit.
   return (
     <TripForm
+      key={[from, to, entryIds.join(",")].join("|")}
       prefill={{
         start: from && DAY.test(from) ? from : undefined,
         end: to && DAY.test(to) ? to : undefined,

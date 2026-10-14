@@ -23,6 +23,7 @@ import type { EmailExtraction } from "@/lib/import/extract-email";
 import { lookupNearby, preparePhoto, requestIdentify, type PreparedPhoto } from "@/lib/import/photo-pipeline";
 import { resolveShow, resolveVenue, runPool, saveDraft, SaveError } from "@/lib/import/resolve";
 import { createClient } from "@/lib/supabase/client";
+import { useFreshOnReturn } from "@/lib/use-fresh-on-return";
 import { DraftCard, type Draft } from "./DraftCard";
 import { CompareGrid } from "./CompareGrid";
 import { COMPARE_ALL, DEFAULT_CHAIN, ModelPicker, type ProvidersInfo } from "./ModelPicker";
@@ -106,6 +107,7 @@ export function ImportTool({ admin = false }: { admin?: boolean }) {
   const [existing, setExisting] = useState<{ id: string; date: string; show_id: string }[]>([]);
   const [visibility, setVisibility] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
+  const imported = useFreshOnReturn(reset);
 
   // Unique refs across several drops in one session.
   const seq = useRef(0);
@@ -143,7 +145,9 @@ export function ImportTool({ admin = false }: { admin?: boolean }) {
     })();
   }, []);
 
-  useEffect(() => () => urls.current.forEach((u) => URL.revokeObjectURL(u)), []);
+  // Preview URLs are freed by reset(), not in an effect cleanup: that also runs
+  // when the page is hidden, and the kept drafts would come back with broken
+  // previews. The browser frees any left when the tab closes.
 
   useEffect(() => {
     if (!admin) return;
@@ -508,6 +512,8 @@ export function ImportTool({ admin = false }: { admin?: boolean }) {
       }
     }
     setSaving(false);
+    // All saved: the import is done, so it starts over the next time it's shown.
+    if (saved === toSave.length && !busy) imported();
     setNotice(
       `Saved ${saved} of ${toSave.length}.${photoFailures ? ` ${photoFailures} photo${photoFailures === 1 ? "" : "s"} didn’t upload; add them from the entry.` : ""}`,
     );

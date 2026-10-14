@@ -6,6 +6,7 @@ import { useId, useState } from "react";
 import { Button } from "@/components/ui/Button";
 import { TRIP_SELECT, type Collection } from "@/lib/entries";
 import { createClient } from "@/lib/supabase/client";
+import { useFreshOnReturn } from "@/lib/use-fresh-on-return";
 import { DateField } from "./DateField";
 import { fieldClass } from "./log/Typeahead";
 
@@ -14,13 +15,20 @@ const label = "text-subheadline font-medium text-label";
 // Create or edit a trip: a name and its dates. A trip has no privacy setting:
 // it's public when it holds a public show. A new trip can start with shows
 // already in it (picked in the diary), with the dates prefilled to fit them.
-export function TripForm({
-  initial,
-  prefill,
-}: {
+// Once a new trip is created, the form starts over the next time it's shown
+// (see useFreshOnReturn) instead of coming back filled in and still saving.
+type Props = {
   initial?: Collection;
   prefill?: { start?: string; end?: string; entryIds?: string[] };
-}) {
+};
+
+export function TripForm(props: Props) {
+  const [round, setRound] = useState(0);
+  const created = useFreshOnReturn(() => setRound((r) => r + 1));
+  return <Fields key={round} {...props} onCreated={created} />;
+}
+
+function Fields({ initial, prefill, onCreated }: Props & { onCreated: () => void }) {
   const id = useId();
   const router = useRouter();
   const [name, setName] = useState(initial?.name ?? "");
@@ -51,6 +59,7 @@ export function TripForm({
           : "Couldn’t save. Try again.",
       );
     }
+    if (!initial) onCreated();
     if (!initial && entryIds.length) {
       const { error: link } = await supabase
         .from("entry_collections")
