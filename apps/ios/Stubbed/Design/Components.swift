@@ -199,13 +199,15 @@ struct PrimaryButtonStyle: ButtonStyle {
 /// The secondary button: `fill` capsule, like "Edit profile".
 struct PillButtonStyle: ButtonStyle {
   var tinted = false
+  /// Fills the width it's given, for side-by-side pairs.
+  var stretch = false
 
   func makeBody(configuration: Configuration) -> some View {
     configuration.label
       .font(.system(size: 15, weight: .semibold))
       .foregroundStyle(tinted ? Palette.tintText : Palette.label)
       .padding(.horizontal, Space.l)
-      .frame(minHeight: Space.touch)
+      .frame(maxWidth: stretch ? .infinity : nil, minHeight: Space.touch)
       .background(configuration.isPressed || tinted ? Palette.tintFill : Palette.fill, in: .capsule)
   }
 }

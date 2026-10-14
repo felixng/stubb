@@ -1,6 +1,7 @@
 import SwiftUI
 
-// The three tab screens, filled in by later issues: Home (#72) and Profile (#68).
+// Screens still to build: Home (#72), Edit profile (#76) and public
+// profiles (#73).
 
 struct HomeView: View {
   var body: some View {
@@ -12,23 +13,15 @@ struct HomeView: View {
   }
 }
 
-struct ProfileView: View {
-  @Environment(AppSession.self) private var session
-
+struct SettingsView: View {
   var body: some View {
-    Screen(title: "Profile") {
-      EmptyState(title: "No shows yet") {
-        Text("Log your first one.")
-      }
-    }
-    .toolbar {
-      ToolbarItem(placement: .primaryAction) {
-        Menu {
-          Button("Sign out", role: .destructive) { Task { await session.signOut() } }
-        } label: {
-          Label("Account", systemImage: "ellipsis.circle")
-        }
-      }
-    }
+    Screen(title: "Edit profile") { EmptyState(title: "Coming soon") { Text("Editing your profile arrives in #76.") } }
+  }
+}
+
+struct PublicProfileView: View {
+  let handle: String
+  var body: some View {
+    Screen(title: "@\(handle)") { EmptyState(title: "Coming soon") { Text("Public profiles arrive in #73.") } }
   }
 }

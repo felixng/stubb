@@ -126,6 +126,8 @@ test_users() {
   id="$(user_id "$NEW_EMAIL")"
   [ -n "$id" ] && admin DELETE "/auth/v1/admin/users/$id" >/dev/null
   admin POST /auth/v1/admin/users "$user,\"email\":\"$NEW_EMAIL\"}" >/dev/null
+  docker exec -i supabase_db_stubbed psql -q -U postgres -d postgres -v ON_ERROR_STOP=1 <"$IOS_DIR/scripts/test-seed.sql" >/dev/null \
+    || { echo "Seeding the test diary failed" >&2; exit 1; }
   echo "Test users: $TEST_EMAIL (@$TEST_HANDLE) and $NEW_EMAIL (no handle), password $TEST_PASSWORD"
 }
 

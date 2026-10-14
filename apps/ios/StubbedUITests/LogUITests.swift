@@ -49,7 +49,8 @@ final class LogUITests: XCTestCase {
     XCTAssertTrue(app.staticTexts[title].exists)
     snapshot("entry-saved")
     XCTAssertTrue(app.otherElements["Rated 2.5 out of 5"].exists)
-    XCTAssertTrue(app.staticTexts["Musical · \(theatre), London"].exists)
+    // The city depends on what was prefilled from recent venues.
+    XCTAssertTrue(app.staticTexts.matching(NSPredicate(format: "label BEGINSWITH %@", "Musical · \(theatre), ")).firstMatch.exists)
 
     app.buttons["Edit"].firstMatch.tap()
     XCTAssertTrue(app.buttons["Save changes"].waitForExistence(timeout: 10))

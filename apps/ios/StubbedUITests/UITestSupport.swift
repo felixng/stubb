@@ -73,6 +73,24 @@ extension XCTestCase {
     app.buttons.matching(NSPredicate(format: "label BEGINSWITH %@", prefix)).firstMatch
   }
 
+  /// Scrolls until the element can take a tap (it isn't under the tab bar
+  /// or the keyboard), then taps it.
+  @MainActor
+  func scrollAndTap(_ element: XCUIElement, in app: XCUIApplication) {
+    XCTAssertTrue(element.waitForExistence(timeout: 10), "\(element) never appeared")
+    // isHittable doesn't notice the raised Log button, so compare frames.
+    let bar = app.buttons["Log"]
+    func covered() -> Bool {
+      !element.isHittable || (bar.exists && element.frame.maxY > bar.frame.minY - 4)
+    }
+    var tries = 0
+    while covered(), tries < 6 {
+      app.scrollViews.firstMatch.swipeUp(velocity: .slow)
+      tries += 1
+    }
+    element.tap()
+  }
+
   /// Saves the screen as build/ui/<name>.png.
   @MainActor
   func snapshot(_ name: String) {

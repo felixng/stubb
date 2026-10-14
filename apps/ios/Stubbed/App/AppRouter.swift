@@ -14,6 +14,8 @@ final class AppRouter {
   enum Route: Hashable {
     case entry(UUID, notice: Notice? = nil)
     case trip(UUID)
+    case settings
+    case profile(handle: String)
   }
 
   /// The log sheet: a new entry, or editing one.

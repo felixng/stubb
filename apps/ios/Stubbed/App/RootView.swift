@@ -31,6 +31,8 @@ struct RootView: View {
           switch route {
           case .entry(let id, let notice): EntryView(id: id, notice: notice)
           case .trip: Text("Trip")  // #70
+          case .settings: SettingsView()
+          case .profile(let handle): PublicProfileView(handle: handle)
           }
         }
     }
@@ -71,6 +73,9 @@ private struct TabBar: View {
         .ignoresSafeArea(edges: .bottom)
         .overlay(alignment: .top) { Palette.separator.frame(height: 1) }
     }
+    // Reserve the height the Log button rises above the bar, so the last
+    // row of a list can scroll clear of it.
+    .padding(.top, 14)
   }
 
   private func item(_ id: AppRouter.Tab, title: String, symbol: String) -> some View {
