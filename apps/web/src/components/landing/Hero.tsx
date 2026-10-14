@@ -1,3 +1,5 @@
+import Link from "next/link";
+
 import { Container } from "@/components/landing/Container";
 import { PhoneFrame } from "@/components/landing/PhoneFrame";
 import { DiaryScreenMock } from "@/components/landing/DiaryScreenMock";
@@ -33,10 +35,16 @@ export function Hero() {
               </li>
             ))}
           </ul>
-          <div className="mt-2 flex flex-col gap-1">
+          <div id="waitlist" className="mt-2 flex scroll-mt-24 flex-col gap-1">
             <WaitlistForm />
             <p className="text-footnote text-label-secondary">
-              One email, at launch. Unsubscribe any time.
+              One email, at launch. Unsubscribe any time.{" "}
+              <Link
+                href="/privacy"
+                className="underline underline-offset-2 hover:text-label focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus"
+              >
+                Privacy Policy
+              </Link>
             </p>
           </div>
         </div>
@@ -49,7 +57,7 @@ export function Hero() {
               className="absolute top-1/2 left-1/2 aspect-square w-[min(100%,460px)] -translate-1/2 rounded-full bg-glow shadow-[0_0_0_28px_color-mix(in_srgb,var(--tint)_16%,transparent)]"
             />
             <div className="relative h-[460px] w-[310px] overflow-hidden mask-[linear-gradient(to_bottom,white_80%,transparent)]">
-              <PhoneFrame priority>
+              <PhoneFrame priority alt="The Stubbed diary on a phone">
                 <DiaryScreenMock />
               </PhoneFrame>
             </div>

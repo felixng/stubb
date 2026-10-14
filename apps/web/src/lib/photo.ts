@@ -12,12 +12,15 @@ export type PhotoMeta = {
   time: string | null;
   lat: number | null;
   lng: number | null;
+  // How far off the phone says the position may be, in metres
+  // (GPSHPositioningError; iPhones and many Android phones write it).
+  accuracy_m: number | null;
 };
 
 const pad = (n: number) => String(n).padStart(2, "0");
 
 export async function readPhotoMeta(file: Blob): Promise<PhotoMeta> {
-  const meta: PhotoMeta = { date: null, time: null, lat: null, lng: null };
+  const meta: PhotoMeta = { date: null, time: null, lat: null, lng: null, accuracy_m: null };
   try {
     // With the GPS block on, exifr adds decimal `latitude` / `longitude`.
     const out = await exifr.parse(file, { tiff: true, exif: true, gps: true, ifd1: false, interop: false });
@@ -31,6 +34,8 @@ export async function readPhotoMeta(file: Blob): Promise<PhotoMeta> {
     if (Number.isFinite(out?.latitude) && Number.isFinite(out?.longitude)) {
       meta.lat = out.latitude;
       meta.lng = out.longitude;
+      const error = Number(out?.GPSHPositioningError);
+      if (Number.isFinite(error) && error > 0) meta.accuracy_m = error;
     }
   } catch {
     // No EXIF (screenshots, some shared photos) or an unreadable format: the
@@ -42,19 +47,23 @@ export async function readPhotoMeta(file: Blob): Promise<PhotoMeta> {
 // Downscales to `maxEdge` on the long side and re-encodes as JPEG. Drawing to
 // a canvas keeps only pixels, so the result has no metadata at all.
 // createImageBitmap applies the EXIF orientation first, so the picture stays
-// the right way up after the orientation tag is gone.
-export async function reencodeJpeg(file: Blob, maxEdge: number, quality = 0.85): Promise<Blob> {
+// the right way up after the orientation tag is gone. With `square`, crops
+// the centre square first (avatars).
+export async function reencodeJpeg(file: Blob, maxEdge: number, quality = 0.85, square = false): Promise<Blob> {
   const bitmap = await createImageBitmap(file, { imageOrientation: "from-image" });
   try {
-    const scale = Math.min(1, maxEdge / Math.max(bitmap.width, bitmap.height));
-    const width = Math.round(bitmap.width * scale);
-    const height = Math.round(bitmap.height * scale);
+    const side = Math.min(bitmap.width, bitmap.height);
+    const sw = square ? side : bitmap.width;
+    const sh = square ? side : bitmap.height;
+    const scale = Math.min(1, maxEdge / Math.max(sw, sh));
+    const width = Math.round(sw * scale);
+    const height = Math.round(sh * scale);
     const canvas = document.createElement("canvas");
     canvas.width = width;
     canvas.height = height;
     const ctx = canvas.getContext("2d");
     if (!ctx) throw new Error("Canvas is not available");
-    ctx.drawImage(bitmap, 0, 0, width, height);
+    ctx.drawImage(bitmap, (bitmap.width - sw) / 2, (bitmap.height - sh) / 2, sw, sh, 0, 0, width, height);
     return await new Promise<Blob>((resolve, reject) =>
       canvas.toBlob((b) => (b ? resolve(b) : reject(new Error("Could not encode the photo"))), "image/jpeg", quality),
     );
@@ -67,3 +76,5 @@ export async function reencodeJpeg(file: Blob, maxEdge: number, quality = 0.85):
 // smaller to keep the Claude call quick and cheap.
 export const STORED_PHOTO_EDGE = 1600;
 export const IDENTIFY_PHOTO_EDGE = 1024;
+// Avatars show at most 88px; 512 covers 3x screens with room to spare.
+export const AVATAR_EDGE = 512;

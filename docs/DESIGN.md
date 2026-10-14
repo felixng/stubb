@@ -4,7 +4,7 @@ The source of truth is the design system artifact: https://claude.ai/artifact/2r
 
 ## Principles
 
-- **Follows the system appearance.** Light and dark are equals; the web follows `prefers-color-scheme` and never picks for the visitor. **Exception:** the landing page, `/login` and the owner app (`/app`) are always light for now (owner's call). Each sets `data-theme="light"` on its root, which switches the whole document to the light tokens (`globals.css`).
+- **Follows the system appearance.** Light and dark are equals; the web follows `prefers-color-scheme` and never picks for the visitor. **Exception:** the landing page, `/login`, the owner app (`/app`) and public profiles (`/@handle`) are always light for now (owner's call). Each sets `data-theme="light"` on its root, which switches the whole document to the light tokens (`globals.css`).
 - **One tint.** `tint` is coral in both appearances and fills the one primary action. Where the brand colour is read as text (links, ghost and secondary button labels, the selected tab) use `tint-text`: the same coral on dark, a deeper shade on light. Nothing else.
 - **Copy:** terse and confident, sentence case, no emoji, no exclamation marks. Button labels are verbs. Numbers are digits and tabular. Sample handle: `@sillyelphaba`; never a real person's name.
 - **Ratings** always show as the five `RatingStars`, never a bare number.
@@ -33,7 +33,7 @@ Defined in `apps/web/src/app/globals.css`. Names match the iOS semantic colours 
 | `shadow-lg` | `shadow-lg` | Device mockups and sheets |
 | `shadow-btn` | `shadow-btn` | The primary button |
 
-**Type:** the system font: SF Pro on Apple devices, the system sans elsewhere (`font-display`, `font-sans`). No web fonts. The iOS text styles at their default sizes are Tailwind font sizes that carry line height, weight and tracking: `text-large-title` 34, `text-title` 28, `text-title-2` 22 (bold, with `font-display`), and `text-headline` 17/600, `text-body` 17 (default), `text-callout` 16, `text-subheadline` 15, `text-footnote` 13, `text-caption` 12. Never set body text below `footnote`. The landing hero headline (`clamp(44px, 7vw, 76px)`, extra bold) and feature card titles (20px) are marketing sizes outside the iOS styles.
+**Type:** the system font: SF Pro on Apple devices, the system sans elsewhere (`font-display`, `font-sans`). No web fonts. The iOS text styles at their default sizes are Tailwind font sizes that carry line height, weight and tracking: `text-large-title` 34, `text-title` 28, `text-title-2` 22 (bold, with `font-display`), and `text-headline` 17/600, `text-body` 17 (default), `text-callout` 16, `text-subheadline` 15, `text-footnote` 13, `text-caption` 12. Never set body text below `footnote`. Web app page headings (`h1`) use `text-title`, not `text-large-title`, so they don't outweigh the header wordmark; iOS keeps native Large Titles. The landing hero headline (`clamp(44px, 7vw, 76px)`, extra bold) and feature card titles (20px) are marketing sizes outside the iOS styles.
 
 **Spacing:** `space-1…space-7` = 4, 8, 12, 16, 20, 24, 32px = Tailwind `1, 2, 3, 4, 5, 6, 8`. Screen gutter and row padding `4`; sections `5` apart; web page gutters `8` from `sm`. Anything tappable is at least 44px (`min-h-11`).
 

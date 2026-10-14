@@ -3,6 +3,7 @@
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 
+import { oauthProvider } from "@/lib/oauth-provider";
 import { safeNext } from "@/lib/safe-next";
 import { createClient } from "@/lib/supabase/server";
 
@@ -32,24 +33,28 @@ export async function signInWithPassword(
   redirect(safeNext(formData.get("next")));
 }
 
-// Google. Supabase returns the Google consent URL; Google sends the browser
-// back to /auth/callback, which finishes sign-in. With sign-ups off, a Google
-// account only gets in if its email matches an existing user.
-export async function signInWithGoogle(formData: FormData) {
+// Google or Apple. Supabase returns the provider's consent URL; the provider
+// sends the browser back to /auth/callback, which finishes sign-in. With
+// sign-ups off, an account only gets in if its email matches an existing user.
+export async function signInWithProvider(formData: FormData) {
+  const provider = oauthProvider(formData.get("provider"));
+  if (!provider) redirect("/login");
+
   const h = await headers();
   const host = h.get("x-forwarded-host") ?? h.get("host");
   const proto = h.get("x-forwarded-proto") ?? "https";
   const callback = new URL("/auth/callback", `${proto}://${host}`);
   callback.searchParams.set("next", safeNext(formData.get("next")));
+  callback.searchParams.set("provider", provider);
 
   const supabase = await createClient();
   const { data, error } = await supabase.auth.signInWithOAuth({
-    provider: "google",
+    provider,
     options: { redirectTo: callback.toString() },
   });
   if (error || !data.url) {
-    console.error("signInWithOAuth failed", error?.code, error?.message);
-    redirect("/login?error=google");
+    console.error("signInWithOAuth failed", provider, error?.code, error?.message);
+    redirect(`/login?error=${provider}`);
   }
   redirect(data.url);
 }

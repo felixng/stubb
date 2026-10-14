@@ -27,7 +27,7 @@ async function Diary() {
 export default function DiaryPage() {
   return (
     <section className="flex flex-col gap-5">
-      <h1 className="text-large-title font-display text-label">Diary</h1>
+      <h1 className="text-title font-display text-label">Diary</h1>
       <Suspense fallback={<p className="text-subheadline text-label-secondary">Loading…</p>}>
         <Diary />
       </Suspense>

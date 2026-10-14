@@ -13,7 +13,7 @@ const variants = {
   primary: "bg-tint text-on-tint shadow-btn hover:bg-tint-pressed",
   secondary: "bg-tint-fill text-tint-text hover:bg-fill",
   ghost: "bg-transparent text-tint-text hover:bg-tint-fill",
-  // Third-party sign-in (e.g. Google), whose brand rules ask for a neutral button.
+  // Third-party sign-in (Google, Apple), whose brand rules ask for a neutral button.
   neutral:
     "border border-separator bg-surface text-label shadow-sm hover:bg-fill",
 };

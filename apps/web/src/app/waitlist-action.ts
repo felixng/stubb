@@ -1,8 +1,7 @@
 "use server";
 
-import { headers } from "next/headers";
-
 import { kitConfigured, subscribeToKit } from "@/lib/kit";
+import { SITE_URL } from "@/lib/site";
 import { createClient } from "@/lib/supabase/server";
 
 export type WaitlistState =
@@ -34,7 +33,7 @@ export async function joinWaitlist(
 
   if (kitConfigured()) {
     try {
-      await subscribeToKit(email, await referrerUrl(source));
+      await subscribeToKit(email, referrerUrl(source));
     } catch (error) {
       console.error("waitlist subscribe failed", error);
       return {
@@ -60,10 +59,10 @@ export async function joinWaitlist(
 
 // Kit tracks sources through utm_* on the referrer URL. The form sends either a
 // bare utm_source/ref value or the page's document.referrer.
-async function referrerUrl(source: string | null) {
+function referrerUrl(source: string | null) {
   if (!source) return null;
   if (/^https?:\/\//.test(source)) return source;
-  const host = (await headers()).get("host");
-  if (!host) return null;
-  return `https://${host}/?utm_source=${encodeURIComponent(source)}`;
+  const url = new URL(SITE_URL);
+  url.searchParams.set("utm_source", source);
+  return url.href;
 }
