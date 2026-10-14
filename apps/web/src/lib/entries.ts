@@ -38,14 +38,28 @@ export type VenueChoice = Venue | NewVenue;
 // the catalogue.
 export type NearbyVenue = VenueChoice & { distance_m: number };
 
+// A trip: always dated, holding only entries within its dates (enforced in
+// the database). Trips have no visibility of their own: a trip is public when
+// it holds a public, logged entry. The schema's "label" kind is kept for a
+// later version; the app reads and writes trips only.
 export type Collection = {
   id: string;
   name: string;
-  kind: "trip" | "label";
-  start_date: string | null;
-  end_date: string | null;
-  visibility: Visibility;
+  kind: "trip";
+  start_date: string;
+  end_date: string;
 };
+
+export const TRIP_SELECT = "id, name, kind, start_date, end_date";
+
+// A show you're going to (no rating yet) or one you've seen.
+export type EntryStatus = "planned" | "logged";
+
+// A show dated after today is one you're going to; logging it later is just
+// saving it again once the date has passed.
+export function statusFor(date: string, today: string): EntryStatus {
+  return date > today ? "planned" : "logged";
+}
 
 export type EntryRow = {
   id: string;
@@ -54,13 +68,14 @@ export type EntryRow = {
   note: string | null;
   photo_path: string | null;
   visibility: Visibility;
+  status: EntryStatus;
   show: Show;
   venue: Venue | null; // null for a planned show without one yet
   collections: Pick<Collection, "id" | "name" | "kind">[];
 };
 
 export const ENTRY_SELECT =
-  "id, date, rating, note, photo_path, visibility, show:shows!inner(id, title, type), venue:venues(id, name, city, country), collections:entry_collections(collection:collections(id, name, kind))";
+  "id, date, rating, note, photo_path, visibility, status, show:shows!inner(id, title, type), venue:venues(id, name, city, country), collections:entry_collections(collection:collections(id, name, kind))";
 
 type RawEntry = Omit<EntryRow, "collections" | "rating"> & {
   rating: number | string | null;
@@ -143,12 +158,21 @@ export async function ensureVenue(supabase: SupabaseClient, venue: Venue | NewVe
   return data.id;
 }
 
-// The trip covering a date, for pre-selecting it on a new entry. Open-ended
-// trips (no end date) cover everything from their start.
-export function activeTripFor(collections: Collection[], date: string) {
-  return collections.find(
-    (c) => c.kind === "trip" && c.start_date && c.start_date <= date && (!c.end_date || date <= c.end_date),
-  );
+// Whether a trip's dates include a date. A trip only ever holds entries it covers.
+export function tripCovers(trip: Pick<Collection, "start_date" | "end_date">, date: string) {
+  return trip.start_date <= date && date <= trip.end_date;
+}
+
+// The trips covering a date, for offering them on the log form.
+export function tripsCovering(trips: Collection[], date: string) {
+  return trips.filter((t) => tripCovers(t, date));
+}
+
+export function formatTripDates(trip: Pick<Collection, "start_date" | "end_date">) {
+  const { start_date: from, end_date: to } = trip;
+  if (from === to) return formatDate(from);
+  const sameYear = from.slice(0, 4) === to.slice(0, 4);
+  return `${formatDate(from, sameYear ? { day: "numeric", month: "short" } : undefined)} – ${formatDate(to)}`;
 }
 
 export function formatDate(date: string, opts: Intl.DateTimeFormatOptions = { day: "numeric", month: "short", year: "numeric" }) {

@@ -9,7 +9,8 @@ import { createClient } from "@/lib/supabase/client";
 
 type Pickable = { id: string; title: string; venue: string | null; date: string };
 
-// Add several diary entries to a trip at once, or take them out.
+// Add several diary entries to a trip at once, or take them out. Only shows
+// dated within the trip are offered, all ticked to start with.
 export function TripEntries({
   tripId,
   inTrip,
@@ -47,7 +48,14 @@ export function TripEntries({
     return (
       <div className="flex flex-wrap gap-2">
         {others.length > 0 && (
-          <Button variant="secondary" size="sm" onClick={() => setMode("add")}>
+          <Button
+            variant="secondary"
+            size="sm"
+            onClick={() => {
+              setPicked(others.map((e) => e.id));
+              setMode("add");
+            }}
+          >
             Add shows
           </Button>
         )}
@@ -63,7 +71,7 @@ export function TripEntries({
   return (
     <fieldset className="flex flex-col gap-3">
       <legend className="pb-2 text-headline text-label">
-        {mode === "add" ? "Add from your diary" : "Remove from this trip"}
+        {mode === "add" ? "Shows within the trip’s dates" : "Remove from this trip"}
       </legend>
       <ul className="max-h-96 overflow-y-auto rounded-md border border-separator bg-surface shadow-sm">
         {list.map((e) => (

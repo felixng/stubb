@@ -4,8 +4,8 @@ import { Poster } from "@/components/ui/Poster";
 import { RatingStars } from "@/components/ui/RatingStars";
 import { formatDate, type EntryRow } from "@/lib/entries";
 
-// Reverse-chronological list of entries: photo (or initials), title, venue,
-// date, stars and trip chips. Used by the diary and trip pages.
+// A list of entries: photo (or initials), title, venue, date, stars (or
+// "Going" for a planned show) and trip chips. Used by the diary and trip pages.
 export function EntryList({ entries, photos }: { entries: EntryRow[]; photos: Map<string, string> }) {
   return (
     <ul className="overflow-hidden rounded-md border border-separator bg-surface shadow-sm">
@@ -26,7 +26,13 @@ export function EntryList({ entries, photos }: { entries: EntryRow[]; photos: Ma
                 {[e.venue?.name, formatDate(e.date)].filter(Boolean).join(" · ")}
               </p>
               <div className="flex flex-wrap items-center gap-2">
-                {e.rating != null && <RatingStars value={e.rating} size={14} />}
+                {e.status === "planned" ? (
+                  <span className="rounded-pill bg-tint-fill px-2 text-caption leading-5 font-medium text-tint-text">
+                    Going
+                  </span>
+                ) : (
+                  e.rating != null && <RatingStars value={e.rating} size={14} />
+                )}
                 {e.collections.map((c) => (
                   <span key={c.id} className="rounded-pill bg-fill px-2 text-caption leading-5 text-label">
                     {c.name}
