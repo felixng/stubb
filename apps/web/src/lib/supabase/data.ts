@@ -57,31 +57,23 @@ export async function listOwnTrips() {
 
 // One entry plus what its share cards show: its place in the year, the visit
 // number at its venue, how many times the show has been seen, and the handle.
-// Counted over the owner's logged entries up to and including this one (by
-// date, then by when they were logged); planned shows don't count.
+// The counts come from entry_card_stats in Postgres, so iOS shows the same.
 export async function getShareCard(id: string) {
   const found = await getOwnEntry(id);
   if (!found) return null;
   const { supabase, userId } = await ownerContext();
-  const [{ data: rows }, { data: profile }] = await Promise.all([
+  const [{ data: stats }, { data: profile }] = await Promise.all([
     supabase
-      .from("entries")
-      .select("id, date, created_at, show_id, venue_id")
-      .eq("user_id", userId!)
-      .eq("status", "logged"),
+      .rpc("entry_card_stats", { entry_id: id })
+      .maybeSingle<{ show_of_year: number; venue_visit: number; times_seen: number }>(),
     supabase.from("profiles").select("handle").eq("id", userId!).maybeSingle(),
   ]);
-  const { entry } = found;
-  const key = (r: { date: string; created_at: string }) => `${r.date} ${r.created_at}`;
-  const self = rows?.find((r) => r.id === id);
-  const upTo = self ? rows!.filter((r) => key(r) <= key(self)) : [];
-  const year = entry.date.slice(0, 4);
   return {
     ...found,
     handle: (profile?.handle as string | null) ?? null,
-    showOfYear: upTo.filter((r) => r.date.startsWith(year)).length,
-    venueVisit: entry.venue ? upTo.filter((r) => r.venue_id === entry.venue!.id).length : 0,
-    timesSeen: upTo.filter((r) => r.show_id === entry.show.id).length,
+    showOfYear: stats?.show_of_year ?? 0,
+    venueVisit: stats?.venue_visit ?? 0,
+    timesSeen: stats?.times_seen ?? 0,
   };
 }
 
