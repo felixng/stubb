@@ -1,15 +1,19 @@
 import type { Metadata } from "next";
+import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Suspense } from "react";
 
 import { Avatar } from "@/components/profile/Avatar";
+import { FollowButton } from "@/components/profile/FollowButton";
 import { ProfileCalendar } from "@/components/profile/ProfileCalendar";
 import { PublicEntryCard } from "@/components/profile/PublicEntryCard";
 import { getPublicProfile } from "@/lib/profile";
 
 // Public profile, served at /@handle (rewritten here in next.config.ts).
 // Every user has one (the handle is set at /welcome). It shows public entries
-// only, and a private profile shows just its header. Reads go through the publishable key, never the visitor's session.
+// only, and a private profile shows just its header, except to its approved
+// followers. Entries are read through the publishable key, never the
+// visitor's session, except for those followers (lib/profile).
 // Always light, set by the layout (docs/DESIGN.md).
 
 export async function generateMetadata({ params }: PageProps<"/u/[handle]">): Promise<Metadata> {
@@ -18,7 +22,7 @@ export async function generateMetadata({ params }: PageProps<"/u/[handle]">): Pr
   if (!data) return { title: "Not found — Stubbed", robots: { index: false } };
   const { profile, stats } = data;
   const name = profile.display_name ? `${profile.display_name} (@${profile.handle})` : `@${profile.handle}`;
-  const description = stats
+  const description = stats && !profile.is_private
     ? `${count(stats.shows, "show")} at ${count(stats.venues, "theatre")}. ${name}’s theatre diary on Stubbed.`
     : `${name}’s theatre diary on Stubbed is private.`;
   return {
@@ -44,7 +48,7 @@ async function Profile({ params }: PageProps<"/u/[handle]">) {
   const { handle } = await params;
   const data = await getPublicProfile(handle);
   if (!data) notFound();
-  const { profile, stats, entries, photos } = data;
+  const { profile, viewer, follows, stats, entries, photos } = data;
 
   const cover = entries
     .flatMap((e) => (e.photo_path && photos.get(e.photo_path) ? [photos.get(e.photo_path)!] : []))
@@ -65,7 +69,10 @@ async function Profile({ params }: PageProps<"/u/[handle]">) {
           <div aria-hidden="true" className="h-20 bg-tint-fill sm:h-28" />
         )}
         <div className="flex flex-col gap-4 px-4 pb-5 sm:px-6">
-          <Avatar name={name} url={profile.avatar_url} size={88} className="-mt-11 ring-4 ring-surface" />
+          <div className="flex items-end justify-between gap-3">
+            <Avatar name={name} url={profile.avatar_url} size={88} className="-mt-11 ring-4 ring-surface" />
+            <FollowButton profileId={profile.id} handle={profile.handle} isPrivate={profile.is_private} viewer={viewer} />
+          </div>
           <div className="flex flex-col gap-0.5">
             <h1 id="profile-name" className="text-title font-display text-label">
               @{profile.handle}
@@ -87,6 +94,22 @@ async function Profile({ params }: PageProps<"/u/[handle]">) {
               )}
             </div>
           )}
+          <p className="flex gap-4 text-subheadline text-label-secondary">
+            {(
+              [
+                ["followers", follows.followers, follows.followers === 1 ? "follower" : "followers"],
+                ["following", follows.following, "following"],
+              ] as const
+            ).map(([list, value, label]) => (
+              <Link
+                key={list}
+                href={`/@${profile.handle}/${list}`}
+                className="rounded-sm underline-offset-2 hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus"
+              >
+                <span className="font-semibold text-label tabular-nums">{value}</span> {label}
+              </Link>
+            ))}
+          </p>
           {stats && (
             <dl className="flex gap-8">
               {[
@@ -104,11 +127,15 @@ async function Profile({ params }: PageProps<"/u/[handle]">) {
         </div>
       </section>
 
-      {profile.is_private ? (
+      {!stats ? (
         <div className="flex flex-col items-center gap-2 rounded-md border border-separator bg-surface px-6 py-12 text-center shadow-sm">
           <h2 className="text-headline text-label">This profile is private</h2>
           <p className="max-w-[320px] text-subheadline text-label-secondary">
-            @{profile.handle} keeps their shows to themselves.
+            {viewer?.isOwner
+              ? "Only people you approve see your shows. This is what everyone else sees."
+              : viewer?.status === "pending"
+                ? `Your request is with @${profile.handle}. Their shows appear here once they approve it.`
+                : `Follow @${profile.handle} to see their shows. They approve each follower.`}
           </p>
         </div>
       ) : entries.length === 0 ? (

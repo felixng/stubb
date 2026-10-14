@@ -25,7 +25,7 @@ const optional = <span className="font-normal text-label-secondary">(optional)</
 // Photo, handle, name, bio, link and the private switch. The photo saves on
 // its own, as soon as it's picked. Everyone has a handle (set
 // at /welcome), so the public profile (/@handle) always exists; going private
-// hides its shows, trips and stats from everyone else. RLS limits the write
+// hides its shows, trips and stats from everyone but approved followers. RLS limits the write
 // to the signed-in user's own row and enforces the privacy.
 export function ProfileForm({ userId, initial }: { userId: string; initial: OwnProfile }) {
   const id = useId();
@@ -164,7 +164,7 @@ export function ProfileForm({ userId, initial }: { userId: string; initial: OwnP
         <span className="flex flex-col gap-0.5">
           <span className="text-body font-medium text-label">Private profile</span>
           <span id={`${id}-private-hint`} className="text-footnote text-label-secondary">
-            Only you see your shows, trips and stats. Others see your handle, name, bio and link.
+            Only you and followers you approve see your shows, trips and stats. Others see your handle, name, bio and link.
           </span>
         </span>
         <input

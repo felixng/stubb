@@ -13,7 +13,7 @@ Replicates the web owner app (`apps/web/src/app/app`):
 - Log and edit an entry: show and venue search, nearby theatres and the show suggestion from a photo, date, half-star rating, note, photo, visibility.
 - Entry screen: share-card carousel, Stories / More / Download / Copy text / Edit, delete.
 - Trips: list, detail, create, edit.
-- Profile settings, and the public profile as a screen.
+- Profile settings, and the public profile as a screen, with Follow / Requested / Following, follower and following lists, and follow requests to approve (`follows` table; rules in `supabase/README.md`, "Follows").
 
 Left out: import (an iOS-focused import comes later), admin pages, landing / waitlist / FAQ / legal pages (link to the web).
 

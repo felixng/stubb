@@ -7,7 +7,10 @@ const nextConfig: NextConfig = {
   // Public profiles live at /@handle. A folder can't start with "@" (that's a
   // parallel route slot), so the page is app/(public)/u/[handle] behind this
   // rewrite.
-  rewrites: async () => [{ source: "/@:handle", destination: "/u/:handle" }],
+  rewrites: async () => [
+    { source: "/@:handle", destination: "/u/:handle" },
+    { source: "/@:handle/:list(followers|following)", destination: "/u/:handle/:list" },
+  ],
   // Trips moved under Profile (Home · Log · Profile); old links still work.
   redirects: async () => [{ source: "/app/trips", destination: "/app/profile", permanent: false }],
   turbopack: {

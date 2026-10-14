@@ -238,3 +238,12 @@ Owner's go-ahead (#15, #16). `/e/[id]` shows one public show as a post; `/t/[id]
 - Public entry cards now link to their page, their trip chips to the trip page, and the avatar and handle to the profile. On a trip page the cards drop the repeated header and the trip's own chip.
 - Square only: the trip recap stays square like the entry cards (owner's call); the issue's Stories format and carousel aren't planned.
 - Not-found pages answer with status 200 and a noindex tag, as `/@handle` already does: the pages stream, so the status is sent before the read finishes.
+
+### 2026-10-14: Follow and unfollow, pulled forward from Phase 3
+Owner's call: build follows before the iOS app, so iOS copies a complete web MVP. It completes "Private profiles, Hevy style":
+- **Public profile: Follow takes effect at once. Private profile: Follow sends a request** the owner approves or declines under Profile → Follow requests. Approved followers see a private profile's public shows, trips, photos and stats; private entries stay owner-only whoever follows. Making a profile public approves waiting requests; making it private keeps existing followers.
+- **Either side ends a follow:** unfollow, cancel a request, decline, or remove a follower from your followers list. Nobody is notified, and there's no "declined" state, so asking again just works.
+- **Counts are public** on every profile (as on Instagram and Hevy). **Lists** (`/@handle/followers`, `/@handle/following`) are hidden on a private profile from anyone but the owner and approved followers, and a public profile's lists leave out private profiles the viewer can't see.
+- All rules are in Postgres (`follows` table, RLS, triggers, `profile_is_visible`, `follow_counts`), so iOS writes the same table directly. `/@handle` now reads the visitor's session to show the button; entries are still read anonymously, except by an approved follower of a private profile.
+- **Not in this slice:** the feed of followed users' entries, finding people (search, suggestions), notifications for new followers or requests, and blocking. Sign-ups are still off, so only accounts made in the dashboard can follow for now.
+

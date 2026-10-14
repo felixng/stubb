@@ -4,8 +4,10 @@ import { Suspense } from "react";
 
 import { DeleteAccountButton } from "@/components/app/DeleteAccountButton";
 import { EmptyState } from "@/components/app/EmptyState";
+import { FollowRequests } from "@/components/app/FollowRequests";
 import { ProfileForm } from "@/components/app/ProfileForm";
 import { formatTripDates, TRIP_SELECT, type Collection } from "@/lib/entries";
+import { getFollowCounts, listFollowRequests } from "@/lib/follows";
 import { getOwnProfile, ownerContext } from "@/lib/supabase/data";
 
 export const metadata: Metadata = { title: "Profile" };
@@ -58,6 +60,40 @@ async function Trips() {
   );
 }
 
+// Follow requests waiting for approval (private profiles only get them; a
+// profile that goes public approves them all), then links to the owner's
+// followers and following lists, where followers can be removed.
+async function Follows() {
+  const [{ supabase, userId }, profile] = await Promise.all([ownerContext(), getOwnProfile()]);
+  if (!userId || !profile?.handle) return null;
+  const [requests, counts] = await Promise.all([
+    listFollowRequests(supabase, userId),
+    getFollowCounts(supabase, userId),
+  ]);
+  const handle = profile.handle;
+  return (
+    <>
+      {requests.length > 0 && (
+        <section aria-labelledby="requests-heading" className="flex flex-col gap-3">
+          <h2 id="requests-heading" className="text-title-2 font-display text-label">
+            Follow requests
+          </h2>
+          <FollowRequests ownerId={userId} people={requests} />
+        </section>
+      )}
+      <p className="flex gap-4 text-subheadline text-label-secondary">
+        <Link href={`/@${handle}/followers`} className="underline-offset-2 hover:underline">
+          <span className="font-semibold text-label tabular-nums">{counts.followers}</span>{" "}
+          {counts.followers === 1 ? "follower" : "followers"}
+        </Link>
+        <Link href={`/@${handle}/following`} className="underline-offset-2 hover:underline">
+          <span className="font-semibold text-label tabular-nums">{counts.following}</span> following
+        </Link>
+      </p>
+    </>
+  );
+}
+
 async function Form() {
   const [{ userId }, profile] = await Promise.all([ownerContext(), getOwnProfile()]);
   if (!userId) return null;
@@ -75,12 +111,15 @@ async function DeleteAccount() {
   return profile?.handle ? <DeleteAccountButton handle={profile.handle} /> : null;
 }
 
-// Trips, then everything on the public profile (/@handle) and whether it is
+// Follow requests and counts, trips, then everything on the public profile (/@handle) and whether it is
 // private, then account deletion.
 export default function ProfilePage() {
   return (
     <section className="flex flex-col gap-5">
       <h1 className="text-large-title font-display text-label">Profile</h1>
+      <Suspense fallback={null}>
+        <Follows />
+      </Suspense>
       <section id="trips" aria-labelledby="trips-heading" className="flex scroll-mt-20 flex-col gap-3">
         <div className="flex items-baseline justify-between gap-3">
           <h2 id="trips-heading" className="text-title-2 font-display text-label">

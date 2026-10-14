@@ -37,9 +37,10 @@ Check what's applied with `npx supabase migration list`.
 |-------|------|-------|
 | `profiles` | Everyone (anon: handle, display name, avatar, bio, link only) | Own row; created by a trigger on sign-up |
 | `shows`, `venues` | Everyone | Signed-in users add; creators edit their own unverified rows; `verified` is set from the dashboard |
-| `entries` | Everyone if `visibility = 'public'`, `status = 'logged'` (so `planned` ones are owner-only) and the owner's profile isn't private; owner always | Owner only |
-| `collections` (trips) | Everyone if the trip holds a public, logged entry and the owner's profile isn't private (`collection_is_public`); owner always. Trips have no visibility of their own | Owner only |
+| `entries` | Everyone if `visibility = 'public'`, `status = 'logged'` (so `planned` ones are owner-only) and the owner's profile is visible to the caller (not private, or they're an approved follower: `profile_is_visible`); owner always | Owner only |
+| `collections` (trips) | Everyone if the trip holds a public, logged entry and the owner's profile is visible to the caller (`collection_is_public`); owner always. Trips have no visibility of their own | Owner only |
 | `entry_collections` | Everyone if the entry is public and logged; owner always | Owner, linking own entries to own collections |
+| `follows` | Both people in it; anyone else sees accepted follows between two profiles visible to them | Follower inserts as themselves (status set by a trigger); the person followed approves; either deletes |
 
 | Storage `entry-photos` | Owner always; everyone else only while the entry using the file is public | Owner, into `{user_id}/` only. JPEG ≤ 5 MB, re-encoded on the device so it carries no EXIF/GPS |
 | Storage `avatars` | Everyone, by public URL (bucket is public; only the owner can list) | Owner, into `{user_id}/` only. JPEG ≤ 2 MB, cropped square to 512 px and re-encoded on the device (no EXIF/GPS) |
@@ -76,6 +77,12 @@ Locally, use email + password: add a user in Studio (http://127.0.0.1:54323). Go
 ## Public profile stats
 
 `public_profile_stats(profile_id)` returns `shows`, `venues` and `cities` for a profile's **public** entries, whoever calls it (the owner too), so `/@handle` and iOS show the same numbers. Tests: `tests/profile_stats_test.sql`.
+
+## Follows
+
+`follows (follower_id, followee_id, status)`, Hevy style. Insert the row to follow: a trigger sets `status` to `accepted` for a public profile and `pending` for a private one (clients can't set it). The person followed approves by updating `status` to `accepted` (the only change allowed); declining, cancelling, unfollowing and removing a follower all delete the row. Making a profile public approves its pending requests; making it private keeps existing followers.
+
+Approved followers of a private profile see what everyone sees of a public one: its public, logged entries, trips, photos and stats. `profile_is_visible(profile_id)` is the check, used by the entries and trips policies. `follow_counts(profile_id)` returns `followers` and `following` (accepted only) for any profile, private ones too; the lists behind them are hidden on a private profile from anyone but its owner and approved followers. Tests: `tests/follows_test.sql`.
 
 ## Account deletion
 
