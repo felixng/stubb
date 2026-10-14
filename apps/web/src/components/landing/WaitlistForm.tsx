@@ -23,12 +23,12 @@ export function WaitlistForm() {
     return (
       <p
         role="status"
-        className="max-w-[500px] rounded-md border border-separator bg-surface p-4 text-headline text-label shadow-sm"
+        className="mb-3 max-w-[500px] rounded-md border border-separator bg-surface p-4 text-headline text-label shadow-sm"
       >
-        {state.confirm ? "Check your inbox." : "You’re on the list."}
+        {state.confirm ? "Almost there: please confirm your email." : "You’re on the list."}
         <span className="mt-1 block text-subheadline font-normal text-label-secondary">
           {state.confirm
-            ? "Tap the link in the email we just sent to confirm your spot."
+            ? "We’ve sent you a link. Tap it to join the waitlist, and we’ll let you know when a space opens up."
             : "We’ll let you know when spaces open up."}
         </span>
       </p>

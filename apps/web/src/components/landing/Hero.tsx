@@ -38,7 +38,7 @@ export function Hero() {
           <div id="waitlist" className="mt-2 flex scroll-mt-24 flex-col gap-1">
             <WaitlistForm />
             <p className="text-footnote text-label-secondary">
-              One email, at launch. Unsubscribe any time.{" "}
+              One email to confirm, then one at launch. Unsubscribe any time.{" "}
               <Link
                 href="/privacy"
                 className="underline underline-offset-2 hover:text-label focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus"
