@@ -4,8 +4,9 @@
 -- A SQL function so the web and iOS cards show identical numbers (moved from
 -- apps/web/src/lib/supabase/data.ts). Counted over the owner's entries up to
 -- and including this one, by date, then by when they were logged, so an old
--- entry's card shows what was true then. Same rows as the web counted before:
--- every entry, planned ones included.
+-- entry's card shows what was true then. Only shows actually seen count:
+-- planned entries are left out (the entry itself always counts, so its own
+-- card never says "0th").
 --
 -- Only for the caller's own entries: anyone else's entry id returns no row.
 -- Runs as the caller, so RLS still applies on top.
@@ -27,6 +28,7 @@ as $$
   join public.entries e
     on e.user_id = self.user_id
    and (e.date, e.created_at) <= (self.date, self.created_at)
+   and (e.status = 'logged' or e.id = self.id)
   where self.id = entry_id
     and self.user_id = auth.uid()
   group by self.id;

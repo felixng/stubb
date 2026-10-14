@@ -197,5 +197,5 @@ Owner's calls for the first iOS version, which replicates the web owner app:
 
 Backend changes so iOS doesn't reimplement web logic:
 - The AI and nearby-theatre routes accept `Authorization: Bearer <access token>` as well as the web's session cookie. A request with the header is judged on the token alone.
-- Share-card stats (show of the year, visit to the venue, times seen) moved from TypeScript to `entry_card_stats(entry_id)` in Postgres, with the same counting as before (every entry, planned ones included). Owner-only: another user's entry id returns nothing.
+- Share-card stats (show of the year, visit to the venue, times seen) moved from TypeScript to `entry_card_stats(entry_id)` in Postgres, counting shows actually seen: planned entries no longer count (owner's call), except an entry on its own card. Owner-only: another user's entry id returns nothing.
 - The Google profile photo copied on first sign-in happens in the web's `/auth/callback`; native Google sign-in skips it, so the iOS app does the same on the device (see `apps/ios/README.md`).

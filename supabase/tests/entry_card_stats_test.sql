@@ -1,7 +1,7 @@
 -- Share-card stats count the owner's entries up to and including this one.
 -- Run with `supabase test db`.
 begin;
-select plan(7);
+select plan(8);
 
 create function pg_temp.as_user(uid uuid) returns void language sql as $$
   select set_config('role', 'authenticated', true),
@@ -24,14 +24,17 @@ insert into public.venues (id, name, city) values
 
 -- Alice: Hamilton at the Rodgers in 2025, then in 2026 Hamilton twice on the
 -- same day (logged in order), Hadestown at the Rodgers, and Hadestown with no
--- venue. Bob has his own Hamilton at the Rodgers, which never counts for her.
+-- venue. A planned Hamilton at the Rodgers on 2 Oct never counts. Bob has his own Hamilton at the Rodgers, which never counts for her.
 insert into public.entries (id, user_id, show_id, venue_id, date, visibility, created_at) values
   ('e0000000-0000-0000-0000-000000000001', 'aaaaaaaa-0000-0000-0000-000000000000', '5a000000-0000-0000-0000-000000000001', '7e000000-0000-0000-0000-000000000001', '2025-12-30', 'public',  '2026-01-01 10:00+00'),
   ('e0000000-0000-0000-0000-000000000002', 'aaaaaaaa-0000-0000-0000-000000000000', '5a000000-0000-0000-0000-000000000001', '7e000000-0000-0000-0000-000000000001', '2026-10-01', 'private', '2026-10-02 10:00+00'),
   ('e0000000-0000-0000-0000-000000000003', 'aaaaaaaa-0000-0000-0000-000000000000', '5a000000-0000-0000-0000-000000000001', '7e000000-0000-0000-0000-000000000001', '2026-10-01', 'public',  '2026-10-02 11:00+00'),
   ('e0000000-0000-0000-0000-000000000004', 'aaaaaaaa-0000-0000-0000-000000000000', '5a000000-0000-0000-0000-000000000002', '7e000000-0000-0000-0000-000000000001', '2026-10-03', 'public',  '2026-10-04 10:00+00'),
   ('e0000000-0000-0000-0000-000000000005', 'aaaaaaaa-0000-0000-0000-000000000000', '5a000000-0000-0000-0000-000000000002', null,                                   '2026-10-05', 'public',  '2026-10-06 10:00+00'),
+  ('e0000000-0000-0000-0000-000000000007', 'aaaaaaaa-0000-0000-0000-000000000000', '5a000000-0000-0000-0000-000000000001', '7e000000-0000-0000-0000-000000000001', '2026-10-02', 'public',  '2026-09-20 10:00+00'),
   ('e0000000-0000-0000-0000-000000000006', 'bbbbbbbb-0000-0000-0000-000000000000', '5a000000-0000-0000-0000-000000000001', '7e000000-0000-0000-0000-000000000001', '2026-09-01', 'public',  '2026-09-02 10:00+00');
+
+update public.entries set status = 'planned' where id = 'e0000000-0000-0000-0000-000000000007';
 
 -- Tests -----------------------------------------------------------------------
 
@@ -65,6 +68,12 @@ select results_eq(
   $$ select show_of_year, venue_visit, times_seen from public.entry_card_stats('e0000000-0000-0000-0000-000000000005') $$,
   $$ values (4, 0, 2) $$,
   'no venue: venue visit is 0'
+);
+
+select results_eq(
+  $$ select show_of_year, venue_visit, times_seen from public.entry_card_stats('e0000000-0000-0000-0000-000000000007') $$,
+  $$ values (3, 4, 4) $$,
+  'a planned entry''s own card counts itself, but other planned entries never count'
 );
 
 select is_empty(
