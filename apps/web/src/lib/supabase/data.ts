@@ -1,6 +1,8 @@
 import { connection } from "next/server";
 
+import type { CardSocial } from "@/components/profile/PublicEntryCard";
 import { ENTRY_SELECT, signPhotos, toEntryRow, TRIP_SELECT, type Collection, type EntryRow } from "@/lib/entries";
+import { getReactions, NO_REACTIONS } from "@/lib/reactions";
 import { createClient } from "@/lib/supabase/server";
 
 // Server-side reads for the owner app. Always scoped to the signed-in user:
@@ -62,17 +64,22 @@ export async function getShareCard(id: string) {
   const found = await getOwnEntry(id);
   if (!found) return null;
   const { supabase, userId } = await ownerContext();
-  const [{ data: stats }, { data: profile }] = await Promise.all([
+  const [{ data: stats }, { data: profile }, reactions] = await Promise.all([
     supabase
       .rpc("entry_card_stats", { entry_id: id })
       .maybeSingle<{ show_of_year: number; venue_visit: number; times_seen: number }>(),
     supabase.from("profiles").select("handle, is_private").eq("id", userId!).maybeSingle(),
+    getReactions(supabase, [id]),
   ]);
   return {
     ...found,
     handle: (profile?.handle as string | null) ?? null,
     // Whether /e/[id] shows this entry to everyone (see lib/public-pages).
     isPublic: found.entry.visibility === "public" && found.entry.status === "logged" && profile?.is_private === false,
+    // Likes and comments, and whether its page (with the thread) opens for
+    // the owner: approved followers of a private profile see it too.
+    reactions: reactions.get(id) ?? NO_REACTIONS,
+    hasPage: found.entry.visibility === "public" && found.entry.status === "logged",
     showOfYear: stats?.show_of_year ?? 0,
     venueVisit: stats?.venue_visit ?? 0,
     timesSeen: stats?.times_seen ?? 0,
@@ -100,7 +107,8 @@ export async function getOwnProfile() {
 }
 
 export type FeedOwner = { id: string; handle: string | null; display_name: string | null; avatar_url: string | null; is_private: boolean };
-export type FeedItem = { entry: EntryRow; owner: FeedOwner; mine: boolean; photoUrl: string | null };
+// `social` is null for your private shows, which take no likes or comments.
+export type FeedItem = { entry: EntryRow; owner: FeedOwner; mine: boolean; photoUrl: string | null; social: CardSocial | null };
 // Where the next page starts: the last show's date, created_at and id.
 export type FeedCursor = { date: string; created: string; id: string };
 export type FeedPage = { items: FeedItem[]; next: FeedCursor | null };
@@ -132,12 +140,23 @@ export async function readFeedPage(supabase: Client, userId: string, cursor: Fee
     : { data: [] };
   const byId = new Map(((owners ?? []) as FeedOwner[]).map((o) => [o.id, o]));
   const entries = raw.map((r) => toEntryRow(r as never));
-  const photos = await signPhotos(supabase, entries.map((e) => e.photo_path));
+  const [photos, reactions] = await Promise.all([
+    signPhotos(supabase, entries.map((e) => e.photo_path)),
+    getReactions(supabase, entries.flatMap((e) => (e.visibility === "public" ? [e.id] : []))),
+  ]);
   const items = raw.flatMap((r, i) => {
     const owner = byId.get(r.user_id);
     const entry = entries[i];
     return owner?.handle
-      ? [{ entry, owner, mine: r.user_id === userId, photoUrl: entry.photo_path ? (photos.get(entry.photo_path) ?? null) : null }]
+      ? [
+          {
+            entry,
+            owner,
+            mine: r.user_id === userId,
+            photoUrl: entry.photo_path ? (photos.get(entry.photo_path) ?? null) : null,
+            social: entry.visibility === "public" ? { viewerId: userId, reactions: reactions.get(entry.id) ?? NO_REACTIONS } : null,
+          },
+        ]
       : [];
   });
   // The cursor comes from the raw rows, so a show left out above (an owner

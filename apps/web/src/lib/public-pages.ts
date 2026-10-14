@@ -1,14 +1,17 @@
+import type { SupabaseClient } from "@supabase/supabase-js";
 import { connection } from "next/server";
 import { cache } from "react";
 
 import { ENTRY_SELECT, signPhotos, toEntryRow, TRIP_SELECT, type Collection, type EntryRow } from "@/lib/entries";
+import { viewerContext } from "@/lib/follows";
 import { createPublicClient } from "@/lib/supabase/public";
 
 // Reads for the public entry page (/e/[id]) and trip page (/t/[id]), and
 // their link-preview images. Like /@handle, everything goes through the
 // publishable key with no session, so RLS decides: a private entry, a planned
 // one, a trip with no public show, or anything on a private profile simply
-// isn't returned, even to its owner.
+// isn't returned, even to its owner. The entry page alone also tries the
+// viewer's session (getEntryForViewer), for approved followers.
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
@@ -37,7 +40,29 @@ export const getPublicEntry = cache(async (id: string): Promise<PublicEntry | nu
   // Per request, so an entry made private disappears straight away.
   await connection();
   if (!UUID.test(id)) return null;
-  const supabase = createPublicClient();
+  return readEntry(createPublicClient(), id);
+});
+
+export type ViewedEntry = PublicEntry & {
+  // False when only the viewer's session can see it (an approved follower of
+  // a private profile, or its owner): no preview image, not indexed.
+  listed: boolean;
+  viewerId: string | null;
+  // The viewer's session (anon when signed out), for likes and comments.
+  supabase: Awaited<ReturnType<typeof viewerContext>>["supabase"];
+};
+
+// The entry page: what everyone sees, or failing that, what the signed-in
+// viewer may see. RLS decides either way, so this adds approved followers of
+// a private profile (who can like and comment there) and nobody else.
+export const getEntryForViewer = cache(async (id: string): Promise<ViewedEntry | null> => {
+  const [listed, { supabase, userId }] = await Promise.all([getPublicEntry(id), viewerContext()]);
+  const found = listed ?? (userId && UUID.test(id) ? await readEntry(supabase, id) : null);
+  if (!found) return null;
+  return { ...found, listed: Boolean(listed), viewerId: userId, supabase };
+});
+
+async function readEntry(supabase: SupabaseClient, id: string): Promise<PublicEntry | null> {
   const { data: raw } = await supabase
     .from("entries")
     .select(`${ENTRY_SELECT}, user_id, updated_at`)
@@ -62,7 +87,7 @@ export const getPublicEntry = cache(async (id: string): Promise<PublicEntry | nu
     photoUrl: entry.photo_path ? (photos.get(entry.photo_path) ?? null) : null,
     version: versionOf(row.updated_at),
   };
-});
+}
 
 export type TripStats = {
   shows: number;

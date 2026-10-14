@@ -61,7 +61,7 @@ Internally, early effort (seed catalogue, marketing, outreach) focuses on the US
 ### Phase 3: Social
 - Follow / unfollow, follower/following lists.
 - Social feed of followed users' public entries.
-- Basic reactions or comments **[Decision needed: include or defer]**.
+- Basic reactions or comments. **Decided: likes and comments, Hevy style** (see `docs/DECISIONS.md`).
 - Basic moderation/reporting hooks.
 
 ### Phase 4: Year-end wrap and polish

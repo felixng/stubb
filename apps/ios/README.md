@@ -21,6 +21,7 @@ Replicates the web owner app (`apps/web/src/app/app`):
 - Entry screen: share-card carousel, Stories / More / Download / Copy text / Edit, delete.
 - Trips: list, detail, create, edit.
 - Profile settings, and the public profile as a screen, with Follow / Requested / Following, follower and following lists, and follow requests to approve (`follows` table; rules in `supabase/README.md`, "Follows").
+- Like and comment on public entries, with the comment thread on an entry screen (`entry_likes`, `entry_comments`, `entry_reactions`; rules in `supabase/README.md`, "Likes and comments").
 
 Left out: import (an iOS-focused import comes later), admin pages, landing / waitlist / FAQ / legal pages (link to the web).
 

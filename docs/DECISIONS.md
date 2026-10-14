@@ -264,3 +264,13 @@ The Xcode project in `apps/ios` builds, tests and runs from the command line (`a
 - **Debug talks to local Supabase, Release to the hosted project.** Both keys are publishable (RLS protects data); an optional git-ignored `Secrets.xcconfig` overrides Debug, e.g. for a real phone.
 - **Swift types are generated** from the local schema (`scripts/dev types`). The script backticks enum cases like `public` and `private`, which the generator leaves as bare Swift keywords.
 - One package: `supabase-swift` (2.x). Tests use Swift Testing.
+
+### 2026-10-14: Likes and comments, Hevy style
+Owner's call, after follows: include reactions and comments rather than defer them. Migration `20261014190000_likes_comments.sql`.
+- **Likes:** one heart per person per entry, with a count. **Comments:** plain text, up to 500 characters, oldest first, with no editing (delete and post again) and no replies or mentions.
+- **Who:** anyone signed in who can see the entry: a public, logged entry on a public profile, or on a private profile they're an approved follower of. Private and planned entries take no likes or comments. You can like your own show.
+- **Who sees them:** whoever can see the entry. If it's made private, its likes and comments are hidden from everyone but its owner and come back if it's made public again.
+- **Deleting:** commenters delete their own comments; the entry's owner can delete any comment on their show. Nobody is notified.
+- **Where:** every public entry card (Home feed, profile, trip page, entry page) ends with Like and Comment. The thread lives on the entry's page (`/e/[id]#comments`), with "Liked by @a, @b and N others" above it. The owner's entry screen in the app links there with the counts. Signed-out visitors sign in and come back (`safeNext` now allows `/e/<id>` and `/t/<id>`).
+- **`/e/[id]` now opens for approved followers of a private profile** (read with their session), so they can see and join the thread. Those pages aren't indexed and get no preview image; link previews still read anonymously. The Home feed's cards for those shows now link there too.
+- **Not in this slice:** notifications for likes and comments, a list of everyone who liked, reporting or blocking (Phase 3 moderation hooks) and turning comments off per entry.

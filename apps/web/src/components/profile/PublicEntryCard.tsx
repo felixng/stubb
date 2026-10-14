@@ -2,7 +2,13 @@ import Link from "next/link";
 
 import { RatingStars } from "@/components/ui/RatingStars";
 import { formatDate, SHOW_TYPE_LABELS, type EntryRow } from "@/lib/entries";
+import type { Reactions } from "@/lib/reactions";
 import { Avatar } from "./Avatar";
+import { EntryReactions } from "./EntryReactions";
+
+// Who is looking (null when signed out) and the entry's likes and comments,
+// for the Like and Comment row under the card.
+export type CardSocial = { viewerId: string | null; reactions: Reactions };
 
 // One public entry, as a post: who and when, the show, where, stars, the note
 // and the photo. Used on profiles, trip pages and the entry's own page
@@ -11,8 +17,10 @@ import { Avatar } from "./Avatar";
 // trip page. On a trip page (`inTrip`), the header and that trip's chip are
 // left out, since the page already says whose trip it is; the date stays.
 // The feed points `href` and `tripHref` at the app's own pages for your own
-// shows, and passes `href={null}` where no public page would open (a followed
-// private profile); `badge` marks your private shows.
+// shows, and can pass `href={null}` where no page would open; `badge` marks
+// your private shows.
+// With `social`, the card ends with Like and Comment; signed-out visitors
+// sign in and come back to `loginNext`.
 export function PublicEntryCard({
   entry,
   photoUrl,
@@ -24,6 +32,8 @@ export function PublicEntryCard({
   href = `/e/${entry.id}`,
   tripHref = (id) => `/t/${id}`,
   badge,
+  social,
+  loginNext,
 }: {
   entry: EntryRow;
   photoUrl?: string;
@@ -35,6 +45,8 @@ export function PublicEntryCard({
   href?: string | null;
   tripHref?: (id: string) => string | null;
   badge?: string;
+  social?: CardSocial;
+  loginNext?: string;
 }) {
   const Title = page ? "h1" : "h3";
   const trips = entry.collections.filter((c) => c.id !== inTrip);
@@ -113,6 +125,15 @@ export function PublicEntryCard({
             );
           })}
         </ul>
+      )}
+      {social && (
+        <EntryReactions
+          entryId={entry.id}
+          reactions={social.reactions}
+          viewerId={social.viewerId}
+          commentsHref={page ? "#comments" : `/e/${entry.id}#comments`}
+          loginHref={`/login?next=${encodeURIComponent(loginNext ?? `/e/${entry.id}`)}`}
+        />
       )}
     </article>
   );

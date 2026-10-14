@@ -8,6 +8,7 @@ import { FollowButton } from "@/components/profile/FollowButton";
 import { ProfileCalendar } from "@/components/profile/ProfileCalendar";
 import { PublicEntryCard } from "@/components/profile/PublicEntryCard";
 import { getPublicProfile } from "@/lib/profile";
+import { NO_REACTIONS } from "@/lib/reactions";
 
 // Public profile, served at /@handle (rewritten here in next.config.ts).
 // Every user has one (the handle is set at /welcome). It shows public entries
@@ -48,7 +49,7 @@ async function Profile({ params }: PageProps<"/u/[handle]">) {
   const { handle } = await params;
   const data = await getPublicProfile(handle);
   if (!data) notFound();
-  const { profile, viewer, follows, stats, entries, photos } = data;
+  const { profile, viewer, follows, stats, entries, photos, reactions } = data;
 
   const cover = entries
     .flatMap((e) => (e.photo_path && photos.get(e.photo_path) ? [photos.get(e.photo_path)!] : []))
@@ -162,6 +163,8 @@ async function Profile({ params }: PageProps<"/u/[handle]">) {
                 handle={profile.handle}
                 name={name}
                 avatarUrl={profile.avatar_url}
+                social={{ viewerId: viewer?.id ?? null, reactions: reactions.get(e.id) ?? NO_REACTIONS }}
+                loginNext={`/@${profile.handle}`}
               />
             ))}
           </section>

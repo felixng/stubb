@@ -4,6 +4,7 @@ import { cache } from "react";
 import { ENTRY_SELECT, signPhotos, toEntryRow, type EntryRow } from "@/lib/entries";
 import { getFollowCounts, getViewer, viewerContext } from "@/lib/follows";
 import { HANDLE_PATTERN } from "@/lib/profile-handle";
+import { getReactions, type Reactions } from "@/lib/reactions";
 import { createPublicClient } from "@/lib/supabase/public";
 
 
@@ -20,7 +21,8 @@ export type PublicProfile = {
 export type ProfileStats = { shows: number; venues: number; cities: number };
 
 // Everything /@handle shows: the profile, its follow counts, who is looking
-// (for the Follow button), its stats and its public entries newest first.
+// (for the Follow button), its stats and its public entries newest first,
+// with their likes and comments.
 // Entries are read as a logged-out visitor would, so the owner sees what
 // everyone sees, except by an approved follower of a private profile, who
 // reads with their own session so RLS lets them in. A private profile anyone
@@ -51,7 +53,15 @@ export const getPublicProfile = cache(async (rawHandle: string) => {
   // A private profile shows its header only, unless the viewer is approved.
   // RLS would return no entries anyway; this skips asking.
   if (profile.is_private && !approved) {
-    return { profile, viewer, follows, stats: null, entries: [] as EntryRow[], photos: new Map<string, string>() };
+    return {
+      profile,
+      viewer,
+      follows,
+      stats: null,
+      entries: [] as EntryRow[],
+      photos: new Map<string, string>(),
+      reactions: new Map<string, Reactions>(),
+    };
   }
 
   // Owner-scale (tens to hundreds of entries), so no paging yet. The explicit
@@ -70,7 +80,11 @@ export const getPublicProfile = cache(async (rawHandle: string) => {
     supabase.rpc("public_profile_stats", { profile_id: profile.id }).single<ProfileStats>(),
   ]);
   const entries: EntryRow[] = ((rows ?? []) as never[]).map(toEntryRow);
-  const photos = await signPhotos(supabase, entries.map((e) => e.photo_path));
+  // Reactions with the viewer's session, so each card knows if they liked it.
+  const [photos, reactions] = await Promise.all([
+    signPhotos(supabase, entries.map((e) => e.photo_path)),
+    getReactions(session, entries.map((e) => e.id)),
+  ]);
 
   return {
     profile,
@@ -79,5 +93,6 @@ export const getPublicProfile = cache(async (rawHandle: string) => {
     stats: (stats ?? { shows: 0, venues: 0, cities: 0 }) as ProfileStats | null,
     entries,
     photos,
+    reactions,
   };
 });
