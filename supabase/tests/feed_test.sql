@@ -1,6 +1,6 @@
 -- The home feed and people search. Run with `supabase test db`.
 begin;
-select plan(8);
+select plan(10);
 
 create function pg_temp.as_user(uid uuid) returns void language sql as $$
   select set_config('role', 'authenticated', true),
@@ -59,9 +59,40 @@ select is(
   0, 'a followed person''s private show isn''t in it'
 );
 select results_eq(
-  $$ select id::text from public.feed_entries(1, '2026-10-03', now()) $$,
+  $$ select f.id::text from public.entries c, public.feed_entries(1, c.date, c.created_at, c.id) f
+     where c.id = 'e0000000-0000-0000-0000-0000000000c1' $$,
   $$ values ('e0000000-0000-0000-0000-0000000000b1') $$,
-  'it pages from a date'
+  'it pages on from a show'
+);
+
+-- Two shows on one date, logged in the same instant (as an import does):
+-- paging one at a time still returns every show once, in order.
+reset role;
+insert into public.entries (id, user_id, show_id, venue_id, date, visibility, status, created_at) values
+  ('e0000000-0000-0000-0000-0000000000b3', 'bbbbbbbb-0000-0000-0000-000000000000', '11111111-0000-0000-0000-000000000000', '22222222-0000-0000-0000-000000000000', '2026-10-02', 'public', 'logged', '2026-10-13 10:00+00'),
+  ('e0000000-0000-0000-0000-0000000000b4', 'bbbbbbbb-0000-0000-0000-000000000000', '11111111-0000-0000-0000-000000000000', '22222222-0000-0000-0000-000000000000', '2026-10-02', 'public', 'logged', '2026-10-13 10:00+00');
+select pg_temp.as_user('aaaaaaaa-0000-0000-0000-000000000000');
+create function pg_temp.page_through() returns setof text language plpgsql as $$
+declare
+  last public.entries;
+  n integer := 0;
+begin
+  loop
+    select * into last from public.feed_entries(1, last.date, last.created_at, last.id);
+    exit when not found or n > 20;
+    n := n + 1;
+    return next last.id::text;
+  end loop;
+end;
+$$;
+select results_eq(
+  $$ select * from pg_temp.page_through() $$,
+  $$ select id::text from public.feed_entries(100) $$,
+  'paging one show at a time returns the same shows, in the same order, as one big page'
+);
+select is(
+  (select count(*)::integer from public.feed_entries(100)),
+  5, 'including both shows logged in the same instant'
 );
 
 select pg_temp.as_user('eeeeeeee-0000-0000-0000-000000000000');
