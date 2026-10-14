@@ -8,6 +8,7 @@ import {
   NAME_MAX,
   ONBOARDED_COOKIE,
   handleProblem,
+  isReservedHandleError,
   normalizeHandle,
   normalizeLink,
 } from "@/lib/profile-handle";
@@ -51,6 +52,7 @@ export async function completeProfile(_prev: WelcomeState, formData: FormData): 
     .eq("id", userId);
   if (error) {
     if (error.code === "23505") return { values, errors: { handle: "That handle is taken." } };
+    if (isReservedHandleError(error)) return { values, errors: { handle: "That handle is reserved. Try another." } };
     console.error("completeProfile failed", error.code, error.message);
     return { values, errors: { form: "Couldn’t save. Try again." } };
   }

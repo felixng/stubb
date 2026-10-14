@@ -223,3 +223,9 @@ Backend changes so iOS doesn't reimplement web logic:
 - The AI and nearby-theatre routes accept `Authorization: Bearer <access token>` as well as the web's session cookie. A request with the header is judged on the token alone.
 - Share-card stats (show of the year, visit to the venue, times seen) moved from TypeScript to `entry_card_stats(entry_id)` in Postgres, counting shows actually seen: planned entries no longer count (owner's call), except an entry on its own card. Owner-only: another user's entry id returns nothing.
 - The Google profile photo copied on first sign-in happens in the web's `/auth/callback`; native Google sign-in skips it, so the iOS app does the same on the device (see `apps/ios/README.md`).
+
+### 2026-10-14: Reserved handles
+Nobody can claim a handle like `stubbed`, `admin`, `support` or `login` (#1). The list covers Stubbed's own names, staff-sounding ones, site pages and routes, and words like `null` or `everyone`. It lives in `RESERVED_HANDLES` (`apps/web/src/lib/profile-handle.ts`), so `/welcome` and `/app/profile` say "reserved" as you type, and in Postgres (`public.is_reserved_handle`, migration `20261014150000_reserved_handles.sql`), so the API refuses it too. A unit test fails if the two lists drift. Exact matches only: `admin_fan` is fine.
+- A trigger, not a check constraint: a handle someone already holds stays valid if the list grows, and only claiming a new one is refused.
+- The check applies to app users (`anon`, `authenticated`), not to the SQL editor or the service role, so the owner can still give `@stubbed` to the official account.
+- Share cards stay square only: the story (1080×1920) and 4:5 post sizes are dropped for now (owner's call, #15).

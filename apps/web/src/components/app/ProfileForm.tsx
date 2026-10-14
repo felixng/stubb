@@ -6,7 +6,14 @@ import { useId, useState } from "react";
 
 import { AvatarPicker } from "@/components/profile/AvatarPicker";
 import { Button } from "@/components/ui/Button";
-import { BIO_MAX, NAME_MAX, handleProblem, normalizeHandle, normalizeLink } from "@/lib/profile-handle";
+import {
+  BIO_MAX,
+  NAME_MAX,
+  handleProblem,
+  isReservedHandleError,
+  normalizeHandle,
+  normalizeLink,
+} from "@/lib/profile-handle";
 import type { OwnProfile } from "@/lib/supabase/data";
 import { createClient } from "@/lib/supabase/client";
 import { useFreshOnReturn } from "@/lib/use-fresh-on-return";
@@ -38,7 +45,7 @@ export function ProfileForm({ userId, initial }: { userId: string; initial: OwnP
     e.preventDefault();
     setStatus(null);
     const h = normalizeHandle(handle);
-    const problem = handleProblem(h);
+    const problem = handleProblem(h, saved);
     if (problem) return setStatus({ ok: false, text: problem });
     const url = normalizeLink(link);
     if (link.trim() && !url) return setStatus({ ok: false, text: "That link doesn’t look like a web address." });
@@ -57,7 +64,12 @@ export function ProfileForm({ userId, initial }: { userId: string; initial: OwnP
     if (error) {
       return setStatus({
         ok: false,
-        text: error.code === "23505" ? `@${h} is taken. Try another.` : "Couldn’t save. Try again.",
+        text:
+          error.code === "23505"
+            ? `@${h} is taken. Try another.`
+            : isReservedHandleError(error)
+              ? `@${h} is reserved. Try another.`
+              : "Couldn’t save. Try again.",
       });
     }
     setHandle(h);
