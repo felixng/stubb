@@ -56,13 +56,14 @@ export function Hero() {
               aria-hidden="true"
               className="absolute top-1/2 left-1/2 aspect-square w-[min(100%,460px)] -translate-1/2 rounded-full bg-glow shadow-[0_0_0_28px_color-mix(in_srgb,var(--tint)_16%,transparent)]"
             />
-            {/* Mockup of the Diary screen; transparent around the phone. */}
+            {/* Mockup of the Diary screen; transparent around the phone. The mask
+                fades out the browser URL bar at the bottom. */}
             <Image
               src={heroDiary}
               alt="The Stubbed diary on a phone: Hamilton, Miss Saigon and other recent shows with star ratings"
               priority
               sizes="280px"
-              className="relative h-auto w-[280px]"
+              className="relative h-auto w-[280px] mask-[linear-gradient(to_bottom,white_82%,transparent_86%)]"
             />
           </div>
         </div>
