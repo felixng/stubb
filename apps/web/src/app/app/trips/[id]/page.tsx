@@ -38,10 +38,10 @@ async function Trip({ params }: { params: PageProps<"/app/trips/[id]">["params"]
   // Date order within a trip, oldest first: it reads like an itinerary.
   const entries = all.filter((e) => e.collections.some((c) => c.id === trip.id)).reverse();
   const others = all.filter((e) => !e.collections.some((c) => c.id === trip.id));
-  const venues = new Set(entries.map((e) => e.venue.id)).size;
+  const venues = new Set(entries.flatMap((e) => (e.venue ? [e.venue.id] : []))).size;
   const nights = new Set(entries.map((e) => e.date)).size;
   const pickable = (list: typeof all) =>
-    list.map((e) => ({ id: e.id, title: e.show.title, venue: e.venue.name, date: e.date }));
+    list.map((e) => ({ id: e.id, title: e.show.title, venue: e.venue?.name ?? null, date: e.date }));
 
   const range = trip.start_date
     ? trip.end_date

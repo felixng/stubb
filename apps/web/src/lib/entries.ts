@@ -55,12 +55,12 @@ export type EntryRow = {
   photo_path: string | null;
   visibility: Visibility;
   show: Show;
-  venue: Venue;
+  venue: Venue | null; // null for a planned show without one yet
   collections: Pick<Collection, "id" | "name" | "kind">[];
 };
 
 export const ENTRY_SELECT =
-  "id, date, rating, note, photo_path, visibility, show:shows!inner(id, title, type), venue:venues!inner(id, name, city, country), collections:entry_collections(collection:collections(id, name, kind))";
+  "id, date, rating, note, photo_path, visibility, show:shows!inner(id, title, type), venue:venues(id, name, city, country), collections:entry_collections(collection:collections(id, name, kind))";
 
 type RawEntry = Omit<EntryRow, "collections" | "rating"> & {
   rating: number | string | null;

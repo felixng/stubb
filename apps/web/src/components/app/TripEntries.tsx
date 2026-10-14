@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/Button";
 import { formatDate } from "@/lib/entries";
 import { createClient } from "@/lib/supabase/client";
 
-type Pickable = { id: string; title: string; venue: string; date: string };
+type Pickable = { id: string; title: string; venue: string | null; date: string };
 
 // Add several diary entries to a trip at once, or take them out.
 export function TripEntries({
@@ -78,7 +78,7 @@ export function TripEntries({
               <span className="flex min-w-0 flex-col">
                 <span className="truncate text-body text-label">{e.title}</span>
                 <span className="truncate text-footnote text-label-secondary">
-                  {e.venue} · {formatDate(e.date)}
+                  {[e.venue, formatDate(e.date)].filter(Boolean).join(" · ")}
                 </span>
               </span>
             </label>

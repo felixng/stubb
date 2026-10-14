@@ -23,7 +23,7 @@ export function EntryList({ entries, photos }: { entries: EntryRow[]; photos: Ma
             <div className="flex min-w-0 flex-1 flex-col items-start gap-1">
               <p className="w-full truncate text-headline text-label">{e.show.title}</p>
               <p className="w-full truncate text-subheadline text-label-secondary">
-                {e.venue.name} · {formatDate(e.date)}
+                {[e.venue?.name, formatDate(e.date)].filter(Boolean).join(" · ")}
               </p>
               <div className="flex flex-wrap items-center gap-2">
                 {e.rating != null && <RatingStars value={e.rating} size={14} />}

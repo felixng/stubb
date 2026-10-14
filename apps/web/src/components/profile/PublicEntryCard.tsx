@@ -18,7 +18,7 @@ export function PublicEntryCard({
   name: string;
   avatarUrl: string | null;
 }) {
-  const where = [entry.venue.name, entry.venue.city].filter(Boolean).join(", ");
+  const where = [entry.venue?.name, entry.venue?.city].filter(Boolean).join(", ");
   return (
     <article
       id={`entry-${entry.id}`}

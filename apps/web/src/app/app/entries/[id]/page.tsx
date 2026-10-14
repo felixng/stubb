@@ -19,10 +19,10 @@ async function Entry({ params, searchParams }: PageProps<"/app/entries/[id]">) {
   const found = await getShareCard(id);
   if (!found) notFound();
   const { entry, photoUrl } = found;
-  const where = [entry.venue.name, entry.venue.city].filter(Boolean).join(", ");
+  const where = [entry.venue?.name, entry.venue?.city].filter(Boolean).join(", ");
   const data: CardData = {
     title: entry.show.title,
-    venue: entry.venue.name,
+    venue: entry.venue?.name ?? null,
     where,
     date: formatDate(entry.date),
     year: Number(entry.date.slice(0, 4)),
@@ -51,7 +51,7 @@ async function Entry({ params, searchParams }: PageProps<"/app/entries/[id]">) {
         <header className="flex flex-col gap-1">
           <h1 className="text-title-2 font-display text-label">{entry.show.title}</h1>
           <p className="text-subheadline text-label-secondary">
-            {SHOW_TYPE_LABELS[entry.show.type]} · {where}
+            {[SHOW_TYPE_LABELS[entry.show.type], where].filter(Boolean).join(" · ")}
           </p>
           <p className="text-subheadline text-label-secondary">
             {formatDate(entry.date, { weekday: "long", day: "numeric", month: "long", year: "numeric" })}
