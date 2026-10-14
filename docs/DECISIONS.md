@@ -186,3 +186,16 @@ Owner's call. A show you're going to see is the same `entries` row as one you've
 
 ### 2026-10-14: Waitlist sign-ups go to Kit, with double opt-in
 Owner's call, replacing the Supabase-only waitlist from #10. Kit (kit.com, free plan) sends a confirmation email, so people know they're on the list, and only confirmed addresses count, which filters out junk and bot sign-ups. The honeypot stays. The server action creates the subscriber as inactive and adds them to a double opt-in form (Kit's v4 API, server-side key, no new npm dependency); the sign-up source goes into the referrer URL as `utm_source`. Kit is now the list: the owner imports the existing `waitlist` rows once by CSV. Until `KIT_API_KEY` and `KIT_FORM_ID` are set, sign-ups still go to the `waitlist` table, so none are lost. Trade-off: the list now lives with a third party, but it can be exported from Kit as CSV.
+
+### 2026-10-14: iOS app scope and the backend changes it needs first
+Owner's calls for the first iOS version, which replicates the web owner app:
+- **Share cards are drawn natively** in SwiftUI, a second copy of the web's Canvas designs (`apps/web/src/lib/share-card.ts`). Native rendering keeps the photo on the phone and allows a direct Instagram Stories button. Replaces "the app fetches `/api/card/:id`" in `docs/ARCHITECTURE.md`.
+- **No import on iOS** (email or photo batches). It gets its own iOS-focused import feature later. The photo-first log flow (nearby theatres, show suggestion) stays, since it's part of logging.
+- **Left out:** the admin pages and model picker, and the landing, waitlist, FAQ and legal pages (the app links to the web for those).
+- **The public profile is a screen in the app**, reading public entries only, as `/@handle` does.
+- **Minimum iOS 17**, so phones from 2018 on (iPhone XS/XR, SE 2nd gen) can run it.
+
+Backend changes so iOS doesn't reimplement web logic:
+- The AI and nearby-theatre routes accept `Authorization: Bearer <access token>` as well as the web's session cookie. A request with the header is judged on the token alone.
+- Share-card stats (show of the year, visit to the venue, times seen) moved from TypeScript to `entry_card_stats(entry_id)` in Postgres, with the same counting as before (every entry, planned ones included). Owner-only: another user's entry id returns nothing.
+- The Google profile photo copied on first sign-in happens in the web's `/auth/callback`; native Google sign-in skips it, so the iOS app does the same on the device (see `apps/ios/README.md`).

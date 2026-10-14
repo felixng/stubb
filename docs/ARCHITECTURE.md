@@ -144,7 +144,9 @@ Free-tier limits change often. Check the vendor pricing pages before relying on 
   - search lives in a SQL function (e.g. `search_shows(q)` using `pg_trgm`).
   Each client only renders and calls these. That stops the Swift and TypeScript versions drifting apart.
 - Sign in with Apple is native (`AuthenticationServices`) → `supabase.auth.signInWithIdToken`. Google uses the GoogleSignIn SDK the same way.
-- Sharing: the app fetches the same `/api/card/:id` PNG from Vercel and opens `ShareLink` / the share sheet. That gives one card design, not two.
+- Sharing *(changed 2026-10-14)*: the app draws its own share cards natively (SwiftUI `ImageRenderer`), from the same designs as the web's Canvas cards, and shares them with `ShareLink` / the share sheet (and directly to Instagram Stories). Two copies of the designs, kept in step by hand; the numbers on them come from `entry_card_stats(entry_id)` in Postgres, so they can't drift.
+- Server routes (`/api/photo/*`): the app sends its Supabase access token as `Authorization: Bearer`; the routes accept it as well as the web's cookie.
+- Minimum iOS 17: iPhone XS/XR (2018) and SE 2nd gen (2020) onwards.
 - Universal links: `/.well-known/apple-app-site-association` served by Next.js, so `/e/:id` links open in the app when it's installed.
 
 ### 6. Repo layout: one monorepo
