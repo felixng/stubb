@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useMemo, useState } from "react";
+import { useLayoutEffect, useMemo, useRef, useState } from "react";
 
 import { Button } from "@/components/ui/Button";
 import { formatDate, formatTripDates, tripCovers, type Collection, type EntryRow } from "@/lib/entries";
@@ -13,15 +13,26 @@ import { EntryList } from "./EntryList";
 // trip: an existing trip that covers all their dates, or a new one with its
 // dates prefilled to fit. Hidden until "Select" is tapped, so the diary stays
 // plain for the many visits that aren't part of a trip.
-export function DiaryEntries({
-  entries,
-  photos,
-  trips,
-}: {
-  entries: EntryRow[];
-  photos: Record<string, string>;
-  trips: Collection[];
-}) {
+//
+// With cacheComponents, Next keeps the diary alive (hidden) while we're on the
+// trip page and shows it again on return, state and all. Once the selection
+// has gone to a trip it's done with, so the list remounts out of select mode
+// when it's shown again. A selection left for a stray tab tap is kept.
+type Props = { entries: EntryRow[]; photos: Record<string, string>; trips: Collection[] };
+
+export function DiaryEntries(props: Props) {
+  const [round, setRound] = useState(0);
+  const done = useRef(false);
+  // Runs again each time the hidden page is shown, before it paints.
+  useLayoutEffect(() => {
+    if (!done.current) return;
+    done.current = false;
+    setRound((r) => r + 1);
+  }, []);
+  return <Selectable key={round} {...props} onDone={() => (done.current = true)} />;
+}
+
+function Selectable({ entries, photos, trips, onDone }: Props & { onDone: () => void }) {
   const router = useRouter();
   const photoMap = useMemo(() => new Map(Object.entries(photos)), [photos]);
   const [selecting, setSelecting] = useState(false);
@@ -53,7 +64,7 @@ export function DiaryEntries({
       );
     setBusy(false);
     if (write) return setError("Couldn’t add them to the trip. Try again.");
-    reset();
+    onDone();
     router.push(`/app/trips/${trip.id}`);
   }
 
@@ -135,6 +146,7 @@ export function DiaryEntries({
               <li>
                 <Link
                   href={newTripHref}
+                  onClick={onDone}
                   className="flex min-h-11 items-center rounded-sm px-2 text-body font-semibold text-tint-text hover:bg-fill focus-visible:outline-2 focus-visible:outline-focus"
                 >
                   + New trip ({formatTripDates({ start_date: dates[0], end_date: dates[dates.length - 1] })})
