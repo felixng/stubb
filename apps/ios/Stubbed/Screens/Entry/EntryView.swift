@@ -11,6 +11,16 @@ struct EntryView: View {
   @Environment(\.dismiss) private var dismiss
   @State private var state: Loadable<Entry> = .loading
   @State private var photo: URL?
+  @State private var cards: [RenderedCard]?
+  @State private var cardsFailed = false
+  @State private var share: ShareInfo?
+
+  /// What the share screen needs beyond the entry: the caption and the
+  /// public page, when there is one.
+  struct ShareInfo {
+    let text: String
+    let link: URL?
+  }
   @State private var confirmDelete = false
   @State private var deleting = false
   @State private var deleteError: String?
@@ -55,12 +65,8 @@ struct EntryView: View {
       .padding(Space.l)
       .frame(maxWidth: .infinity, alignment: .leading)
       .cardStyle()
-    } else if let photo {
-      AsyncImage(url: photo) { $0.resizable().scaledToFill() } placeholder: { Palette.fill }
-        .frame(maxWidth: .infinity)
-        .frame(height: 280)
-        .clipShape(.rect(cornerRadius: Radius.md))
-        .accessibilityHidden(true)
+    } else if let share {
+      ShareCarousel(subject: .show, cards: cards, failed: cardsFailed, text: share.text, link: share.link)
     }
 
     VStack(alignment: .leading, spacing: Space.m) {
@@ -151,10 +157,37 @@ struct EntryView: View {
         photo = nil
       }
       state = .loaded(entry)
+      if !entry.planned { await drawCards(entry) }
     } catch {
       // Deleted, or not yours: nothing to show.
       if case .loaded = state { return }
       state = .failed("It may have been deleted.")
+    }
+  }
+
+  /// Draws the cards on the device, like the web: the photo never leaves
+  /// it, and the counts come from Postgres.
+  private func drawCards(_ entry: Entry) async {
+    cardsFailed = false
+    do {
+      async let stats = ShareCards.stats(entry.id)
+      async let owner = Profiles.profile(entry.userId)
+      async let image = ShareCards.image(photo)
+      let (s, profile, picture) = try await (stats, owner, image)
+      let data = EntryCardData(
+        title: entry.show.title, venue: entry.venue?.name, whereText: entry.whereText ?? "",
+        date: Day.format(entry.date), year: Int(entry.date.prefix(4)) ?? 0, rating: entry.rating,
+        showOfYear: s.show_of_year, venueVisit: s.venue_visit, timesSeen: s.times_seen, handle: profile.handle)
+      let caption = entry.venue.map { "\(entry.show.title) at \($0.name)" } ?? entry.show.title
+      let isPublic = entry.visibility == .public && !profile.isPrivate
+      share = ShareInfo(
+        text: "\(caption). Tracked on Stubbed \(stubbedInstagram)",
+        link: isPublic ? AppConfig.current.webURL.appendingPathComponent("e/\(entry.id.uuidString.lowercased())") : nil)
+      cards = try ShareCards.entryCards(data, photo: picture)
+    } catch {
+      Log.app.error("Drawing the share cards failed: \(error.localizedDescription, privacy: .public)")
+      cardsFailed = true
+      if share == nil { share = ShareInfo(text: entry.show.title, link: nil) }
     }
   }
 
