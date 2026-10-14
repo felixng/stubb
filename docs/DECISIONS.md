@@ -73,3 +73,6 @@ Owner's call. The log form starts with a photo and fills in what it can: the dat
 
 ### 2026-10-13: App and sign-in are always light; landing menu links to sign-in
 Owner's call: `/app` and `/login` now stay light whatever the device setting, like the landing page (`data-theme="light"`). Dark mode can come back later; the tokens are unchanged. The landing page gets a hamburger menu next to the beta pill whose only item is "Sign in", so the login page is no longer unlinked. Sign-ups stay off, so the link reveals nothing.
+
+### 2026-10-14: Waitlist sign-ups go to Kit, with double opt-in
+Owner's call, replacing the Supabase-only waitlist from #10. Kit (kit.com, free plan) sends a confirmation email, so people know they're on the list, and only confirmed addresses count, which filters out junk and bot sign-ups. The honeypot stays. The server action creates the subscriber as inactive and adds them to a double opt-in form (Kit's v4 API, server-side key, no new npm dependency); the sign-up source goes into the referrer URL as `utm_source`. Kit is now the list: the owner imports the existing `waitlist` rows once by CSV. Until `KIT_API_KEY` and `KIT_FORM_ID` are set, sign-ups still go to the `waitlist` table, so none are lost. Trade-off: the list now lives with a third party, but it can be exported from Kit as CSV.
