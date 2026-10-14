@@ -12,6 +12,9 @@ final class LogUITests: XCTestCase {
     XCTAssertTrue(app.navigationBars["Home"].waitForExistence(timeout: 15))
     app.buttons["Log"].tap()
     XCTAssertTrue(app.navigationBars["Track a show"].waitForExistence(timeout: 10))
+    XCTAssertTrue(app.buttons["Start with a photo"].exists)
+    snapshot("log-start")
+    app.buttons["No photo? Fill in by hand"].tap()
 
     let run = Int.random(in: 1000...9999)
     let title = "UI Test Show \(run)"

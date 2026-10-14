@@ -150,6 +150,10 @@ case "$cmd" in
     # A copy started by `run` can't be closed by XCUITest and stalls it.
     xcrun simctl terminate "$udid" "$BUNDLE_ID" >/dev/null 2>&1 || true
     test_users
+    # Test photos (scripts/fixtures), added once per Simulator.
+    if [ ! -f "$BUILD_DIR/.media-$udid" ]; then
+      xcrun simctl addmedia "$udid" "$IOS_DIR"/scripts/fixtures/*.jpg && touch "$BUILD_DIR/.media-$udid"
+    fi
     # TEST_RUNNER_X reaches the UI test process as X.
     TEST_RUNNER_STUBBED_EMAIL="$TEST_EMAIL" TEST_RUNNER_STUBBED_NEW_EMAIL="$NEW_EMAIL" \
       TEST_RUNNER_STUBBED_PASSWORD="$TEST_PASSWORD" \

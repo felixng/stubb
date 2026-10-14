@@ -33,9 +33,33 @@ struct LogView: View {
   @State private var error: String?
   @State private var confirmDiscard = false
 
-  /// Fields the user set themselves, which defaults never overwrite.
+  /// Fields the user set themselves, which defaults and the photo never
+  /// overwrite.
   @State private var touchedTrips = false
   @State private var touchedVisibility = false
+  @State private var touchedShow = false
+  @State private var touchedVenue = false
+  @State private var touchedDate = false
+
+  // Photo first: new entries start from a photo, which fills in what it
+  // can. Every field stays usable while it works.
+  @State private var started = false
+  @State private var detect = Detect.idle
+  @State private var nearby: [VenueChoice] = []
+  @State private var place: (city: String?, country: String?) = (nil, nil)
+  /// A guess, or a show that differs from the one already picked: a chip.
+  @State private var suggestion: Identification?
+  /// A venue the photo matched that differs from the one picked by hand.
+  @State private var venueSuggestion: VenueChoice?
+  /// Fields whose value came from the photo; a new photo clears these.
+  @State private var fromPhoto: Set<String> = []
+  /// Bumped per photo, so a newer photo cancels the older one's results.
+  @State private var run = 0
+
+  enum Detect: Equatable {
+    case idle, reading, nearby, identifying
+    case done(Identification?, note: String?)
+  }
 
   private enum Picker: String, Identifiable {
     case show, venue
@@ -54,6 +78,10 @@ struct LogView: View {
       _tripIds = State(initialValue: Set(entry.trips.map(\.id)))
       _touchedTrips = State(initialValue: true)
       _touchedVisibility = State(initialValue: true)
+      _touchedShow = State(initialValue: true)
+      _touchedVenue = State(initialValue: true)
+      _touchedDate = State(initialValue: true)
+      _started = State(initialValue: true)
     }
   }
 
@@ -69,6 +97,85 @@ struct LogView: View {
 
   var body: some View {
     NavigationStack {
+      Group {
+        if started { form } else { start }
+      }
+      .navigationTitle(editing == nil ? "Track a show" : "Edit")
+      .navigationBarTitleDisplayMode(.inline)
+      .toolbar {
+        ToolbarItem(placement: .cancellationAction) {
+          Button("Cancel") { if hasChanges { confirmDiscard = true } else { dismiss() } }
+        }
+      }
+      .confirmationDialog("Discard this entry?", isPresented: $confirmDiscard, titleVisibility: .visible) {
+        Button("Discard", role: .destructive) { dismiss() }
+        Button("Keep editing", role: .cancel) {}
+      }
+      .sheet(item: $picking) { picker in
+        switch picker {
+        case .show:
+          ShowSearch { pickShow($0) }
+        case .venue:
+          VenueSearch(nearby: nearby, suggestions: venueSuggestions, place: venuePlace) { pickVenue($0) }
+        }
+      }
+    }
+    .interactiveDismissDisabled(hasChanges)
+    .task { await load() }
+    .onChange(of: date) { _, _ in preselectTrip() }
+    .onChange(of: photoItem) { _, item in
+      guard let item else { return }
+      photoItem = nil
+      Task { await takePhoto(item) }
+    }
+  }
+
+  /// "Start with a photo": the curtain, the stage, the Playbill or a ticket.
+  private var start: some View {
+    VStack(spacing: Space.l) {
+      PhotosPicker(selection: $photoItem, matching: .images) {
+        VStack(spacing: Space.m) {
+          Image(systemName: "camera")
+            .font(.system(size: 36, weight: .light))
+            .foregroundStyle(Palette.labelSecondary)
+          Text("Start with a photo")
+            .font(.stubHeadline)
+            .foregroundStyle(Palette.label)
+          Text("The curtain, the stage, the Playbill or your ticket. We’ll fill in what we can.")
+            .font(.stubSubheadline)
+            .foregroundStyle(Palette.labelSecondary)
+            .multilineTextAlignment(.center)
+            .frame(maxWidth: 280)
+          Text("Choose photo")
+            .font(.stubHeadline)
+            .foregroundStyle(Palette.onTint)
+            .padding(.horizontal, Space.xxl)
+            .frame(minHeight: 50)
+            .background(Palette.tint, in: .capsule)
+            .padding(.top, Space.s)
+        }
+        .padding(.horizontal, Space.xxl)
+        .frame(maxWidth: .infinity, minHeight: 288)
+        .background(Palette.surface, in: .rect(cornerRadius: Radius.md))
+        .overlay(
+          RoundedRectangle(cornerRadius: Radius.md).strokeBorder(Palette.outline, style: StrokeStyle(lineWidth: 1, dash: [5, 4])))
+      }
+      .buttonStyle(.plain)
+      .accessibilityLabel("Start with a photo")
+      .accessibilityHint("The curtain, the stage, the Playbill or your ticket.")
+
+      Button("No photo? Fill in by hand") { started = true }
+        .font(.stubSubheadline.weight(.semibold))
+        .foregroundStyle(Palette.tintText)
+        .frame(minHeight: Space.touch)
+      Spacer()
+    }
+    .padding(Space.l)
+    .frame(maxWidth: .infinity, maxHeight: .infinity)
+    .background(Palette.background)
+  }
+
+  private var form: some View {
       ScrollView {
         VStack(alignment: .leading, spacing: Space.xxl) {
           photoRow
@@ -104,34 +211,6 @@ struct LogView: View {
         .background(Palette.background)
         .overlay(alignment: .top) { Palette.separator.frame(height: 1) }
       }
-      .navigationTitle(editing == nil ? "Track a show" : "Edit")
-      .navigationBarTitleDisplayMode(.inline)
-      .toolbar {
-        ToolbarItem(placement: .cancellationAction) {
-          Button("Cancel") { if hasChanges { confirmDiscard = true } else { dismiss() } }
-        }
-      }
-      .confirmationDialog("Discard this entry?", isPresented: $confirmDiscard, titleVisibility: .visible) {
-        Button("Discard", role: .destructive) { dismiss() }
-        Button("Keep editing", role: .cancel) {}
-      }
-      .sheet(item: $picking) { picker in
-        switch picker {
-        case .show:
-          ShowSearch { show = $0 }
-        case .venue:
-          VenueSearch(suggestions: venueSuggestions, place: venuePlace) { venue = $0 }
-        }
-      }
-    }
-    .interactiveDismissDisabled(hasChanges)
-    .task { await load() }
-    .onChange(of: date) { _, _ in preselectTrip() }
-    .onChange(of: photoItem) { _, item in
-      guard let item else { return }
-      photoItem = nil
-      Task { await takePhoto(item) }
-    }
   }
 
   // MARK: - Fields
@@ -161,6 +240,7 @@ struct LogView: View {
             .foregroundStyle(Palette.tintText)
           if hasPhoto {
             Button("Remove", role: .destructive) {
+              clearPhotoResults()
               photo = nil
               preview = nil
               existingPhoto = nil
@@ -174,6 +254,13 @@ struct LogView: View {
           Text(photoError)
             .font(.stubFootnote)
             .foregroundStyle(Palette.destructive)
+        } else if let status = detectStatus {
+          HStack(spacing: Space.s) {
+            if status.working { ProgressView().controlSize(.mini) }
+            Text(status.text)
+          }
+          .font(.stubFootnote)
+          .foregroundStyle(Palette.labelSecondary)
         }
       }
     }
@@ -196,8 +283,27 @@ struct LogView: View {
         }
       } else {
         SearchButton(title: "Search shows") { picking = .show }
+        if detect == .identifying {
+          Label("Working out the show from your photo…", systemImage: "sparkle.magnifyingglass")
+            .font(.stubFootnote)
+            .foregroundStyle(Palette.labelSecondary)
+        }
+      }
+      if let suggestion, let title = suggestion.showTitle, show == nil || showDiffers {
+        HStack(spacing: Space.s) {
+          Chip(title: showDiffers ? "Photo suggests \(title)" : "Maybe \(title)?") { Task { await take(suggestion) } }
+          Text(suggestion.reason)
+            .font(.stubFootnote)
+            .foregroundStyle(Palette.labelSecondary)
+            .lineLimit(2)
+        }
       }
     }
+  }
+
+  private var showDiffers: Bool {
+    guard let title = suggestion?.showTitle, let show else { return false }
+    return show.title.lowercased() != title.lowercased()
   }
 
   private var venueField: some View {
@@ -219,6 +325,19 @@ struct LogView: View {
         }
       } else {
         SearchButton(title: "Search venues") { picking = .venue }
+        // Several theatres close by: one tap instead of a search.
+        if nearby.count > 1 {
+          ChipRow(label: "Theatres near the photo") {
+            ForEach(nearby.prefix(3), id: \.self) { v in
+              Chip(title: "\(v.name) · \(v.distance ?? 0) m") { pickVenue(v) }
+            }
+          }
+        }
+      }
+      if let venueSuggestion, venue != nil {
+        Chip(title: "Photo suggests \(venueSuggestion.name)") {
+          pickVenue(venueSuggestion)
+        }
       }
     }
   }
@@ -229,13 +348,13 @@ struct LogView: View {
 
   private var dateField: some View {
     labelled("Date") {
-      DatePicker("Date", selection: Binding(get: { Day.date(date) }, set: { date = Day.string($0) }), displayedComponents: .date)
+      DatePicker("Date", selection: Binding(get: { Day.date(date) }, set: { setDate(Day.string($0)) }), displayedComponents: .date)
         .datePickerStyle(.compact)
         .labelsHidden()
         .tint(Palette.tintText)
       ChipRow(label: "Quick dates") {
-        Chip(title: "Today", selected: date == today) { date = today }
-        Chip(title: "Yesterday", selected: date == Day.today(offset: -1)) { date = Day.today(offset: -1) }
+        Chip(title: "Today", selected: date == today) { setDate(today) }
+        Chip(title: "Yesterday", selected: date == Day.today(offset: -1)) { setDate(Day.today(offset: -1)) }
       }
     }
   }
@@ -328,7 +447,151 @@ struct LogView: View {
   }
 
   private var venuePlace: (city: String?, country: String?) {
-    (context.recent.first?.venue.city, context.recent.first?.venue.country)
+    if place.city != nil || place.country != nil { return place }
+    return (context.recent.first?.venue.city, context.recent.first?.venue.country)
+  }
+
+  // MARK: - Your choices
+
+  private func pickShow(_ choice: ShowChoice) {
+    touchedShow = true
+    fromPhoto.remove("show")
+    suggestion = nil
+    show = choice
+  }
+
+  private func pickVenue(_ choice: VenueChoice) {
+    touchedVenue = true
+    fromPhoto.remove("venue")
+    venueSuggestion = nil
+    venue = choice
+  }
+
+  private func setDate(_ day: String) {
+    touchedDate = true
+    fromPhoto.remove("date")
+    date = day
+  }
+
+  // MARK: - Photo detection
+
+  private var detectStatus: (text: String, working: Bool)? {
+    switch detect {
+    case .idle: return nil
+    case .reading: return ("Reading the photo…", true)
+    case .nearby: return ("Looking for theatres nearby…", true)
+    case .identifying: return ("Working out the show…", true)
+    case .done(let result, let note):
+      if let result, result.confidence != .low, !showDiffers {
+        return ("\(result.confidence == .high ? "Matched" : "Probably"): \(result.reason)", false)
+      }
+      if let note { return (note, false) }
+      return result == nil ? ("Couldn’t tell the show from this photo.", false) : nil
+    }
+  }
+
+  /// Forget everything the previous photo filled in or found.
+  private func clearPhotoResults() {
+    run += 1
+    if fromPhoto.contains("show") { show = nil }
+    if fromPhoto.contains("venue") { venue = nil }
+    if fromPhoto.contains("date") { date = Day.today() }
+    fromPhoto = []
+    suggestion = nil
+    venueSuggestion = nil
+    nearby = []
+    place = (nil, nil)
+    photoError = nil
+    detect = .idle
+  }
+
+  /// The photo's date at once, theatres near it within about a second, and
+  /// the show suggestion when it's ready. Each fills only untouched fields.
+  private func detect(from data: Data) async {
+    let token = run
+    let current = { token == run }
+    detect = .reading
+    let meta = PhotoMeta.read(data)
+    if let day = meta.date, !touchedDate {
+      date = day
+      fromPhoto.insert("date")
+    }
+
+    if let lat = meta.lat, let lng = meta.lng {
+      detect = .nearby
+      let found = await PhotoDetect.nearby(lat: lat, lng: lng, accuracy: meta.accuracy)
+      guard current() else { return }
+      nearby = found.candidates
+      place = (found.city, found.country)
+      // One theatre in range is as good as an answer.
+      if found.candidates.count == 1, !touchedVenue, venue == nil {
+        venue = found.candidates[0]
+        fromPhoto.insert("venue")
+      }
+    }
+
+    detect = .identifying
+    guard let small = try? Photo.jpeg(from: data, maxEdge: Photo.identifyEdge, quality: 0.8) else {
+      detect = .done(nil, note: nil)
+      return
+    }
+    let outcome = await PhotoDetect.identify(photo: small, meta: meta, place: place, candidates: nearby)
+    guard current() else { return }
+    switch outcome {
+    case .notConfigured:
+      detect = .done(nil, note: "Show detection isn’t set up yet.")
+    case .failed:
+      detect = .done(nil, note: "Couldn’t work out the show.")
+    case .found(let result):
+      detect = .done(result, note: nil)
+      guard let result else { return }
+      let differs = show.map { s in result.showTitle.map { s.title.lowercased() != $0.lowercased() } ?? false } ?? false
+      if result.confidence == .low || (touchedShow && differs) {
+        if result.showTitle != nil { suggestion = result }
+        if result.confidence == .low { return }
+      }
+      await apply(result)
+    }
+  }
+
+  /// Fill show and venue from the photo, where the user hasn't.
+  private func apply(_ result: Identification) async {
+    let token = run
+    if let title = result.showTitle, !touchedShow, show == nil {
+      let same = (try? await Entries.searchShows(title))?.first { $0.title.lowercased() == title.lowercased() }
+      guard token == run else { return }
+      show = same.map(ShowChoice.init) ?? ShowChoice(newTitle: title, type: result.showType ?? .musical)
+      fromPhoto.insert("show")
+    }
+    let picked = nearby.first { $0.osmId != nil && $0.osmId == result.venueOsmId }
+    // A venue picked by hand is never swapped: a different match is offered.
+    if touchedVenue {
+      if let picked, let current = venue, (current.osmId ?? current.name) != (picked.osmId ?? picked.name) {
+        venueSuggestion = picked
+      }
+      return
+    }
+    if let picked {
+      venue = picked
+      fromPhoto.insert("venue")
+    } else if let name = result.venueName, venue == nil {
+      let same = (try? await Entries.searchVenues(name))?.first { $0.name.lowercased() == name.lowercased() }
+      guard token == run else { return }
+      venue = same.map(VenueChoice.init) ?? VenueChoice(name: name, city: place.city, country: place.country)
+      fromPhoto.insert("venue")
+    }
+  }
+
+  /// Tapping a "Maybe…" chip is the user's choice, replacing any show.
+  private func take(_ s: Identification) async {
+    suggestion = nil
+    guard let title = s.showTitle else { return }
+    let same = (try? await Entries.searchShows(title))?.first { $0.title.lowercased() == title.lowercased() }
+    pickShow(same.map(ShowChoice.init) ?? ShowChoice(newTitle: title, type: s.showType ?? .musical))
+    if !touchedVenue, let picked = nearby.first(where: { $0.osmId != nil && $0.osmId == s.venueOsmId }) {
+      venue = picked
+      fromPhoto.insert("venue")
+    }
   }
 
   // MARK: - Load and save
@@ -356,21 +619,36 @@ struct LogView: View {
   }
 
   private func takePhoto(_ item: PhotosPickerItem) async {
-    photoError = nil
+    clearPhotoResults()
+    started = true
     do {
       guard let data = try await item.loadTransferable(type: Data.self) else { throw Photo.Failure.unreadable }
       let jpeg = try Photo.jpeg(from: data, maxEdge: Photo.storedEdge)
       photo = jpeg
       preview = UIImage(data: jpeg)
       existingPhoto = nil
+      // Detection reads the original (its EXIF); only the clean copy is stored.
+      await detect(from: data)
     } catch {
-      photoError = "Couldn’t read that photo. Try another."
+      photoError = "Couldn’t read that photo. Try another, or fill in the details below."
+      detect = .idle
+    }
+  }
+
+  /// How far detection got, for entry_logged (same values as the web).
+  private var detectionLabel: String {
+    switch detect {
+    case .idle: "skipped"
+    case .done(let result, _): result?.confidence.rawValue ?? "none"
+    default: "pending"
     }
   }
 
   private func save() async {
     error = nil
-    guard let show else { return error = "Pick a show." }
+    guard let show else {
+      return error = detect == .identifying ? "Pick a show, or wait for the suggestion from your photo." : "Pick a show."
+    }
     if venue == nil, !planned { return error = "Pick a venue." }
     if let venue, venue.isNew,
       (venue.city ?? "").trimmingCharacters(in: .whitespaces).isEmpty
@@ -380,6 +658,8 @@ struct LogView: View {
     }
     guard let userId = session.userId else { return error = "You’re signed out. Sign in again to save." }
 
+    // Saving wins over a suggestion still on its way: ignore it from here.
+    run += 1
     saving = true
     defer { saving = false }
     let draft = Entries.Draft(
@@ -392,7 +672,7 @@ struct LogView: View {
         Analytics.track(
           .entryLogged,
           [
-            "method": .string(photo != nil ? "photo" : "manual"), "detection": .string("skipped"),
+            "method": .string(photo != nil ? "photo" : "manual"), "detection": .string(detectionLabel),
             "rated": .bool(rating != nil), "has_note": .bool(!note.trimmingCharacters(in: .whitespaces).isEmpty),
             "platform": .string("ios"),
           ])

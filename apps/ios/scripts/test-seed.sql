@@ -22,6 +22,9 @@ begin
     ('00000000-0000-4000-b000-000000000003', 'Walter Kerr Theatre', 'New York', 'United States'),
     ('00000000-0000-4000-b000-000000000004', 'Duke of York''s Theatre', 'London', 'United Kingdom')
   on conflict (id) do nothing;
+  -- A real location, so a photo taken there finds it as a nearby theatre.
+  update public.venues set lat = 40.75929, lng = -73.98674
+    where id = '00000000-0000-4000-b000-000000000001';
 
   insert into public.collections (id, user_id, name, kind, start_date, end_date) values
     ('00000000-0000-4000-c000-000000000001', uid, 'NYC Oct 2026', 'trip', '2026-10-04', '2026-10-08');
