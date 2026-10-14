@@ -5,7 +5,7 @@ import { useId, useRef, useState } from "react";
 
 import { Container } from "@/components/landing/Container";
 
-// "What you can do": four banners, and the image beside them follows the one
+// "How it works": four banners, and the image beside them follows the one
 // that is open. All images share one size (IMAGE_WIDTH × IMAGE_HEIGHT); the
 // files in public/landing/features are mockups until the real ones arrive.
 const IMAGE_WIDTH = 1200;
@@ -66,7 +66,7 @@ export function Features() {
     <section aria-labelledby="features-heading" className="pt-6 pb-16 sm:pb-20">
       <Container className="flex flex-col gap-6">
         <h2 id="features-heading" className="font-display text-title text-label">
-          What you can do
+          How it works
         </h2>
         <div className="flex flex-col gap-8 lg:flex-row-reverse lg:items-center lg:gap-16">
           <div
