@@ -16,7 +16,7 @@ export const TAB_ICONS: Record<string, string[]> = {
 
 const DEFAULT_TABS = [
   { id: "diary", label: "Diary" },
-  { id: "log", label: "Track" },
+  { id: "log", label: "Log" },
   { id: "stats", label: "Stats" },
   { id: "profile", label: "Profile" },
 ];
