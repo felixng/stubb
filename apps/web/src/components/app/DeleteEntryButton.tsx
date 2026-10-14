@@ -28,7 +28,7 @@ export function DeleteEntryButton({ id, photoPath }: { id: string; photoPath: st
             return;
           }
           if (photoPath) await supabase.storage.from(PHOTO_BUCKET).remove([photoPath]);
-          router.push("/app");
+          router.push("/app/profile");
           router.refresh();
         }}
         className="min-h-11 rounded-pill px-4 text-subheadline font-semibold text-destructive hover:bg-fill focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus disabled:opacity-40"

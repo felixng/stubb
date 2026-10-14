@@ -16,6 +16,9 @@ export type CardSocial = { viewerId: string | null; reactions: Reactions };
 // trips appear as chips (RLS hides links to private ones), each linking to its
 // trip page. On a trip page (`inTrip`), the header and that trip's chip are
 // left out, since the page already says whose trip it is; the date stays.
+// The feed points `href` and `tripHref` at the app's own pages for your own
+// shows, and can pass `href={null}` where no page would open; `badge` marks
+// your private shows.
 // With `social`, the card ends with Like and Comment; signed-out visitors
 // sign in and come back to `loginNext`.
 export function PublicEntryCard({
@@ -26,6 +29,9 @@ export function PublicEntryCard({
   avatarUrl,
   page = false,
   inTrip,
+  href = `/e/${entry.id}`,
+  tripHref = (id) => `/t/${id}`,
+  badge,
   social,
   loginNext,
 }: {
@@ -36,6 +42,9 @@ export function PublicEntryCard({
   avatarUrl: string | null;
   page?: boolean;
   inTrip?: string;
+  href?: string | null;
+  tripHref?: (id: string) => string | null;
+  badge?: string;
   social?: CardSocial;
   loginNext?: string;
 }) {
@@ -68,14 +77,15 @@ export function PublicEntryCard({
               <time dateTime={entry.date}>{formatDate(entry.date, { weekday: "short", day: "numeric", month: "short", year: "numeric" })}</time>
             </p>
           </div>
+          {badge && <span className="ml-auto shrink-0 rounded-pill bg-fill px-3 text-footnote leading-7 font-medium text-label-secondary">{badge}</span>}
         </header>
       )}
       <div className="flex flex-col gap-1">
         <Title id={`entry-${entry.id}-title`} className={`${page ? "text-title" : "text-title-2"} font-display text-label`}>
-          {page ? (
+          {page || !href ? (
             entry.show.title
           ) : (
-            <Link href={`/e/${entry.id}`} className="underline-offset-2 hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus">
+            <Link href={href} className="underline-offset-2 hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus">
               {entry.show.title}
             </Link>
           )}
@@ -97,16 +107,23 @@ export function PublicEntryCard({
       )}
       {trips.length > 0 && (
         <ul className="flex flex-wrap gap-2" aria-label="Trips and labels">
-          {trips.map((c) => (
-            <li key={c.id}>
-              <Link
-                href={`/t/${c.id}`}
-                className="inline-flex min-h-7 items-center rounded-pill bg-fill px-3 text-footnote font-medium text-label hover:bg-tint-fill focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus"
-              >
-                {c.name}
-              </Link>
-            </li>
-          ))}
+          {trips.map((c) => {
+            const to = tripHref(c.id);
+            return (
+              <li key={c.id}>
+                {to ? (
+                  <Link
+                    href={to}
+                    className="inline-flex min-h-7 items-center rounded-pill bg-fill px-3 text-footnote font-medium text-label hover:bg-tint-fill focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus"
+                  >
+                    {c.name}
+                  </Link>
+                ) : (
+                  <span className="inline-flex min-h-7 items-center rounded-pill bg-fill px-3 text-footnote font-medium text-label">{c.name}</span>
+                )}
+              </li>
+            );
+          })}
         </ul>
       )}
       {social && (

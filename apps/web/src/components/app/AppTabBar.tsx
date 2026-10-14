@@ -5,8 +5,8 @@ import { usePathname } from "next/navigation";
 
 import { TAB_ICONS } from "@/components/ui/TabBar";
 
-// Bottom tab bar for the owner app (#13): Home (the diary, for now), a big
-// centre Log button, and Profile (which holds trips). Same look as the
+// Bottom tab bar for the owner app (#13): Home (the feed), a big centre Log
+// button, and Profile (your diary and trips). Same look as the
 // `TabBar` UI component, but with links.
 function Icon({ id, size = 24 }: { id: string; size?: number }) {
   return (
@@ -39,9 +39,9 @@ export function AppTabBar() {
 // Rendered with no active tab while the page prerenders (the path is only
 // known per request), then with the real path.
 export function AppTabBarLinks({ pathname }: { pathname: string }) {
-  const home = pathname === "/app";
-  // Trip pages sit under Profile.
-  const profile = pathname.startsWith("/app/profile") || pathname.startsWith("/app/trips");
+  const home = pathname === "/app" || pathname.startsWith("/app/people");
+  // Trip pages and settings sit under Profile.
+  const profile = ["/app/profile", "/app/trips", "/app/settings"].some((p) => pathname.startsWith(p));
   const log = pathname.startsWith("/app/log");
 
   return (
@@ -54,7 +54,7 @@ export function AppTabBarLinks({ pathname }: { pathname: string }) {
         aria-current={home ? "page" : undefined}
         className={`${tab} ${home ? "text-tint-text" : "text-label-secondary"}`}
       >
-        <Icon id="diary" />
+        <Icon id="home" />
         <span>Home</span>
       </Link>
       <div className="flex flex-1 justify-center">
