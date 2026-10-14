@@ -192,6 +192,78 @@ internal enum PublicSchema {
       case entryId = "entry_id"
     }
   }
+  internal struct EntryCommentsSelect: Codable, Hashable, Sendable {
+    internal let body: String
+    internal let createdAt: String
+    internal let entryId: UUID
+    internal let id: UUID
+    internal let userId: UUID
+    internal enum CodingKeys: String, CodingKey {
+      case body = "body"
+      case createdAt = "created_at"
+      case entryId = "entry_id"
+      case id = "id"
+      case userId = "user_id"
+    }
+  }
+  internal struct EntryCommentsInsert: Codable, Hashable, Sendable {
+    internal let body: String
+    internal let createdAt: String?
+    internal let entryId: UUID
+    internal let id: UUID?
+    internal let userId: UUID?
+    internal enum CodingKeys: String, CodingKey {
+      case body = "body"
+      case createdAt = "created_at"
+      case entryId = "entry_id"
+      case id = "id"
+      case userId = "user_id"
+    }
+  }
+  internal struct EntryCommentsUpdate: Codable, Hashable, Sendable {
+    internal let body: String?
+    internal let createdAt: String?
+    internal let entryId: UUID?
+    internal let id: UUID?
+    internal let userId: UUID?
+    internal enum CodingKeys: String, CodingKey {
+      case body = "body"
+      case createdAt = "created_at"
+      case entryId = "entry_id"
+      case id = "id"
+      case userId = "user_id"
+    }
+  }
+  internal struct EntryLikesSelect: Codable, Hashable, Sendable {
+    internal let createdAt: String
+    internal let entryId: UUID
+    internal let userId: UUID
+    internal enum CodingKeys: String, CodingKey {
+      case createdAt = "created_at"
+      case entryId = "entry_id"
+      case userId = "user_id"
+    }
+  }
+  internal struct EntryLikesInsert: Codable, Hashable, Sendable {
+    internal let createdAt: String?
+    internal let entryId: UUID
+    internal let userId: UUID?
+    internal enum CodingKeys: String, CodingKey {
+      case createdAt = "created_at"
+      case entryId = "entry_id"
+      case userId = "user_id"
+    }
+  }
+  internal struct EntryLikesUpdate: Codable, Hashable, Sendable {
+    internal let createdAt: String?
+    internal let entryId: UUID?
+    internal let userId: UUID?
+    internal enum CodingKeys: String, CodingKey {
+      case createdAt = "created_at"
+      case entryId = "entry_id"
+      case userId = "user_id"
+    }
+  }
   internal struct EventsSelect: Codable, Hashable, Sendable, Identifiable {
     internal let createdAt: String
     internal let id: Int64

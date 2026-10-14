@@ -21,7 +21,7 @@ You can't tap the Simulator. To screenshot a screen deeper in the app, temporari
 
 ## Backend
 
-- **Debug builds talk to local Supabase** at `127.0.0.1:54321`. Start it from the repo root with `supabase start` (needs Docker Desktop running). `supabase status` shows whether it's up. The placeholder root screen says "Connected to 127.0.0.1" when it is.
+- **Debug builds talk to local Supabase** at `127.0.0.1:54321`. Start it from the repo root with `supabase start` (needs Docker Desktop running). `supabase status` shows whether it's up.
 - Release builds use the hosted project. URLs and keys are in `Config/*.xcconfig`; `Config/Secrets.xcconfig` (git-ignored, see `Secrets.example.xcconfig`) overrides Debug.
 - Schema changes go in `supabase/migrations` (shared with the web) and are applied with `supabase db reset` locally. Then run `scripts/dev types`.
 - Local auth emails (one-time codes) land in Mailpit at http://127.0.0.1:54324.
@@ -32,6 +32,8 @@ You can't tap the Simulator. To screenshot a screen deeper in the app, temporari
 - Target build settings live in `Config/Shared.xcconfig`, not in the project file.
 - New Swift packages are dependencies: ask the owner first (root `CLAUDE.md`). `supabase-swift` is the only one so far.
 - Swift 6 language mode with strict concurrency. Two-space indentation.
+- Layout: `Stubbed/App` (entry point, tabs), `Design` (tokens in `Theme.swift`, shared views in `Components.swift`, `Screen`), `Data` (Supabase client, config, logging), `Screens` (one folder or file per area).
+- Colours, radii and spacing come from `Palette`, `Radius` and `Space` (the web's tokens), never literals.
 - Keep logic that the web also needs in Postgres (see README). The Swift side renders and calls RPCs.
 
 ## Signing
