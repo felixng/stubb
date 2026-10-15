@@ -1,15 +1,13 @@
 # Decisions
 
-A short log of choices made and why. Newest at the bottom. See `CLAUDE.md` for the project brief.
+A short log of choices made and why. Newest at the bottom. The project brief is a Google Doc: [the project brief](https://docs.google.com/document/d/1NdEgeTRMkKQ5TL87Urwpe7WG9fcrejPsZKsmrO2Enak/edit).
 
 ## Open decisions
 
 | # | Question | Needed by | Notes |
 |---|----------|-----------|-------|
 | 1 | Confirm architecture in `docs/ARCHITECTURE.md` (Next.js on Vercel Hobby + Supabase Free) | Now | Proposed 2026-10-12 |
-| 4 | Email import method: paste-in vs. forwarding address vs. Gmail connect | Phase 2 | Brief suggests starting with paste-in |
-| 5 | Reactions / comments: include or defer | Phase 3 | |
-| 6 | Badges: app-defined only, or user/group-defined too? | When badges are scheduled | Idea; see `CLAUDE.md` "Ideas to explore" |
+| 6 | Badges: app-defined only, or user/group-defined too? | When badges are scheduled | Idea; see the brief's "Ideas to explore" |
 | 7 | Discord: channel webhook vs. Discord login vs. server/bot integration | When Discord is scheduled | Idea; tied to groups |
 | 8 | Monetisation: charge at all? Which features (extra photos, import credits, long-range insights), subscription vs. one-off, prices | Before any paid feature | Ideas only; see `docs/MONETISATION.md` |
 
@@ -279,4 +277,7 @@ Owner's call, after follows: include reactions and comments rather than defer th
 The iOS app signs in with Google through Supabase's own OAuth flow, shown in a secure browser sheet (`ASWebAuthenticationSession`) that returns to `stubbed://auth-callback`, instead of Google's iOS SDK. Why: no new dependency, no separate iOS OAuth client in Google Cloud, and it's the same flow the web uses. Cost: a browser sheet instead of Google's native account picker. Owner setup: add `stubbed://auth-callback` to the hosted project's Auth → URL Configuration → Redirect URLs (local `supabase/config.toml` already has it). Apple stays native (`signInWithIdToken`).
 
 ### 2026-10-15: One photo per entry in the import tool
-Owner's call. The import tool no longer groups photos from the same evening into one draft: each photo is its own draft (and its own identify call), and a photo only joins a draft that has no photo yet (its booking email). Several photos per entry is planned for later, likely as a paid feature (see "Monetisation ideas" in `CLAUDE.md`), so this is switched off in the UI only (`GROUP_VISITS` in `ImportTool.tsx`); `groupPhotos` and multi-photo identify stay in `lib/import`.
+Owner's call. The import tool no longer groups photos from the same evening into one draft: each photo is its own draft (and its own identify call), and a photo only joins a draft that has no photo yet (its booking email). Several photos per entry is planned for later, likely as a paid feature (see "Monetisation ideas" in the project brief), so this is switched off in the UI only (`GROUP_VISITS` in `ImportTool.tsx`); `groupPhotos` and multi-photo identify stay in `lib/import`.
+
+### 2026-10-15: The project brief moves to a Google Doc
+Owner's call: the brief is now the Google Doc [Stubbed: Project Brief](https://docs.google.com/document/d/1NdEgeTRMkKQ5TL87Urwpe7WG9fcrejPsZKsmrO2Enak/edit), one source of truth that's easy to share outside the repo. It was rewritten to match what's built (iOS parity as the current focus, Social largely done, the data model as built, the Phase 1 gaps). `CLAUDE.md` now links to it and keeps only the standing working agreements, so every Claude Code session still loads those. Replaces "Project brief lives in `CLAUDE.md`". Open decisions 4 (email import: paste-in and file upload are built) and 5 (likes and comments, decided 2026-10-14) are closed.

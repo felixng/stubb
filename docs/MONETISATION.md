@@ -1,6 +1,6 @@
 # Monetisation ideas
 
-Status: **ideas only, nothing scheduled.** Monetisation is deferred (see `CLAUDE.md`), and the owner is sceptical of subscriptions for this audience. This file collects the ideas and comparable pricing so the decision is quick when it comes. Open decision #8 in `docs/DECISIONS.md`.
+Status: **ideas only, nothing scheduled.** Monetisation is deferred (see [the project brief](https://docs.google.com/document/d/1NdEgeTRMkKQ5TL87Urwpe7WG9fcrejPsZKsmrO2Enak/edit)), and the owner is sceptical of subscriptions for this audience. This file collects the ideas and comparable pricing so the decision is quick when it comes. Open decision #8 in `docs/DECISIONS.md`.
 
 ## Ground rules
 
@@ -19,7 +19,7 @@ Status: **ideas only, nothing scheduled.** Monetisation is deferred (see `CLAUDE
 ### 2. Import credits
 - Email/photo import calls the Claude API, so each run has a small, real cost.
 - Idea: a free allowance (enough to import a typical year's history), then paid packs of import runs as a **one-off purchase**, not a subscription.
-- Tension: "getting old history in should be easy" is a core principle (risk 2/3 in `CLAUDE.md`). The free allowance has to be generous enough that the first import never hits a paywall.
+- Tension: "getting old history in should be easy" is a core principle (risks 2 and 3 in [the project brief](https://docs.google.com/document/d/1NdEgeTRMkKQ5TL87Urwpe7WG9fcrejPsZKsmrO2Enak/edit)). The free allowance has to be generous enough that the first import never hits a paywall.
 - Schema: count runs per user; `import_drafts` already records each run.
 
 ### 3. Long-range insights

@@ -37,7 +37,7 @@ For share links, add `?utm_source=…` (e.g. `ig_story`) so both Vercel's referr
 
 ## Saved queries
 
-Run in the Supabase SQL editor. They map to "How we'll know if it's working" in `CLAUDE.md`.
+Run in the Supabase SQL editor. They map to "How we'll know if it's working" in [the project brief](https://docs.google.com/document/d/1NdEgeTRMkKQ5TL87Urwpe7WG9fcrejPsZKsmrO2Enak/edit).
 
 **Waitlist sign-ups per week, by source** (divide by Vercel's landing-page visitors for conversion)
 ```sql
