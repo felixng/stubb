@@ -204,6 +204,8 @@ struct PillButtonStyle: ButtonStyle {
 
   func makeBody(configuration: Configuration) -> some View {
     configuration.label
+      .lineLimit(1)
+      .fixedSize()
       .font(.system(size: 15, weight: .semibold))
       .foregroundStyle(tinted ? Palette.tintText : Palette.label)
       .padding(.horizontal, Space.l)

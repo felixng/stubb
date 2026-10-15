@@ -11,6 +11,8 @@ final class AppRouter {
   /// What the entry screen says on arrival.
   enum Notice: Hashable { case saved, planned, photoFailed }
 
+  enum FollowList: String, Hashable { case followers, following }
+
   enum Route: Hashable {
     case entry(UUID, notice: Notice? = nil)
     case trip(UUID, addFailed: Bool = false)
@@ -21,6 +23,7 @@ final class AppRouter {
     /// scrolls to the thread.
     case publicEntry(UUID, comments: Bool = false)
     case publicTrip(UUID)
+    case follows(handle: String, list: FollowList)
   }
 
   /// The log sheet: a new entry, or editing one.

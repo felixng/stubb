@@ -23,6 +23,7 @@ struct ProfileView: View {
     var profile: Profile
     var counts: FollowCounts
     var shows: Int
+    var requests: [Person]
   }
 
   var body: some View {
@@ -86,8 +87,17 @@ struct ProfileView: View {
         }
         HStack(spacing: Space.xxxl) {
           stat(h.shows, h.shows == 1 ? "Show" : "Shows")
-          stat(h.counts.followers, h.counts.followers == 1 ? "Follower" : "Followers")
-          stat(h.counts.following, "Following")
+          NavigationLink(value: AppRouter.Route.follows(handle: h.profile.handle, list: .followers)) {
+            stat(h.counts.followers, h.counts.followers == 1 ? "Follower" : "Followers")
+          }
+          NavigationLink(value: AppRouter.Route.follows(handle: h.profile.handle, list: .following)) {
+            stat(h.counts.following, "Following")
+          }
+        }
+        .buttonStyle(.plain)
+        // Only private profiles get requests; going public approves them all.
+        if !h.requests.isEmpty {
+          FollowRequests(people: h.requests)
         }
         HStack(spacing: Space.m) {
           NavigationLink("Edit profile", value: AppRouter.Route.settings)
@@ -264,10 +274,13 @@ struct ProfileView: View {
     async let profile = Profiles.profile(userId)
     async let counts = Profiles.followCounts(userId)
     async let shows = Profiles.loggedCount(userId)
+    async let requests = Follows.requests(userId)
     async let entries = Profiles.ownEntries(userId)
     async let ownTrips = Trips.list(userId)
     do {
-      header = .loaded(Header(profile: try await profile, counts: await counts, shows: await shows))
+      header = .loaded(
+        Header(
+          profile: try await profile, counts: await counts, shows: await shows, requests: (try? await requests) ?? []))
     } catch {
       if header.value == nil { header = .failed("Couldn’t load your profile.") }
     }

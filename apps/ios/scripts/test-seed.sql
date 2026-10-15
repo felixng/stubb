@@ -5,11 +5,14 @@ do $$
 declare
   uid uuid := (select id from auth.users where email = 'ios-test@stubbed.local');
   friend uuid := (select id from auth.users where email = 'ios-friend@stubbed.local');
+  fan uuid := (select id from auth.users where email = 'ios-fan@stubbed.local');
   i integer;
 begin
   delete from public.entries where user_id in (uid, friend);
   delete from public.collections where user_id in (uid, friend);
-  delete from public.follows where uid in (follower_id, followee_id) or friend in (follower_id, followee_id);
+  delete from public.follows
+    where uid in (follower_id, followee_id) or friend in (follower_id, followee_id) or fan in (follower_id, followee_id);
+  update public.profiles set handle = coalesce(handle, 'ios_fan'), display_name = 'A Fan' where id = fan;
   update public.profiles set is_private = false, default_visibility = 'public' where id = uid;
   update public.profiles
     set handle = coalesce(handle, 'ios_friend'), display_name = 'Friend of iOS', bio = 'Fringe every August.',
@@ -61,6 +64,11 @@ begin
             date '2026-10-10' - i * 3, 'logged', 3 + (i % 5) * 0.5,
             case when i = 1 then 'Second time round and it still lands.' end, 'public');
   end loop;
+  -- A request waiting for the test user's approval. Inserting sets the
+  -- status from the followee's privacy, so set it back to pending after.
+  insert into public.follows (follower_id, followee_id) values (fan, uid);
+  update public.follows set status = 'pending' where follower_id = fan and followee_id = uid;
+
   insert into public.entry_likes (entry_id, user_id) values ('00000000-0000-4000-d000-000000000001', friend);
   insert into public.entry_comments (entry_id, user_id, body)
     values ('00000000-0000-4000-d000-000000000001', friend, 'Front mezz is the best seat in that house.');
