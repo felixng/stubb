@@ -4,13 +4,15 @@ import { useEffect, useId, useRef, useState } from "react";
 
 import { Button } from "@/components/ui/Button";
 import { Chip } from "@/components/ui/Chip";
-import { TRIP_SELECT, tripCovers, type Collection } from "@/lib/entries";
+import { formatDate, TRIP_SELECT, tripCovers, type Collection } from "@/lib/entries";
 import type { Identification } from "@/lib/identify";
 import {
   centroid,
+  describeMissing,
   groupPhotos,
   MAX_IDENTIFY_PHOTOS,
   mergeReadings,
+  missingFields,
   pickSpread,
   visitAccuracy,
   type Extracted,
@@ -25,7 +27,7 @@ import { lookupNearby, preparePhoto, requestIdentify, type PreparedPhoto } from 
 import { resolveShow, resolveVenue, runPool, saveDraft, SaveError } from "@/lib/import/resolve";
 import { createClient } from "@/lib/supabase/client";
 import { useFreshOnReturn } from "@/lib/use-fresh-on-return";
-import { DraftCard, type Draft } from "./DraftCard";
+import { DraftCard, draftCardId, type Draft } from "./DraftCard";
 import { CompareGrid } from "./CompareGrid";
 import { COMPARE_ALL, DEFAULT_CHAIN, ModelPicker, type ProvidersInfo } from "./ModelPicker";
 
@@ -493,19 +495,18 @@ export function ImportTool({ admin = false }: { admin?: boolean }) {
     (d.show?.id && d.date && existing.find((x) => x.show_id === d.show!.id && x.date === d.date)?.id) || null;
 
   const toSave = drafts.filter((d) => d.include && d.status !== "saved" && d.status !== "resolving");
+  // Ticked drafts that Save found incomplete and still are.
+  const blocked = toSave.filter((d) => d.flagged && missingFields(d).length);
   const busy = jobs.some((j) => j.state !== "done" && j.state !== "failed");
 
   async function saveAll() {
     if (!userId) return setNotice("You’re signed out. Sign in again to save.");
-    const incomplete = toSave.filter((d) => !d.show || !d.venue || !d.date);
+    // Each card marks what it still needs; the list above Save links to them.
+    const incomplete = toSave.filter((d) => missingFields(d).length);
     if (incomplete.length) {
-      incomplete.forEach((d) => updateDraft(d.key, { error: "Needs a show, venue and date, or untick Save." }));
-      return setNotice(`${incomplete.length} ticked draft${incomplete.length === 1 ? " is" : "s are"} missing a show, venue or date.`);
-    }
-    const handAdded = toSave.filter((d) => d.venue && !d.venue.id && !d.venue.osm_id && (!d.venue.city?.trim() || !d.venue.country?.trim()));
-    if (handAdded.length) {
-      handAdded.forEach((d) => updateDraft(d.key, { error: "Add the new venue’s city and country." }));
-      return setNotice("Some new venues need a city and country.");
+      setNotice(null);
+      incomplete.forEach((d) => updateDraft(d.key, { flagged: true }));
+      return goToDraft(incomplete[0].key);
     }
 
     setSaving(true);
@@ -547,6 +548,24 @@ export function ImportTool({ admin = false }: { admin?: boolean }) {
     setNotice(
       `Saved ${saved} of ${toSave.length}.${photoFailures ? ` ${photoFailures} photo${photoFailures === 1 ? "" : "s"} didn’t upload; add them from the entry.` : ""}`,
     );
+  }
+
+  function goToDraft(key: string) {
+    // After the render that marks it.
+    requestAnimationFrame(() => {
+      const card = document.getElementById(draftCardId(key));
+      card?.scrollIntoView({ behavior: "smooth", block: "start" });
+      card?.focus({ preventScroll: true });
+    });
+  }
+
+  // How a draft is named in the list of ones that can't be saved yet.
+  function draftName(d: Draft) {
+    const title = d.show?.title ?? d.reading.extracted.show_title;
+    const source = d.reading.sources[0];
+    const from = source?.kind === "email" ? (source.subject ?? source.fileName) : `${d.photos.length} photo${d.photos.length === 1 ? "" : "s"}`;
+    const when = d.date ? formatDate(d.date, { day: "numeric", month: "short", year: "numeric" }) : null;
+    return [title ?? `Unknown show (${from})`, when].filter(Boolean).join(", ");
   }
 
   function reset() {
@@ -771,6 +790,29 @@ export function ImportTool({ admin = false }: { admin?: boolean }) {
             </div>
           )}
         </section>
+      )}
+
+      {blocked.length > 0 && (
+        <div role="alert" className="flex flex-col gap-2 rounded-md border-2 border-destructive bg-surface p-4 shadow-sm">
+          <p className="text-subheadline font-semibold text-destructive">
+            {blocked.length} ticked show{blocked.length === 1 ? " needs" : "s need"} more before saving
+          </p>
+          <ul className="flex flex-col">
+            {blocked.map((d) => (
+              <li key={d.key}>
+                <button
+                  type="button"
+                  onClick={() => goToDraft(d.key)}
+                  className="flex min-h-11 w-full flex-col items-start justify-center py-1 text-left focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus"
+                >
+                  <span className="text-body font-semibold text-tint-text underline">{draftName(d)}</span>
+                  <span className="text-footnote text-label-secondary">Needs {describeMissing(missingFields(d))}</span>
+                </button>
+              </li>
+            ))}
+          </ul>
+          <p className="text-footnote text-label-secondary">Fill them in, or untick Save on them to save the rest.</p>
+        </div>
       )}
 
       {notice && (
