@@ -6,6 +6,7 @@ import UIKit
 /// whichever tab you're on. Each tab keeps its own navigation stack, so
 /// switching tabs and back returns you where you were.
 struct RootView: View {
+  @Environment(AppSession.self) private var session
   @State private var router = AppRouter()
   /// The tab bar hides while the keyboard is up, as iOS tab bars do, so it
   /// never sits on top of the field you're typing in.
@@ -35,6 +36,11 @@ struct RootView: View {
       TripForm(request: request)
     }
     .environment(router)
+    .onChange(of: session.pendingLink, initial: true) { _, route in
+      guard let route else { return }
+      session.pendingLink = nil
+      router.open(route)
+    }
   }
 
   private func tab<Content: View>(

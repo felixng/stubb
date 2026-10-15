@@ -85,6 +85,13 @@ final class AppRouter {
     profilePath.append(.trip(id, addFailed: linksFailed))
   }
 
+  /// Opens a link on the current tab, closing any sheet.
+  func open(_ route: Route) {
+    log = nil
+    tripForm = nil
+    if tab == .home { homePath.append(route) } else { profilePath.append(route) }
+  }
+
   /// Something was written or deleted: screens reload.
   func dataChanged() { dataVersion += 1 }
 
