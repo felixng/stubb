@@ -81,6 +81,25 @@ function fromIdentification(result: Identification, date: string | null): Extrac
   };
 }
 
+// A source nothing could be read from still becomes a draft, so the show can
+// be logged by hand with its photos, nearby theatres and date kept.
+function blank(date: string | null): Extracted {
+  return {
+    show_title: null,
+    show_type: null,
+    venue_name: null,
+    venue_osm_id: null,
+    city: null,
+    country: null,
+    date,
+    time: null,
+    seats: null,
+    price: null,
+    confidence: "low",
+    reason: "",
+  };
+}
+
 // Bulk import (#17, #18): drop exported confirmation emails or a set of
 // photos, see what was read from each, correct the drafts, and save the ones
 // you tick. Nothing is written until "Save". Built from the shared
@@ -119,7 +138,8 @@ export function ImportTool({ admin = false }: { admin?: boolean }) {
   existingRef.current = existing;
   // Per source: how to turn an attempt into drafts, and the drafts it made,
   // so "Use this" can swap one model's reading for another's.
-  const appliers = useRef(new Map<string, (attempt: Attempt) => Promise<string[]>>());
+  // A null attempt makes a blank draft to fill in by hand.
+  const appliers = useRef(new Map<string, (attempt: Attempt | null) => Promise<string[]>>());
   const jobDrafts = useRef(new Map<string, string[]>());
 
   useEffect(() => {
@@ -165,7 +185,7 @@ export function ImportTool({ admin = false }: { admin?: boolean }) {
   // A new reading either joins a draft for the same show and date (a
   // reminder for a booking already read) or becomes a new draft, which is
   // then matched to the catalogue.
-  async function addReading(reading: Reading, extra: Pick<Draft, "nearby" | "place" | "photos">): Promise<{ key: string; created: boolean }> {
+  async function addReading(reading: Reading, extra: Pick<Draft, "nearby" | "place" | "photos" | "unread">): Promise<{ key: string; created: boolean }> {
     const same = draftsRef.current.find(
       (d) => d.status !== "saved" && mergeReadings([d.reading, reading]).length === 1,
     );
@@ -251,8 +271,9 @@ export function ImportTool({ admin = false }: { admin?: boolean }) {
   }
 
   // Turns one attempt into drafts, replacing drafts an earlier choice made
-  // for this source (unless saved, or shared with another source).
-  async function chooseAttempt(ref: string, attempt: Attempt | null) {
+  // for this source (unless saved, or shared with another source). With no
+  // attempt, `manual` leaves a blank draft to fill in by hand.
+  async function chooseAttempt(ref: string, attempt: Attempt | null, manual = false) {
     const previous = new Set(jobDrafts.current.get(ref) ?? []);
     if (previous.size) {
       draftsRef.current = draftsRef.current.filter((d) => !previous.has(d.key) || d.status === "saved");
@@ -260,7 +281,7 @@ export function ImportTool({ admin = false }: { admin?: boolean }) {
     }
     jobDrafts.current.set(ref, []);
     updateJob(ref, { chosen: attempt?.model ?? null, found: attempt?.shows.length ?? 0 });
-    if (!attempt) return;
+    if (!attempt && !manual) return;
     const created = await appliers.current.get(ref)?.(attempt);
     jobDrafts.current.set(ref, created ?? []);
   }
@@ -273,7 +294,9 @@ export function ImportTool({ admin = false }: { admin?: boolean }) {
       state: done ? "done" : "failed",
       detail: best ? best.note : (attempts.find((a) => a.note)?.note ?? null),
     });
-    await chooseAttempt(ref, best);
+    // A photo visit is always worth logging; an email only when reading it
+    // failed (not when it simply wasn't a booking).
+    await chooseAttempt(ref, best, kind === "identify" || !done);
   }
 
   async function readEmails(files: File[], text?: string) {
@@ -309,7 +332,11 @@ export function ImportTool({ admin = false }: { admin?: boolean }) {
     await runPool(batch.filter((p) => p.text), EMAIL_CONCURRENCY, async (email) => {
       updateJob(email.ref, { state: "reading" });
       appliers.current.set(email.ref, async (attempt) => {
-        const source = { kind: "email" as const, ref: email.ref, fileName: email.fileName, subject: email.subject, from: email.from, sent: email.sent, trimmed: email.trimmed, readBy: attempt.readBy };
+        const source = { kind: "email" as const, ref: email.ref, fileName: email.fileName, subject: email.subject, from: email.from, sent: email.sent, trimmed: email.trimmed, readBy: attempt?.readBy ?? null };
+        if (!attempt) {
+          const added = await addReading({ extracted: blank(null), sources: [source] }, { nearby: [], place: { city: null, country: null }, photos: [], unread: true });
+          return added.created ? [added.key] : [];
+        }
         const keys: string[] = [];
         for (const extracted of attempt.shows) {
           const added = await addReading({ extracted, sources: [source] }, { nearby: [], place: { city: extracted.city, country: extracted.country }, photos: [] });
@@ -418,11 +445,12 @@ export function ImportTool({ admin = false }: { admin?: boolean }) {
           date: p.meta.date,
           time: p.meta.time,
           hasLocation: p.meta.lat != null,
-          readBy: attempt.readBy,
+          readBy: attempt?.readBy ?? null,
         }));
+        const extracted = attempt?.shows[0];
         const added = await addReading(
-          { extracted: attempt.shows[0], sources },
-          { nearby, place, photos: group.map((p) => ({ stored: p.stored, previewUrl: p.previewUrl })) },
+          { extracted: extracted ?? { ...blank(dated.meta.date), city: place.city, country: place.country }, sources },
+          { nearby, place, photos: group.map((p) => ({ stored: p.stored, previewUrl: p.previewUrl })), unread: !extracted },
         );
         return added.created ? [added.key] : [];
       });
@@ -707,7 +735,7 @@ export function ImportTool({ admin = false }: { admin?: boolean }) {
             Review {drafts.length} show{drafts.length === 1 ? "" : "s"}
           </h2>
           <p className="text-footnote text-label-secondary">
-            Ticked shows are saved; nothing is saved until you press Save. Guesses aren’t filled in: tap “Maybe…” to use one.
+            Ticked shows are saved; nothing is saved until you press Save. Guesses aren’t filled in: tap “Maybe…” to use one. Anything we couldn’t read is here too, to fill in yourself.
           </p>
           {drafts.map((d) => (
             <DraftCard

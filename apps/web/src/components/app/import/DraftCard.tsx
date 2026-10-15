@@ -30,6 +30,8 @@ export type Draft = {
   // attach (null: none).
   photos: { stored: Blob; previewUrl: string }[];
   photoIndex: number | null;
+  // Nothing could be read from the source: a blank draft to fill in by hand.
+  unread?: boolean;
   status: "resolving" | "ready" | "saving" | "saved" | "failed";
   entryId?: string;
   error?: string;
@@ -127,7 +129,7 @@ export function DraftCard({
         )}
         <div className="flex min-w-0 flex-1 flex-col gap-1">
           <h2 id={`${id}-title`} className="text-headline text-label">
-            {e.show_title ?? "Unknown show"}
+            {e.show_title ?? (draft.unread ? "Add the show yourself" : "Unknown show")}
           </h2>
           {emails.map((s) => (
             <p key={s.ref} className="truncate text-footnote text-label-secondary" title={s.subject ?? s.fileName}>
@@ -155,17 +157,23 @@ export function DraftCard({
       </header>
 
       {/* What we read */}
-      <div className="flex flex-col gap-1.5 rounded-sm bg-fill px-3 py-2.5">
-        <p className="flex flex-wrap items-center gap-2 text-footnote">
-          <span className={`rounded-pill px-2 py-0.5 font-semibold ${conf.className}`}>{conf.text}</span>
-          <span className="text-label">{readLine(draft) || "Nothing certain"}</span>
+      {draft.unread ? (
+        <p className="rounded-sm bg-fill px-3 py-2.5 text-footnote text-label">
+          We couldn’t work this one out. Pick the show{draft.nearby.length ? ", check the venue" : " and venue"}, then tick Save.
         </p>
-        {(e.seats || e.price) && (
-          <p className="text-footnote text-label-secondary">{[e.seats && `Seats ${e.seats}`, e.price].filter(Boolean).join(" · ")}</p>
-        )}
-        {e.reason && <p className="text-footnote text-label-secondary">{e.reason}</p>}
-        {readBy.length > 0 && <p className="font-mono text-caption text-label-secondary">Read by {readBy.join(", ")}</p>}
-      </div>
+      ) : (
+        <div className="flex flex-col gap-1.5 rounded-sm bg-fill px-3 py-2.5">
+          <p className="flex flex-wrap items-center gap-2 text-footnote">
+            <span className={`rounded-pill px-2 py-0.5 font-semibold ${conf.className}`}>{conf.text}</span>
+            <span className="text-label">{readLine(draft) || "Nothing certain"}</span>
+          </p>
+          {(e.seats || e.price) && (
+            <p className="text-footnote text-label-secondary">{[e.seats && `Seats ${e.seats}`, e.price].filter(Boolean).join(" · ")}</p>
+          )}
+          {e.reason && <p className="text-footnote text-label-secondary">{e.reason}</p>}
+          {readBy.length > 0 && <p className="font-mono text-caption text-label-secondary">Read by {readBy.join(", ")}</p>}
+        </div>
+      )}
 
       {duplicateOf && (
         <p className="text-footnote text-label">
