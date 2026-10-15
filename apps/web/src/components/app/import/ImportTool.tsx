@@ -63,6 +63,11 @@ const STATE_TEXT: Record<Job["state"], string> = {
 const EMAIL_CONCURRENCY = 3;
 const PHOTO_CONCURRENCY = 3;
 
+// One photo per entry for now, even for shots from the same evening: several
+// photos per entry is planned as a later (likely paid) feature. Turned off in
+// the UI only; visit grouping and merging stay in lib/import for then.
+const GROUP_VISITS = false;
+
 const isImage = (f: File) => f.type.startsWith("image/") || /\.(jpe?g|png|heic|heif|webp|gif)$/i.test(f.name);
 
 // A photo's own time isn't the curtain time, so `time` stays empty: it would
@@ -190,7 +195,11 @@ export function ImportTool({ admin = false }: { admin?: boolean }) {
   // then matched to the catalogue.
   async function addReading(reading: Reading, extra: Pick<Draft, "nearby" | "place" | "photos" | "unread">): Promise<{ key: string; created: boolean }> {
     const same = draftsRef.current.find(
-      (d) => d.status !== "saved" && mergeReadings([d.reading, reading]).length === 1,
+      (d) =>
+        d.status !== "saved" &&
+        // One photo per entry: a photo only joins a draft that has none (its booking email).
+        (GROUP_VISITS || !extra.photos.length || !d.photos.length) &&
+        mergeReadings([d.reading, reading]).length === 1,
     );
     if (same) {
       // Functional update: other jobs may be updating drafts at the same time.
@@ -398,10 +407,14 @@ export function ImportTool({ admin = false }: { admin?: boolean }) {
         failed.push(file.name);
       }
     });
-    const groups = groupPhotos(items.map((p) => ({ ...p, ...p.meta })));
+    const when = (p: PhotoItem) => `${p.meta.date ?? "9999"} ${p.meta.time ?? "99:99"}`;
+    // Without grouping, each photo is its own visit, in time order.
+    const groups = GROUP_VISITS
+      ? groupPhotos(items.map((p) => ({ ...p, ...p.meta })))
+      : [...items].sort((a, b) => when(a).localeCompare(when(b))).map((p) => [{ ...p, ...p.meta }]);
     updateJob(prepRef, {
       state: failed.length && !items.length ? "failed" : "done",
-      label: `${items.length} photo${items.length === 1 ? "" : "s"} read, ${groups.length} visit${groups.length === 1 ? "" : "s"}`,
+      label: `${items.length} photo${items.length === 1 ? "" : "s"} read${GROUP_VISITS ? `, ${groups.length} visit${groups.length === 1 ? "" : "s"}` : ""}`,
       detail: failed.length
         ? `Couldn’t open ${failed.join(", ")}. HEIC only opens in Safari; export as JPEG for other browsers.`
         : null,
@@ -605,7 +618,7 @@ export function ImportTool({ admin = false }: { admin?: boolean }) {
         >
           <p className="text-headline text-label">Drop files here</p>
           <p className="max-w-[420px] text-subheadline text-label-secondary">
-            Confirmation emails saved as .eml, an .mbox export, or a saved .html page. Or photos from the theatre: we read their date and location, and group shots from the same visit.
+            Confirmation emails saved as .eml, an .mbox export, or a saved .html page. Or photos from the theatre: we read their date and location. Each photo becomes its own show to review.
           </p>
           <div className="mt-1 flex flex-wrap justify-center gap-2">
             <label className="inline-flex min-h-11 cursor-pointer items-center rounded-pill bg-tint-fill px-4 text-[15px] leading-5 font-semibold text-tint-text hover:bg-fill focus-within:outline-2 focus-within:outline-offset-2 focus-within:outline-focus">
