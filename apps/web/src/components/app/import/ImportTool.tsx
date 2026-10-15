@@ -18,6 +18,7 @@ import {
   type Reading,
 } from "@/lib/import/drafts";
 import { pickBest, type Attempt } from "@/lib/import/compare";
+import { importErrorText } from "@/lib/import/errors";
 import { EMAIL_FILE_ACCEPT, parseEmailFile, type ParsedEmail } from "@/lib/import/email-parse";
 import type { EmailExtraction } from "@/lib/import/extract-email";
 import { lookupNearby, preparePhoto, requestIdentify, type PreparedPhoto } from "@/lib/import/photo-pipeline";
@@ -359,7 +360,8 @@ export function ImportTool({ admin = false }: { admin?: boolean }) {
                 ? "Too many at once. Try again in a few minutes."
                 : code === "model_unavailable" || code === "invalid_model"
                   ? `Can’t use ${m}: no API key, or not a valid model.`
-                  : `Couldn’t read this email.${detail ? ` ${detail}` : ""}`,
+                  : // Admins also see the provider's raw reply, to debug a model.
+                    `${importErrorText("email", detail)}${admin && detail ? ` ${detail}` : ""}`,
           );
         }
         const { result, model: readBy } = (await res.json()) as { result: EmailExtraction | null; model: string | null };
@@ -464,7 +466,7 @@ export function ImportTool({ admin = false }: { admin?: boolean }) {
               ? "Show detection isn’t set up yet (no API key)."
               : outcome.error === "model_unavailable"
                 ? `Can’t use ${m} for photos: no API key, or it can’t read images.`
-                : `Couldn’t work out the show.${outcome.detail ? ` ${outcome.detail}` : ""}`,
+                : `${importErrorText("photo", outcome.detail)}${admin && outcome.detail ? ` ${outcome.detail}` : ""}`,
           );
         }
         const r = outcome.result;
@@ -708,7 +710,8 @@ export function ImportTool({ admin = false }: { admin?: boolean }) {
                             .filter(Boolean)
                             .join(" · ") || "Done"
                         : j.state === "failed"
-                          ? (j.detail ?? "Failed")
+                          ? // Its blank draft is in the review list below.
+                            `${j.detail ?? "Failed"}${j.kind === "photos" && j.thumbs ? " Add it yourself below." : ""}`
                           : STATE_TEXT[j.state]}
                     </p>
                   </div>
