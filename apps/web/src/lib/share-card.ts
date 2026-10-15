@@ -50,18 +50,20 @@ export function ordinal(n: number) {
 // `transparent`: no photo and no shading, just the text, like Hevy's
 // "Background" toggle. It goes on top of the person's own story photo, so
 // every line gets a shadow to stay readable on any picture.
+// `square`: square corners, for Instagram Stories, which turns transparent
+// corners black.
 export async function renderCard(
   design: CardDesign["id"],
   data: CardData,
   photo: HTMLImageElement | null,
-  { transparent = false } = {},
+  { transparent = false, square = false } = {},
 ) {
   const canvas = document.createElement("canvas");
   canvas.width = canvas.height = CARD_SIZE;
   const ctx = canvas.getContext("2d");
   if (!ctx) throw new Error("Canvas isn’t available");
   ctx.scale(SCALE, SCALE);
-  const bg: Background = transparent ? null : { photo };
+  const bg: Background = transparent ? null : { photo, round: !square };
   if (transparent) textShadow(ctx);
   if (design === "square") drawSquare(ctx, data, bg);
   else drawHevy(ctx, data, bg, design === "hevy-seen" ? "seen" : "venue");
@@ -74,7 +76,7 @@ export async function renderCard(
 function drawSquare(ctx: Ctx, d: CardData, bg: Background) {
   const pad = 28;
   if (bg) {
-    clipRounded(ctx, 20);
+    clipRounded(ctx, bg.round ? 20 : 0);
     drawPhoto(ctx, bg.photo, 0.5);
     verticalGradient(ctx, 150, U, [
       [0, "rgba(0, 0, 0, 0)"],
@@ -130,7 +132,7 @@ function drawSquare(ctx: Ctx, d: CardData, bg: Background) {
 function drawHevy(ctx: Ctx, d: CardData, bg: Background, middle: "venue" | "seen") {
   const side = 24;
   if (bg) {
-    clipRounded(ctx, 32);
+    clipRounded(ctx, bg.round ? 32 : 0);
     drawPhoto(ctx, bg.photo, middle === "seen" ? 0.4 : 0.35);
     verticalGradient(ctx, 0, 170, [
       [0, "rgba(0, 0, 0, 0.6)"],
@@ -193,7 +195,7 @@ function drawHevy(ctx: Ctx, d: CardData, bg: Background, middle: "venue" | "seen
 
 // --- helpers ---------------------------------------------------------------
 
-type Background = { photo: HTMLImageElement | null } | null;
+type Background = { photo: HTMLImageElement | null; round: boolean } | null;
 
 // Shadow offsets and blur are in canvas pixels, not the scaled units.
 function textShadow(ctx: Ctx) {

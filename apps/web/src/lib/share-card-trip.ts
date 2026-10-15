@@ -80,10 +80,13 @@ const LIGHT = {
 type Palette = typeof DARK;
 
 // `photos[i]` belongs to `data.shows[i]`; null where a show has none.
+// `square`: square corners, for Instagram Stories, which turns transparent
+// corners black.
 export async function renderTripCard(
   design: TripCardDesign["id"],
   data: TripCardData,
   photos: (HTMLImageElement | null)[],
+  { square = false } = {},
 ) {
   const canvas = document.createElement("canvas");
   canvas.width = canvas.height = W * SCALE;
@@ -93,7 +96,8 @@ export async function renderTripCard(
   const shows = data.shows.map((s, i) => ({ ...s, photo: photos[i] ?? null }));
   const p = design === "trip-collage" || design === "trip-square" ? LIGHT : DARK;
 
-  roundRect(ctx, 0, 0, W, W, RADIUS);
+  const radius = square ? 0 : RADIUS;
+  roundRect(ctx, 0, 0, W, W, radius);
   ctx.fillStyle = p.ground;
   ctx.fill();
   ctx.save();
@@ -104,7 +108,7 @@ export async function renderTripCard(
   else drawList(ctx, p, data, shows);
   drawFooter(ctx, p, data.handle);
   ctx.restore();
-  strokeRound(ctx, 0, 0, W, W, RADIUS, p.separator);
+  strokeRound(ctx, 0, 0, W, W, radius, p.separator);
 
   return new Promise<Blob>((resolve, reject) =>
     canvas.toBlob((b) => (b ? resolve(b) : reject(new Error("Couldn’t make the image"))), "image/png"),
