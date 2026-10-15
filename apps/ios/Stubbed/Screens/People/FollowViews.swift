@@ -127,6 +127,7 @@ struct FollowsListView: View {
               if list == .followers, m.profile.id == session.userId {
                 Button("Remove") { removing = person }
                   .buttonStyle(.pill)
+                  .accessibilityLabel("Remove @\(person.handle)")
               } else if person.id != session.userId {
                 FollowButton(person: person, viewer: m.viewers[person.id] ?? Viewer(isOwner: false, status: .none))
               }
@@ -138,10 +139,10 @@ struct FollowsListView: View {
     }
     .confirmationDialog(
       "Remove @\(removing?.handle ?? "")?", isPresented: Binding(get: { removing != nil }, set: { if !$0 { removing = nil } }),
-      titleVisibility: .visible
-    ) {
-      Button("Remove", role: .destructive) { Task { await remove() } }
-    } message: {
+      titleVisibility: .visible, presenting: removing
+    ) { person in
+      Button("Remove", role: .destructive) { Task { await remove(person) } }
+    } message: { _ in
       Text("They won’t be told. They can follow you again\(state.value?.profile.isPrivate == true ? " if you approve it" : "").")
     }
     .refreshable { await load() }
@@ -164,9 +165,8 @@ struct FollowsListView: View {
     }
   }
 
-  private func remove() async {
-    guard let me = session.userId, let person = removing else { return }
-    removing = nil
+  private func remove(_ person: Person) async {
+    guard let me = session.userId else { return }
     try? await Follows.remove(follower: person.id, me: me)
     router.dataChanged()
   }
@@ -193,8 +193,10 @@ struct FollowRequests: View {
             HStack(spacing: Space.s) {
               Button("Approve") { Task { await answer(person, approve: true) } }
                 .buttonStyle(FollowButtonStyle(filled: true))
+                .accessibilityLabel("Approve @\(person.handle)")
               Button("Decline") { Task { await answer(person, approve: false) } }
                 .buttonStyle(.pill)
+                .accessibilityLabel("Decline @\(person.handle)")
             }
             .disabled(busy == person.id)
           }

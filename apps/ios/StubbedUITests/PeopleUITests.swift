@@ -51,7 +51,7 @@ final class PeopleUITests: XCTestCase {
     app.buttons["Profile"].tap()
     XCTAssertTrue(app.staticTexts["1 follow request"].waitForExistence(timeout: 10))
     snapshot("follow-request")
-    app.buttons["Approve"].tap()
+    app.buttons["Approve @ios_fan"].tap()
     XCTAssertFalse(app.staticTexts["1 follow request"].waitForExistence(timeout: 5) && app.staticTexts["1 follow request"].isHittable)
 
     let followers = app.buttons.matching(NSPredicate(format: "label BEGINSWITH %@", "2")).firstMatch
@@ -61,5 +61,10 @@ final class PeopleUITests: XCTestCase {
     XCTAssertTrue(button(app, startingWith: "@ios_fan").waitForExistence(timeout: 10))
     XCTAssertTrue(button(app, startingWith: "@ios_friend").exists)
     snapshot("followers")
+
+    // Remove the new follower again.
+    app.buttons["Remove @ios_fan"].tap()
+    app.sheets.buttons["Remove"].firstMatch.tap()
+    XCTAssertFalse(button(app, startingWith: "@ios_fan").waitForExistence(timeout: 5) && button(app, startingWith: "@ios_fan").isHittable)
   }
 }

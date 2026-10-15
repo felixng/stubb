@@ -14,6 +14,7 @@ struct EntryView: View {
   @State private var cards: [RenderedCard]?
   @State private var cardsFailed = false
   @State private var share: ShareInfo?
+  @State private var reactions: Reactions?
 
   /// What the share screen needs beyond the entry: the caption and the
   /// public page, when there is one.
@@ -90,6 +91,19 @@ struct EntryView: View {
           .font(.stubBody)
           .foregroundStyle(Palette.label)
       }
+      // Public shows have a page with likes and comments.
+      if let reactions, entry.visibility == .public, !entry.planned {
+        NavigationLink(value: AppRouter.Route.publicEntry(entry.id, comments: true)) {
+          Text(
+            reactions.likes + reactions.comments == 0
+              ? "No likes or comments yet"
+              : "\(reactions.likes) \(reactions.likes == 1 ? "like" : "likes") · \(reactions.comments) \(reactions.comments == 1 ? "comment" : "comments")"
+          )
+          .font(.stubSubheadline.weight(.semibold))
+          .foregroundStyle(Palette.tintText)
+          .frame(minHeight: Space.touch)
+        }
+      }
       FlowLayout(spacing: Space.s) {
         ForEach(entry.trips, id: \.id) { trip in
           NavigationLink(value: AppRouter.Route.trip(trip.id)) {
@@ -157,6 +171,7 @@ struct EntryView: View {
         photo = nil
       }
       state = .loaded(entry)
+      reactions = await ReactionsAPI.load([entry.id])[entry.id]
       if !entry.planned { await drawCards(entry) }
     } catch {
       // Deleted, or not yours: nothing to show.

@@ -74,6 +74,82 @@ enum ReactionsAPI {
   }
 }
 
+struct Comment: Decodable, Hashable, Identifiable, Sendable {
+  let id: UUID
+  let body: String
+  let createdAt: Date
+  let author: Person
+
+  enum CodingKeys: String, CodingKey {
+    case id, body, author
+    case createdAt = "created_at"
+  }
+
+  init(from decoder: any Decoder) throws {
+    let c = try decoder.container(keyedBy: CodingKeys.self)
+    id = try c.decode(UUID.self, forKey: .id)
+    body = try c.decode(String.self, forKey: .body)
+    author = try c.decode(Person.self, forKey: .author)
+    let raw = try c.decode(String.self, forKey: .createdAt)
+    createdAt = Comment.parse(raw) ?? Date()
+  }
+
+  static func parse(_ timestamp: String) -> Date? {
+    let f = ISO8601DateFormatter()
+    f.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+    if let d = f.date(from: timestamp) { return d }
+    f.formatOptions = [.withInternetDateTime]
+    return f.date(from: timestamp)
+  }
+
+  /// "now", "5m", "3h", "2d", then a date: compact, as on the web.
+  static func timeAgo(_ date: Date, now: Date = Date()) -> String {
+    let seconds = max(0, Int(now.timeIntervalSince(date).rounded()))
+    if seconds < 60 { return "now" }
+    if seconds < 3600 { return "\(seconds / 60)m" }
+    if seconds < 86400 { return "\(seconds / 3600)h" }
+    if seconds < 7 * 86400 { return "\(seconds / 86400)d" }
+    let sameYear = Calendar.current.component(.year, from: date) == Calendar.current.component(.year, from: now)
+    let f = DateFormatter()
+    f.locale = Locale(identifier: "en_GB")
+    f.dateFormat = sameYear ? "d MMM" : "d MMM yyyy"
+    return f.string(from: date)
+  }
+}
+
+extension ReactionsAPI {
+  static let commentMax = 500
+
+  /// An entry's comments, oldest first, like a conversation.
+  static func comments(_ entryId: UUID) async throws -> [Comment] {
+    try await supabase.from("entry_comments")
+      .select("id, body, created_at, author:profiles!entry_comments_user_id_fkey(\(Person.select))")
+      .eq("entry_id", value: entryId).order("created_at", ascending: true).execute().value
+  }
+
+  /// The latest few people who liked it.
+  static func likers(_ entryId: UUID, limit: Int = 3) async -> [Person] {
+    struct Row: Decodable { let person: Person? }
+    let rows: [Row] =
+      (try? await supabase.from("entry_likes").select("person:profiles!entry_likes_user_id_fkey(\(Person.select))")
+        .eq("entry_id", value: entryId).order("created_at", ascending: false).limit(limit).execute().value) ?? []
+    return rows.compactMap(\.person).filter { !$0.handle.isEmpty }
+  }
+
+  static func addComment(_ body: String, entryId: UUID, userId: UUID) async throws {
+    struct Insert: Encodable {
+      let entry_id: UUID
+      let user_id: UUID
+      let body: String
+    }
+    try await supabase.from("entry_comments").insert(Insert(entry_id: entryId, user_id: userId, body: body)).execute()
+  }
+
+  static func deleteComment(_ id: UUID) async throws {
+    try await supabase.from("entry_comments").delete().eq("id", value: id).execute()
+  }
+}
+
 /// One show in the home feed.
 struct FeedItem: Identifiable, Hashable, Sendable {
   let entry: Entry

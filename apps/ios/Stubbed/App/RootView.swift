@@ -1,4 +1,5 @@
 import SwiftUI
+import UIKit
 
 /// The signed-in app: Home (the feed), a big centre Log button, and Profile
 /// (your diary and trips), like the web's tab bar. Log opens as a sheet over
@@ -6,6 +7,9 @@ import SwiftUI
 /// switching tabs and back returns you where you were.
 struct RootView: View {
   @State private var router = AppRouter()
+  /// The tab bar hides while the keyboard is up, as iOS tab bars do, so it
+  /// never sits on top of the field you're typing in.
+  @State private var keyboardUp = false
 
   var body: some View {
     @Bindable var router = router
@@ -14,7 +18,15 @@ struct RootView: View {
       tab(.profile, path: $router.profilePath) { ProfileView() }
     }
     .safeAreaInset(edge: .bottom, spacing: 0) {
-      TabBar(tab: $router.tab) { router.startLog() }
+      if !keyboardUp {
+        TabBar(tab: $router.tab) { router.startLog() }
+      }
+    }
+    .onReceive(NotificationCenter.default.publisher(for: UIResponder.keyboardWillShowNotification)) { _ in
+      keyboardUp = true
+    }
+    .onReceive(NotificationCenter.default.publisher(for: UIResponder.keyboardWillHideNotification)) { _ in
+      keyboardUp = false
     }
     .sheet(item: $router.log) { request in
       LogView(editing: request.editing)
