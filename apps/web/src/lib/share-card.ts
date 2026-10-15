@@ -102,9 +102,9 @@ function drawSquare(ctx: Ctx, d: CardData, bg: Background) {
   const rowTop = footerTop - 15 - 16 - 22;
   const statX = d.rating != null ? U - pad : null;
   if (d.rating != null) drawStars(ctx, d.rating, pad, rowTop, 22, 3, "#7C7C82");
-  // "14th of 2026": right aligned beside the stars, or alone on the left.
+  // "14th show of 2026": right aligned beside the stars, or alone on the left.
   setFont(ctx, 400, 13, TEXT, 0);
-  const ofYear = `of ${d.year}`;
+  const ofYear = `show of ${d.year}`;
   const ofWidth = ctx.measureText(ofYear).width;
   setFont(ctx, 600, 17, TEXT, -0.4);
   const nth = ordinal(d.showOfYear);

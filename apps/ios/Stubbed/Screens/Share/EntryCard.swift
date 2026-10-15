@@ -117,7 +117,7 @@ struct EntryCardView: View {
               .font(.system(size: 17, weight: .semibold))
               .tracking(-0.4)
               .foregroundStyle(CardInk.coral)
-            Text("of \(String(data.year))")
+            Text("show of \(String(data.year))")
               .font(.system(size: 13))
               .foregroundStyle(CardInk.secondary)
           }
