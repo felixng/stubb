@@ -1,17 +1,7 @@
 import SwiftUI
 
-// Screens still to build: Home (#72), Edit profile (#76) and public
-// profiles (#73).
-
-struct HomeView: View {
-  var body: some View {
-    Screen(title: "Home") {
-      EmptyState(title: "Nothing here yet") {
-        Text("Track a show and it appears here, along with shows from people you follow.")
-      }
-    }
-  }
-}
+// Screens still to build: Edit profile (#76), and people and public
+// pages (#73).
 
 struct SettingsView: View {
   var body: some View {
@@ -23,5 +13,26 @@ struct PublicProfileView: View {
   let handle: String
   var body: some View {
     Screen(title: "@\(handle)") { EmptyState(title: "Coming soon") { Text("Public profiles arrive in #73.") } }
+  }
+}
+
+struct PeopleView: View {
+  var body: some View {
+    Screen(title: "Find people") { EmptyState(title: "Coming soon") { Text("Finding people arrives in #73.") } }
+  }
+}
+
+struct PublicEntryView: View {
+  let id: UUID
+  var showComments = false
+  var body: some View {
+    Screen(title: "") { EmptyState(title: "Coming soon") { Text("Public entries arrive in #73.") } }
+  }
+}
+
+struct PublicTripView: View {
+  let id: UUID
+  var body: some View {
+    Screen(title: "Trip") { EmptyState(title: "Coming soon") { Text("Public trips arrive in #73.") } }
   }
 }

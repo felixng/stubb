@@ -4,9 +4,17 @@
 do $$
 declare
   uid uuid := (select id from auth.users where email = 'ios-test@stubbed.local');
+  friend uuid := (select id from auth.users where email = 'ios-friend@stubbed.local');
+  i integer;
 begin
-  delete from public.entries where user_id = uid;
-  delete from public.collections where user_id = uid;
+  delete from public.entries where user_id in (uid, friend);
+  delete from public.collections where user_id in (uid, friend);
+  delete from public.follows where uid in (follower_id, followee_id) or friend in (follower_id, followee_id);
+  update public.profiles set is_private = false, default_visibility = 'public' where id = uid;
+  update public.profiles
+    set handle = coalesce(handle, 'ios_friend'), display_name = 'Friend of iOS', bio = 'Fringe every August.',
+        is_private = false
+    where id = friend;
   update public.profiles set display_name = 'iOS Test', bio = 'Musicals, mostly. Always the front row.'
     where id = uid;
 
@@ -43,4 +51,17 @@ begin
   insert into public.entry_collections (entry_id, collection_id) values
     ('00000000-0000-4000-d000-000000000001', '00000000-0000-4000-c000-000000000001'),
     ('00000000-0000-4000-d000-000000000002', '00000000-0000-4000-c000-000000000001');
+
+  -- The friend: public, followed by the test user and following back, with
+  -- 24 public shows (more than one feed page) and a like on Hamilton.
+  insert into public.follows (follower_id, followee_id) values (uid, friend), (friend, uid);
+  for i in 1..24 loop
+    insert into public.entries (user_id, show_id, venue_id, date, status, rating, note, visibility)
+    values (friend, ('00000000-0000-4000-a000-00000000000' || (1 + i % 4))::uuid, ('00000000-0000-4000-b000-00000000000' || (1 + i % 4))::uuid,
+            date '2026-10-10' - i * 3, 'logged', 3 + (i % 5) * 0.5,
+            case when i = 1 then 'Second time round and it still lands.' end, 'public');
+  end loop;
+  insert into public.entry_likes (entry_id, user_id) values ('00000000-0000-4000-d000-000000000001', friend);
+  insert into public.entry_comments (entry_id, user_id, body)
+    values ('00000000-0000-4000-d000-000000000001', friend, 'Front mezz is the best seat in that house.');
 end $$;

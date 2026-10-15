@@ -98,6 +98,8 @@ screenshot() {
 # the welcome screen (a handle can't be removed once set).
 TEST_EMAIL="ios-test@stubbed.local"
 NEW_EMAIL="ios-new@stubbed.local"
+# Someone the test user follows, with a page and a bit of public shows.
+FRIEND_EMAIL="ios-friend@stubbed.local"
 TEST_PASSWORD="stubbed-ios"
 TEST_HANDLE="ios_test"
 
@@ -120,6 +122,7 @@ test_users() {
   local user="{\"password\":\"$TEST_PASSWORD\",\"email_confirm\":true"
 
   admin POST /auth/v1/admin/users "$user,\"email\":\"$TEST_EMAIL\"}" >/dev/null
+  admin POST /auth/v1/admin/users "$user,\"email\":\"$FRIEND_EMAIL\"}" >/dev/null
   id="$(user_id "$TEST_EMAIL")"
   admin PATCH "/rest/v1/profiles?id=eq.$id&handle=is.null" "{\"handle\":\"$TEST_HANDLE\",\"display_name\":\"iOS Test\"}" >/dev/null
 

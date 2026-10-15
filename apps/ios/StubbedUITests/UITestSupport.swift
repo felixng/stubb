@@ -43,15 +43,24 @@ extension XCTestCase {
     dismissSavePassword(app)
   }
 
-  /// iOS offers to save the password after a sign-in; say "Not Now".
+  /// iOS offers to save the password after a sign-in, sometimes a few
+  /// seconds later; say "Not Now".
   @MainActor
   func dismissSavePassword(_ app: XCUIApplication) {
     let springboard = XCUIApplication(bundleIdentifier: "com.apple.springboard")
-    for source in [app, springboard] {
-      let notNow = source.buttons["Not Now"]
-      if notNow.waitForExistence(timeout: 3) {
-        notNow.tap()
+    let deadline = Date().addingTimeInterval(8)
+    var tapped = false
+    while Date() < deadline {
+      let shown = [app, springboard].map { $0.buttons["Not Now"] }.first { $0.exists }
+      if let shown {
+        // A tap while it's still animating in can be ignored: tap again.
+        shown.tap()
+        tapped = true
+        usleep(800_000)
+      } else if tapped {
         return
+      } else {
+        usleep(250_000)
       }
     }
   }
