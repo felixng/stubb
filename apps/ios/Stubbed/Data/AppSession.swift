@@ -18,6 +18,10 @@ final class AppSession {
   private(set) var phase = Phase.starting
   private(set) var userId: UUID?
   private(set) var user: User?
+  /// A link opened before sign-in, followed once the app is ready.
+  var pendingLink: AppRouter.Route?
+  /// Shows "Your account … has been deleted" on the sign-in screen.
+  private(set) var deletedNotice = false
 
   /// Follows sign-in, sign-out and token refreshes for the app's lifetime.
   func observe() async {
@@ -54,6 +58,12 @@ final class AppSession {
     }
   }
 
+  /// The account is gone: clear the local session and say so at sign-in.
+  func accountDeleted() {
+    deletedNotice = true
+    Task { await signOut() }
+  }
+
   private func update(_ session: Session?) async {
     guard let session else {
       userId = nil
@@ -61,6 +71,7 @@ final class AppSession {
       phase = .signedOut
       return
     }
+    deletedNotice = false
     userId = session.user.id
     user = session.user
     do {

@@ -10,16 +10,17 @@ Run from `apps/ios`. Every command is headless, so it works from a remote sessio
 |---|---|
 | `scripts/dev build` | Build for the Simulator. Prints errors, our warnings and the verdict; full log in `build/logs/build.log`. |
 | `scripts/dev test` | Run the unit tests (Swift Testing, `StubbedTests/`). |
-| `scripts/dev ui [Class[/test]]` | Run the UI tests (`StubbedUITests/`, XCUITest) against local Supabase. Resets the local test users first; screenshots saved with `snapshot("name")` land in `build/ui/`. Run it in the background: a full run takes a few minutes. |
+| `scripts/dev ui [Class[/test]]` | Run the UI tests (`StubbedUITests/`, XCUITest) against local Supabase. Builds once, then resets the test data (`scripts/test-seed.sql`) before each test class, so classes can't affect each other. Screenshots saved with `snapshot("name")` land in `build/ui/`. Run it in the background: a full run takes about 15 minutes. |
 | `scripts/dev test-users` | Create or reset the local test users: `ios-test@stubbed.local` (handle `ios_test`) and `ios-new@stubbed.local` (no handle, recreated each run), password `stubbed-ios`. |
 | `scripts/dev run` | Build, install and launch on the Simulator, wait 3s (`WAIT=…`), save `build/screenshot.png`. **Read the PNG to check UI work.** |
 | `scripts/dev screenshot [path]` | Screenshot whatever is on the Simulator now. |
 | `scripts/dev logs [secs]` | The app's recent log lines. Log with `os.Logger(subsystem: "com.felixng.stubbed", …)` so they show up. |
+| `scripts/dev archive` | Archive a Release build and upload it to TestFlight. Needs the owner's Apple account in Xcode; leave it to the owner unless asked. |
 | `scripts/dev types` | Regenerate `Stubbed/Generated/Database.swift` from local Supabase after a migration. Never edit that file by hand. |
 
 `SIM="iPhone SE (3rd generation)" scripts/dev run` checks a small screen. Before calling UI work done, check the screenshot on both a small and a large phone, and in dark mode (`xcrun simctl ui booted appearance dark`).
 
-You can't tap the Simulator yourself. To check a screen deeper in the app, write a UI test that signs in (`signIn(app)` in `UITestSupport.swift`), navigates there and calls `snapshot(...)`. Don't leave debug shortcuts in the app. UI test notes: text fields use the `tap(_:)` helper (padded SwiftUI fields report "not hittable"); buttons use `.tap()`, which scrolls them into view; swipe up first if the keyboard covers a button; `signIn` dismisses iOS's "Save Password?" prompt.
+You can't tap the Simulator yourself. To check a screen deeper in the app, write a UI test that signs in (`signIn(app)` in `UITestSupport.swift`), navigates there and calls `snapshot(...)`. Don't leave debug shortcuts in the app. Test data: `scripts/test-seed.sql` gives `ios_test` a small diary (two NYC shows in a trip, a private one, an upcoming one), `ios_friend` to follow (24 public shows, a like and a comment), and `ios_fan` with a pending follow request. UI test notes: text fields use the `tap(_:)` helper (padded SwiftUI fields report "not hittable"); buttons use `.tap()`, which scrolls them into view; swipe up first if the keyboard covers a button; `signIn` dismisses iOS's "Save Password?" prompt.
 
 ## Backend
 

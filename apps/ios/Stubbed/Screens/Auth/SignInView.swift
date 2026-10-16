@@ -8,6 +8,8 @@ import SwiftUI
 struct SignInView: View {
   private enum Field { case email, password }
 
+  @Environment(AppSession.self) private var session
+
   @State private var email = ""
   @State private var password = ""
   @State private var error: String?
@@ -25,6 +27,16 @@ struct SignInView: View {
             .foregroundStyle(Palette.label)
         }
         .padding(.top, 48)
+
+        if session.deletedNotice {
+          Text("Your account and everything in it have been deleted.")
+            .font(.stubSubheadline.weight(.medium))
+            .foregroundStyle(Palette.label)
+            .padding(.horizontal, Space.l)
+            .padding(.vertical, Space.m)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .background(Palette.tintFill, in: .rect(cornerRadius: Radius.md))
+        }
 
         VStack(spacing: Space.m) {
           SignInWithAppleButton(.continue, onRequest: prepareApple, onCompletion: finishApple)
@@ -217,5 +229,5 @@ struct NeutralButtonStyle: ButtonStyle {
 }
 
 #Preview {
-  SignInView()
+  SignInView().environment(AppSession())
 }
