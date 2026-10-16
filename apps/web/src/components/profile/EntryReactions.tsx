@@ -13,19 +13,22 @@ const ACTION =
 // Like and comment, under a public entry, as on Hevy. Liking shows at once and
 // writes in the background; the refreshed page then brings the real counts.
 // Signed-out visitors go to sign in and come back. Comments live on the
-// entry's page (`commentsHref`).
+// entry's page (`commentsHref`). With `shareHref` (your own shows), Share
+// follows Comment and opens the share screen.
 export function EntryReactions({
   entryId,
   reactions,
   viewerId,
   commentsHref,
   loginHref,
+  shareHref,
 }: {
   entryId: string;
   reactions: Reactions;
   viewerId: string | null;
   commentsHref: string;
   loginHref: string;
+  shareHref?: string;
 }) {
   const router = useRouter();
   // The viewer's own like, shown until the refreshed counts arrive. A new
@@ -101,6 +104,27 @@ export function EntryReactions({
           Comments ({state.comments} {state.comments === 1 ? "comment" : "comments"})
         </span>
       </Link>
+      {shareHref && <ShareAction href={shareHref} />}
     </div>
+  );
+}
+
+// Share, as in the reactions row: opens the entry's share screen. Also used on
+// its own under your private shows, which take no likes or comments.
+export function ShareAction({ href }: { href: string }) {
+  return (
+    <Link href={href} className={ACTION}>
+      <svg aria-hidden="true" viewBox="0 0 24 24" width="22" height="22" className="text-label-secondary">
+        <path
+          d="M12 14.5V3.5M8 7l4-4 4 4M8.5 10.5H7a2 2 0 0 0-2 2V19a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-6.5a2 2 0 0 0-2-2h-1.5"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="1.8"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        />
+      </svg>
+      <span className="sr-only">Share</span>
+    </Link>
   );
 }
