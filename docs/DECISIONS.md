@@ -1,6 +1,6 @@
 # Decisions
 
-A short log of choices made and why. Newest at the bottom. The project brief is a Google Doc: [the project brief](https://docs.google.com/document/d/1NdEgeTRMkKQ5TL87Urwpe7WG9fcrejPsZKsmrO2Enak/edit).
+A short log of choices made and why, mostly about how things are built. Newest at the bottom. Product context (what and why) lives in the Google Drive [Stubbed folder](https://drive.google.com/drive/folders/1uYsjPogzITCDc_DNE5_gQtJrdEocfxRI); see "Where context lives" in `CLAUDE.md`.
 
 ## Open decisions
 
@@ -9,7 +9,7 @@ A short log of choices made and why. Newest at the bottom. The project brief is 
 | 1 | Confirm architecture in `docs/ARCHITECTURE.md` (Next.js on Vercel Hobby + Supabase Free) | Now | Proposed 2026-10-12 |
 | 6 | Badges: app-defined only, or user/group-defined too? | When badges are scheduled | Idea; see the brief's "Ideas to explore" |
 | 7 | Discord: channel webhook vs. Discord login vs. server/bot integration | When Discord is scheduled | Idea; tied to groups |
-| 8 | Monetisation: charge at all? Which features (extra photos, import credits, long-range insights), subscription vs. one-off, prices | Before any paid feature | Ideas only; see `docs/MONETISATION.md` |
+| 8 | Monetisation: charge at all? Which features (extra photos, import credits, long-range insights), subscription vs. one-off, prices | Before any paid feature | Ideas only; see [Stubbed: Monetisation Ideas](https://docs.google.com/document/d/1LJanHT3SpBYSQB7SiRVaeX-1PFZTPQ-cBLXlSC50KAM/edit) (Google Doc) |
 
 ## Log
 
@@ -148,7 +148,7 @@ The landing page was too thin for search engines or AI assistants to describe (1
 - Structured data is now a graph: `WebSite`, `Organization`, `WebApplication` (no offers, since sign-ups aren't open) and `FAQPage`. Add `sameAs` links to `Organization` once there are social accounts.
 - Title 56 characters, description 158, the hero phone image has alt text.
 - The page is ~650 words. An audit tool asked for 800; padding a landing page reads worse to people and AI, so it stops there.
-- FAQ commitments to check: "logging your shows and getting your own data out will always be free" (from the ground rules in `docs/MONETISATION.md`), CSV export ("you'll be able to"), and "a native iPhone app is planned".
+- FAQ commitments to check: "logging your shows and getting your own data out will always be free" (from the ground rules in [Stubbed: Monetisation Ideas](https://docs.google.com/document/d/1LJanHT3SpBYSQB7SiRVaeX-1PFZTPQ-cBLXlSC50KAM/edit)), CSV export ("you'll be able to"), and "a native iPhone app is planned".
 
 ### 2026-10-13: Terms of Service and Privacy Policy
 Added `/terms` and `/privacy`, linked from the footer, plus a privacy link under the waitlist form. Written to cover the UK (UK GDPR, DPA 2018, PECR, Consumer Rights Act, Online Safety Act), the EU (GDPR, consumer law, DSA notice and action) and the US (CCPA/CPRA and other state laws, CalOPPA, COPPA, DMCA notice). Choices: minimum age 16 everywhere (simplest age that works for GDPR consent across the EU and keeps clear of COPPA); governing law England and Wales, with consumers keeping their local mandatory protections and courts; essential cookies only, so no cookie banner. Contact email is support@getstubbed.app. The owner's call: leave out the operator's legal name and postal address for the private beta; UK/EU GDPR and the UK E-Commerce Regulations expect both, so add them to `apps/web/src/lib/legal.ts` before public launch (the pages show them once set). Not legal advice: have a lawyer review before public launch. Update the policy in the same change whenever a feature starts collecting or sharing something new.
@@ -281,3 +281,8 @@ Owner's call. The import tool no longer groups photos from the same evening into
 
 ### 2026-10-15: The project brief moves to a Google Doc
 Owner's call: the brief is now the Google Doc [Stubbed: Project Brief](https://docs.google.com/document/d/1NdEgeTRMkKQ5TL87Urwpe7WG9fcrejPsZKsmrO2Enak/edit), one source of truth that's easy to share outside the repo. It was rewritten to match what's built (iOS parity as the current focus, Social largely done, the data model as built, the Phase 1 gaps). `CLAUDE.md` now links to it and keeps only the standing working agreements, so every Claude Code session still loads those. Replaces "Project brief lives in `CLAUDE.md`". Open decisions 4 (email import: paste-in and file upload are built) and 5 (likes and comments, decided 2026-10-14) are closed.
+
+### 2026-10-16: Product context in Google Drive, code and tech context in the repo
+Owner's call, building on the brief's move to a Google Doc. The [Stubbed folder](https://drive.google.com/drive/folders/1uYsjPogzITCDc_DNE5_gQtJrdEocfxRI) on Google Drive holds the product and project context (what, why, audience, status, roadmap, ideas, brand, monetisation) for any tool to read: design, marketing, copywriting, SEO. The repo holds the code and tech context. The rule is spelled out in `CLAUDE.md` ("Where context lives") and at the top of the brief.
+- `docs/MONETISATION.md` moved to the Google Doc [Stubbed: Monetisation Ideas](https://docs.google.com/document/d/1LJanHT3SpBYSQB7SiRVaeX-1PFZTPQ-cBLXlSC50KAM/edit) in that folder.
+- The brief's data model and tech approach moved into `CLAUDE.md` ("Tech overview"); the brief keeps a short non-technical summary.
