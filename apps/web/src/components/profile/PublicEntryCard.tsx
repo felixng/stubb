@@ -4,7 +4,7 @@ import { RatingStars } from "@/components/ui/RatingStars";
 import { formatDate, SHOW_TYPE_LABELS, type EntryRow } from "@/lib/entries";
 import type { Reactions } from "@/lib/reactions";
 import { Avatar } from "./Avatar";
-import { EntryReactions } from "./EntryReactions";
+import { EntryReactions, ShareAction } from "./EntryReactions";
 
 // Who is looking (null when signed out) and the entry's likes and comments,
 // for the Like and Comment row under the card.
@@ -18,7 +18,9 @@ export type CardSocial = { viewerId: string | null; reactions: Reactions };
 // left out, since the page already says whose trip it is; the date stays.
 // The feed points `href` and `tripHref` at the app's own pages for your own
 // shows, and can pass `href={null}` where no page would open; `badge` marks
-// your private shows.
+// your private shows. For your own shows, `editHref` puts an Edit button top
+// right and `shareHref` adds Share next to Comment (or on its own when the show
+// takes no likes or comments).
 // With `social`, the card ends with Like and Comment; signed-out visitors
 // sign in and come back to `loginNext`.
 export function PublicEntryCard({
@@ -32,6 +34,8 @@ export function PublicEntryCard({
   href = `/e/${entry.id}`,
   tripHref = (id) => `/t/${id}`,
   badge,
+  editHref,
+  shareHref,
   social,
   loginNext,
 }: {
@@ -45,6 +49,8 @@ export function PublicEntryCard({
   href?: string | null;
   tripHref?: (id: string) => string | null;
   badge?: string;
+  editHref?: string;
+  shareHref?: string;
   social?: CardSocial;
   loginNext?: string;
 }) {
@@ -77,7 +83,29 @@ export function PublicEntryCard({
               <time dateTime={entry.date}>{formatDate(entry.date, { weekday: "short", day: "numeric", month: "short", year: "numeric" })}</time>
             </p>
           </div>
-          {badge && <span className="ml-auto shrink-0 rounded-pill bg-fill px-3 text-footnote leading-7 font-medium text-label-secondary">{badge}</span>}
+          {(badge || editHref) && (
+            <div className="-mr-2 ml-auto flex shrink-0 items-center gap-1">
+              {badge && <span className="rounded-pill bg-fill px-3 text-footnote leading-7 font-medium text-label-secondary">{badge}</span>}
+              {editHref && (
+                <Link
+                  href={editHref}
+                  className="inline-flex size-11 items-center justify-center rounded-pill text-label-secondary transition-colors hover:bg-fill focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus"
+                >
+                  <svg aria-hidden="true" viewBox="0 0 24 24" width="20" height="20">
+                    <path
+                      d="M14.5 5.5l4 4M4 20l1-4.5L15.8 4.7a1.8 1.8 0 0 1 2.5 0l1 1a1.8 1.8 0 0 1 0 2.5L8.5 19 4 20Z"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="1.8"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                    />
+                  </svg>
+                  <span className="sr-only">Edit {entry.show.title}</span>
+                </Link>
+              )}
+            </div>
+          )}
         </header>
       )}
       <div className="flex flex-col gap-1">
@@ -126,14 +154,21 @@ export function PublicEntryCard({
           })}
         </ul>
       )}
-      {social && (
+      {social ? (
         <EntryReactions
           entryId={entry.id}
           reactions={social.reactions}
           viewerId={social.viewerId}
           commentsHref={page ? "#comments" : `/e/${entry.id}#comments`}
           loginHref={`/login?next=${encodeURIComponent(loginNext ?? `/e/${entry.id}`)}`}
+          shareHref={shareHref}
         />
+      ) : (
+        shareHref && (
+          <div className="-mx-3 -mb-2 flex items-center gap-1 text-label">
+            <ShareAction href={shareHref} />
+          </div>
+        )
       )}
     </article>
   );
